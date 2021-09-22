@@ -8,11 +8,13 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     stretch_description_path = get_package_share_path('stretch_description')
-    robot_description_content = Command(['xacro ', str(stretch_description_path / 'urdf' / 'stretch_main.xacro')])
+    robot_description_content = Command(['xacro ',
+                                         str(stretch_description_path / 'urdf' / 'stretch_description.xacro')])
 
     joint_state_publisher_gui_node = Node(
         package='joint_state_publisher_gui',
-        executable='joint_state_publisher_gui'
+        executable='joint_state_publisher_gui',
+        parameters=[{'zeros.joint_lift': 0.2, 'zeros.joint_wrist_yaw': 3.4}],
     )
 
     robot_state_publisher_node = Node(package='robot_state_publisher',
