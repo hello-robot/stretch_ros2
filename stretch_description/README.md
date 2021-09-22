@@ -4,11 +4,17 @@
 
 *stretch_description* provides materials for a [URDF](http://wiki.ros.org/urdf) kinematic model of the Stretch RE1 mobile manipulator from Hello Robot Inc.
 
+## Quick View
+
+    ros2 launch stretch_description display.launch.py
+
 ## Details
 
 The *meshes directory* contains [STL mesh files](https://en.wikipedia.org/wiki/STL_(file_format)) representing the exterior geometry of various parts of the robot. 
 
 The *urdf directory* contains [xacro files](http://wiki.ros.org/xacro) representing various parts of the robot that are used to generate the robot's URDF. 
+
+    TODO: Everything below this point must be updated once stretch_calibration is updated
 
 stretch_ros expects a URDF with the name stretch.urdf to reside within the urdf directory. The file stretch.urdf serves as the URDF for the robot and must be generated. Typically, it is a calibrated urdf file for the particular Stretch RE1 robot being used. To generate this file, please read the documentation within stretch_ros/stretch_calibration. 
 
