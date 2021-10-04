@@ -9,13 +9,14 @@ We are beginning to use this port internally at Hello Robot to test it, improve 
 ## Ported to ROS 2
 
  - Stretch Description
+ - Stretch Core (Driver Node)
 
 ## Known Issues
 
 No support for:
 
  - Stretch Calibration
- - Stretch Core
+ - Stretch Core (Everything Else)
  - Stretch Dashboard
  - Stretch Deep Perception
  - Stretch Demos

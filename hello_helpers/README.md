@@ -4,13 +4,13 @@
 
 *hello_helpers* mostly consists of the hello_helpers Python module. This module provides various Python files used across stretch_ros that have not attained sufficient status to stand on their own.
 
-## Capabilities
+## Ported to ROS 2
+ - `gripper_conversion.py` : Used for converting measurements for the gripper
 
-*fit_plane.py* : Fits planes to 3D data.
-
-*hello_misc.py* : Various functions, including a helpful Python object with which to create ROS nodes. 
-
-*hello_ros_viz.py* : Various helper functions for vizualizations using RViz.
+## Not Supported in ROS 2 Yet
+ - `fit_plane.py` : Fits planes to 3D data.
+ - `hello_misc.py` : Various functions, including a helpful Python object with which to create ROS nodes.
+ - `hello_ros_viz.py` : Various helper functions for visualizations using RViz.
 
 ## Typical Usage
 
