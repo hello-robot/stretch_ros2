@@ -25,6 +25,7 @@ No support for:
  - Stretch Navigation
  - Stretch OctoMap
  - Stretch RTABMap
+ - The deep perception demos won't work with a default installation, since they require OpenCV compiled with OpenVINO.
  - There is no support for the Respeaker Microphone Array.
  - There is no support for the Dexterous Wrist.
 
