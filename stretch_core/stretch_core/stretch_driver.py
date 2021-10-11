@@ -429,7 +429,7 @@ class StretchBodyNode(Node):
         response.message = 'Now in navigation mode.'
         return response
 
-    def position_mode_service_callback(self, request):
+    def position_mode_service_callback(self, request, response):
         self.turn_on_position_mode()
         response.success = True
         response.message = 'Now in position mode.'
@@ -487,7 +487,7 @@ class StretchBodyNode(Node):
 
         large_ang = 45.0 * np.pi/180.0
 
-        self.declare_parameter('controller_calibration_file', 'not_set')
+        self.declare_parameter('controller_calibration_file')
         filename = self.get_parameter('controller_calibration_file').value
         self.get_logger().info('Loading controller calibration parameters for the head from YAML file named {0}'.format(filename))
         with open(filename, 'r') as fid:
