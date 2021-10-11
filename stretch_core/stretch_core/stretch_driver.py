@@ -239,7 +239,10 @@ class StretchBodyNode(Node):
         self.power_pub.publish(battery_state)
 
         calibration_status = Bool()
-        calibration_status.data = self.robot.is_calibrated()
+        if self.robot.is_calibrated():  # Returns status as integer, need to convert to bool
+            calibration_status.data = True
+        else:
+            calibration_status.data = False
         self.calibration_pub.publish(calibration_status)
 
         mode_msg = String()
