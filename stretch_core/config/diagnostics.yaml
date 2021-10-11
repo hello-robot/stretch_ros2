@@ -1,3 +1,5 @@
+analyzers:
+  ros__parameters:
     type: diagnostic_aggregator/AnalyzerGroup
     path: Stretch
     analyzers:

@@ -19,78 +19,34 @@
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/stretch_core</url> -->
-
+  <url type="website">https://github.com/hello-robot/stretch_ros2</url>
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->
   <!-- Authors do not have to be maintainers, but could be -->
   <!-- Example: -->
   <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
 
+  <depend>actionlib_msgs</depend>
+  <depend>control_msgs</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>diagnostic_updater</depend>
+  <depend>geometry_msgs</depend>
+  <depend>hello_helpers</depend>
+  <depend>nav_msgs</depend>
+  <depend>trajectory_msgs</depend>
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>tf2_ros</depend>
 
-  <!-- The *depend tags are used to specify dependencies -->
-  <!-- Dependencies can be catkin packages or system dependencies -->
-  <!-- Examples: -->
-  <!-- Use depend as a shortcut for packages that are both build and exec dependencies -->
-  <!--   <depend>roscpp</depend> -->
-  <!--   Note that this is equivalent to the following: -->
-  <!--   <build_depend>roscpp</build_depend> -->
-  <!--   <exec_depend>roscpp</exec_depend> -->
-  <!-- Use build_depend for packages you need at compile time: -->
-  <!--   <build_depend>message_generation</build_depend> -->
-  <!-- Use build_export_depend for packages you need in order to build against this package: -->
-  <!--   <build_export_depend>message_generation</build_export_depend> -->
-  <!-- Use buildtool_depend for build tool packages: -->
-  <!--   <buildtool_depend>catkin</buildtool_depend> -->
-  <!-- Use exec_depend for packages you need at runtime: -->
-  <!--   <exec_depend>message_runtime</exec_depend> -->
-  <!-- Use test_depend for packages you need only for testing: -->
-  <!--   <test_depend>gtest</test_depend> -->
-  <!-- Use doc_depend for packages you need only for building documentation: -->
-  <!--   <doc_depend>doxygen</doc_depend> -->
-  <build_depend>actionlib_msgs</build_depend>
-  <build_depend>diagnostic_msgs</build_depend>
-  <build_depend>diagnostic_updater</build_depend>
-  <build_depend>geometry_msgs</build_depend>
-  <build_depend>hello_helpers</build_depend>
-  <build_depend>nav_msgs</build_depend>
-  <build_depend>control_msgs</build_depend>
-  <build_depend>trajectory_msgs</build_depend>
-  <build_depend>rclpy</build_depend>
-  <build_depend>std_msgs</build_depend>
-  <build_depend>std_srvs</build_depend>
-  <build_depend>tf2</build_depend>
-  <build_export_depend>actionlib_msgs</build_export_depend>
-  <build_export_depend>diagnostic_msgs</build_export_depend>
-  <build_export_depend>diagnostic_updater</build_export_depend>
-  <build_export_depend>geometry_msgs</build_export_depend>
-  <build_export_depend>hello_helpers</build_export_depend>
-  <build_export_depend>nav_msgs</build_export_depend>
-  <build_export_depend>control_msgs</build_export_depend>
-  <build_export_depend>trajectory_msgs</build_export_depend>
-  <build_export_depend>rclpy</build_export_depend>
-  <build_export_depend>std_msgs</build_export_depend>
-  <build_export_depend>std_srvs</build_export_depend>
-  <build_export_depend>tf2</build_export_depend>
-  <exec_depend>actionlib_msgs</exec_depend>
-  <exec_depend>diagnostic_msgs</exec_depend>
-  <exec_depend>diagnostic_updater</exec_depend>
   <exec_depend>diagnostic_aggregator</exec_depend>
-  <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>hello_helpers</exec_depend>
-  <exec_depend>laser_filters</exec_depend>
-  <exec_depend>nav_msgs</exec_depend>
-  <exec_depend>control_msgs</exec_depend>
-  <exec_depend>trajectory_msgs</exec_depend>
-  <exec_depend>rclpy</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-  <exec_depend>std_srvs</exec_depend>
-  <exec_depend>tf</exec_depend>
-  <exec_depend>tf2</exec_depend>
+  <!-- Temporarily Disabled (see https://github.com/ros-perception/laser_filters/issues/132)
+       exec_depend>laser_filters</exec_depend -->
   <exec_depend>joy</exec_depend>
   <exec_depend>teleop_twist_joy</exec_depend>
   <exec_depend>teleop_twist_keyboard</exec_depend>
-  <test_depend>rostest</test_depend>
+  <!-- stretch_driver_test has not been ported yet
+       test_depend>rostest</test_depend-->
 
   <export>
     <build_type>ament_python</build_type>
