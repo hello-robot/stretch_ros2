@@ -8,7 +8,7 @@ import stretch_body.robot as rb
 from stretch_body.hello_utils import ThreadServiceExit
 
 import tf2_ros
-import tf_conversions
+from tf_transformations import quaternion_from_euler
 
 import rclpy
 from rclpy.duration import Duration
@@ -192,7 +192,7 @@ class StretchBodyNode(Node):
             head_tilt_vel = head_tilt_status['vel']
             head_tilt_effort = head_tilt_status['effort']
 
-        q = tf_conversions.transformations.quaternion_from_euler(0, 0, theta)
+        q = quaternion_from_euler(0.0, 0.0, theta)
 
         if self.broadcast_odom_tf: 
             # publish odometry via TF

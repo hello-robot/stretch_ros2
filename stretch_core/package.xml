@@ -33,10 +33,12 @@
   <depend>geometry_msgs</depend>
   <depend>hello_helpers</depend>
   <depend>nav_msgs</depend>
+  <depend>python-transforms3d-pip</depend>
   <depend>trajectory_msgs</depend>
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
   <depend>std_srvs</depend>
+  <depend>tf_transformations</depend>
   <depend>tf2_ros</depend>
 
   <exec_depend>diagnostic_aggregator</exec_depend>
