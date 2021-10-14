@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+
+from __future__ import print_function
 
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Twist
@@ -103,8 +105,7 @@ def norm_axes(axes):
     return [x_axis, y_axis, z_axis]
 
 def quat_to_rotated_axes(rot_mat, q):
-    #r = Rotation.from_quat([q.x, q.y, q.z, q.w]).as_dcm()
-    r = Rotation.from_quat([q.x, q.y, q.z, q.w]).as_matrix()
+    r = Rotation.from_quat([q.x, q.y, q.z, q.w]).as_dcm()
     rotated_r = np.matmul(rot_mat, r)
     return rot_to_axes(rotated_r)
 
@@ -133,13 +134,11 @@ class Joint:
         xyz = self.joint.origin.xyz
         affine_matrix = np.identity(4)
         affine_matrix[:3, 3] = xyz
-        #affine_matrix[:3,:3] = Rotation.from_euler('xyz', rpy).as_dcm()
-        affine_matrix[:3,:3] = Rotation.from_euler('xyz', rpy).as_matrix()
+        affine_matrix[:3,:3] = Rotation.from_euler('xyz', rpy).as_dcm()
         if self.joint.type == 'revolute':
             axis_affine_matrix = np.identity(4)
             rotation_vector = value * (np.array(axis)/np.linalg.norm(axis))
-            #axis_affine_matrix[:3,:3] = Rotation.from_rotvec(rotation_vector).as_dcm()
-            axis_affine_matrix[:3,:3] = Rotation.from_rotvec(rotation_vector).as_matrix()
+            axis_affine_matrix[:3,:3] = Rotation.from_rotvec(rotation_vector).as_dcm()
             affine_matrix = np.matmul(affine_matrix, axis_affine_matrix)
         elif self.joint.type == 'prismatic':
             axis_affine_matrix = np.identity(4)
@@ -174,8 +173,8 @@ class Chain:
         self.chain_names = self.urdf.get_chain(start_name, end_name)
         self.chain = []
         for name in self.chain_names:
-            is_joint = name in self.urdf.joint_map
-            is_link = name in self.urdf.link_map
+            is_joint = self.urdf.joint_map.has_key(name)
+            is_link = self.urdf.link_map.has_key(name)
             if is_joint and is_link:
                 print('ERROR: a joint and a link have the same name. This is not supported.')
                 exit()
@@ -216,8 +215,7 @@ class ArucoError:
         # shared across multiple chains. When calibrating the URDF,
         # the URDF and this chain are updated outside of this
         # ArucoError object.
-        #self.marker_frame = '/base_link'
-        self.marker_frame = 'base_link'
+        self.marker_frame = '/base_link'
         self.aruco_chain = Chain(urdf, 'base_link', self.aruco_link)
         
         self.rgba = rgba

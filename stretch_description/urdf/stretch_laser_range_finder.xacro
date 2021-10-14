@@ -23,13 +23,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/laser.STL" />
+          filename="package://stretch_description/meshes/laser.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.250980392156863 0.250980392156863 0.250980392156863 1" />
-      </material>
     </visual>
     <collision>
       <origin

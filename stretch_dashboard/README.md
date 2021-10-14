@@ -8,6 +8,6 @@
  * Battery shows voltage/current as a tooltip
 
 ## To Run
-    rosrun stretch_dashboard dashboard
+    ros2 run stretch_dashboard dashboard
 
 *Note*: The first time you run it you may need to add the `--force-discover` arg to the end of the above command.

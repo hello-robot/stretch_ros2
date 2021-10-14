@@ -1,6 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-import stretch_funmap.max_height_image as mh
+from __future__ import print_function
+
+import max_height_image as mh
 import numpy as np
 import scipy.ndimage as nd
 import scipy.signal as si
@@ -9,9 +11,9 @@ import skimage as sk
 from skimage.morphology import convex_hull_image
 import math
 import hello_helpers.hello_misc as hm
-import stretch_funmap.navigation_planning as na
+import navigation_planning as na
 
-from stretch_funmap.numba_height_image import numba_create_segment_image_uint8
+from numba_height_image import numba_create_segment_image_uint8
 import hello_helpers.fit_plane as fp
 
 
@@ -61,16 +63,16 @@ def find_object_to_grasp(height_image, display_on=False):
 
     if display_on: 
         rgb_image = height_image.rgb_image.copy()
-        rgb_image[surface_mask > 0] = (rgb_image[surface_mask > 0]//2) + [0, 127, 0] 
-        rgb_image[obstacle_selector] = (rgb_image[obstacle_selector]//2) + [0, 0, 127] 
+        rgb_image[surface_mask > 0] = (rgb_image[surface_mask > 0]/2) + [0, 127, 0] 
+        rgb_image[obstacle_selector] = (rgb_image[obstacle_selector]/2) + [0, 0, 127] 
         cv2.imshow('obstacles', rgb_image)
 
     obstacle_mask = np.uint8(obstacle_selector)
 
     if display_on: 
         rgb_image = height_image.rgb_image.copy()
-        rgb_image[surface_mask > 0] = (rgb_image[surface_mask > 0]//2) + [0, 127, 0] 
-        rgb_image[obstacle_mask > 0] = (rgb_image[obstacle_mask > 0]//2) + [0, 0, 127] 
+        rgb_image[surface_mask > 0] = (rgb_image[surface_mask > 0]/2) + [0, 127, 0] 
+        rgb_image[obstacle_mask > 0] = (rgb_image[obstacle_mask > 0]/2) + [0, 0, 127] 
 
     # Find the convex hull of the surface points to represent the full
     # surface, overcoming occlusion holes, noise, and other phenomena.
@@ -86,7 +88,7 @@ def find_object_to_grasp(height_image, display_on=False):
     # and other phenomena.
     kernel_width_pix = 5 #3
     iterations = 3 #5
-    kernel_radius_pix = (kernel_width_pix - 1) // 2
+    kernel_radius_pix = (kernel_width_pix - 1) / 2
     kernel = np.zeros((kernel_width_pix, kernel_width_pix), np.uint8)
     cv2.circle(kernel, (kernel_radius_pix, kernel_radius_pix), kernel_radius_pix, 255, -1)
     use_dilation = True
@@ -100,8 +102,8 @@ def find_object_to_grasp(height_image, display_on=False):
     # Process the candidate object points      
         
     # Treat connected components of candidate object points as objects. Fit ellipses to these segmented objects.
-    label_image, max_label_index = sk.measure.label(obstacles_on_surface, background=0, return_num=True, connectivity=2)
-    region_properties = sk.measure.regionprops(label_image, intensity_image=None, cache=True)
+    label_image, max_label_index = sk.measure.label(obstacles_on_surface, neighbors=8, background=0, return_num=True, connectivity=None)
+    region_properties = sk.measure.regionprops(label_image, intensity_image=None, cache=True, coordinates='xy')
     if display_on:
         rgb_image = height_image.rgb_image.copy()
         color_label_image = sk.color.label2rgb(label_image, image=rgb_image, colors=None, alpha=0.3, bg_label=0, bg_color=(0, 0, 0), image_alpha=1, kind='overlay')
@@ -144,8 +146,7 @@ def find_object_to_grasp(height_image, display_on=False):
             print('object max height = {0} cm'.format(object_max_height_m * 100.0))
             print('object mean height = {0} cm'.format(object_mean_height_m * 100.0))
             rgb_image = height_image.rgb_image.copy()
-            #rgb_image[surface_convex_hull_mask > 0] = (rgb_image[surface_convex_hull_mask > 0]/2) + [0, 127, 0]
-            rgb_image[surface_convex_hull_mask > 0] = (rgb_image[surface_convex_hull_mask > 0]//2) + [0, 127, 0] 
+            rgb_image[surface_convex_hull_mask > 0] = (rgb_image[surface_convex_hull_mask > 0]/2) + [0, 127, 0] 
             rgb_image[label_image == object_region.label] = [0, 0, 255]
             draw_ellipse_axes_from_region(rgb_image, largest_region, color=[255, 255, 255])
             cv2.imshow('object to grasp', rgb_image)
@@ -209,7 +210,7 @@ def draw_grasp(rgb_image, grasp_target):
     surface_convex_hull_mask = grasp_target['surface_convex_hull_mask']
     object_selector = grasp_target['object_selector']
     object_ellipse = grasp_target['object_ellipse']
-    rgb_image[surface_convex_hull_mask > 0] = (rgb_image[surface_convex_hull_mask > 0]//2) + [0, 127, 0] 
+    rgb_image[surface_convex_hull_mask > 0] = (rgb_image[surface_convex_hull_mask > 0]/2) + [0, 127, 0] 
     rgb_image[object_selector] = [0, 0, 255]
     draw_ellipse_axes(rgb_image, object_ellipse, color=[255, 255, 255])
     
@@ -258,8 +259,8 @@ def find_closest_flat_surface(height_image, robot_xy_pix, display_on=False):
     if remove_floor:
         segments_image[floor_mask > 0] = 0
 
-    label_image, max_label_index = sk.measure.label(segments_image, background=0, return_num=True, connectivity=2)
-    region_properties = sk.measure.regionprops(label_image, intensity_image=image, cache=True)
+    label_image, max_label_index = sk.measure.label(segments_image, neighbors=8, background=0, return_num=True, connectivity=None)
+    region_properties = sk.measure.regionprops(label_image, intensity_image=image, cache=True, coordinates='xy')
     if display_on: 
         color_label_image = sk.color.label2rgb(label_image, image=image_rgb, colors=None, alpha=0.3, bg_label=0, bg_color=(0, 0, 0), image_alpha=1, kind='overlay')
 
@@ -427,7 +428,7 @@ def render_segments(segments_image, segment_info, output_key_image=False):
             font_scale = 1.1 * (size/100.0)
             line_width = 1
             line_color = (0,0,0)
-            cv2.putText(key_image_color, '%.3f m' % h, ((i*size) + size//10, size//2),
+            cv2.putText(key_image_color, '%.3f m' % h, ((i*size) + size/10, size/2),
                         font, font_scale, line_color, line_width, cv2.LINE_AA)
     else:
         key_image_color = None
@@ -693,8 +694,7 @@ def histogram_segment(segments_image, image,
         if max_value <= epsilon:
             if verbose:
                 print('zero encountered')
-            #max_bin = (left_bin + right_bin) / 2
-            max_bin = (left_bin + right_bin) // 2
+            max_bin = (left_bin + right_bin) / 2
 
             # Find heights associated with the left of the min bin, the
             # right of the max bin, and center of the most heavily
@@ -960,10 +960,8 @@ def draw_text(image, text, x, y):
 
 def full_segment(image, image_rgb, segmentation_scale, m_per_unit, zero_height=0.0, visualize=True, visualize_title='', verbose=False):
     segments_image, segment_info, height_to_segment_id = segment(image, m_per_unit, zero_height, segmentation_scale, verbose)
-    #label_image, max_label_index = sk.measure.label(segments_image, neighbors=8, background=0, return_num=True, connectivity=None)
-    label_image, max_label_index = sk.measure.label(segments_image, background=0, return_num=True, connectivity=2)
-    #region_properties = sk.measure.regionprops(label_image, intensity_image=image, cache=True, coordinates='xy')
-    region_properties = sk.measure.regionprops(label_image, intensity_image=image, cache=True)
+    label_image, max_label_index = sk.measure.label(segments_image, neighbors=8, background=0, return_num=True, connectivity=None)
+    region_properties = sk.measure.regionprops(label_image, intensity_image=image, cache=True, coordinates='xy')
     if image_rgb is None: 
         color_label_image = sk.color.label2rgb(label_image, image=None, colors=None, alpha=0.3, bg_label=0, bg_color=(0, 0, 0), image_alpha=1, kind='overlay')
     else:
@@ -1025,26 +1023,12 @@ def find_floor(segment_info, segments_image, verbose=False):
         return None, None
     max_bin_value = 0.0
     floor_id = None
-    print('segment_max_height_image.py : find_floor')
     for i in segment_info:
         height_m = segment_info[i]['height_m']
         bin_value = segment_info[i]['bin_value']
-
-        # Old values changed on June 3, 2021 due to no floor segment
-        # being within the bounds, which resulted in an error.
-        
-        #min_floor_m = -0.02
-        #max_floor_m = 0.1
-
-        # New values set on June 3, 2021.
-        min_floor_m = -0.05
-        max_floor_m = 0.05
-
-        if verbose: 
-            print('segment = {0}, histogram bin_value = {1}, height_m = {2}, min_floor_m = {3}, max_floor_m = {4}'.format(i, bin_value, height_m, min_floor_m, max_floor_m))
+        min_floor_m = -0.02
+        max_floor_m = 0.1
         if (height_m >= min_floor_m) and (height_m <= max_floor_m):
-            if verbose: 
-                print('found candidate floor segment!')
             if (floor_id is None) and (bin_value > 0.0):
                 floor_id = i
                 max_bin_value = bin_value
@@ -1060,9 +1044,6 @@ def find_floor(segment_info, segments_image, verbose=False):
             print('Found a good floor candidate.')
             print('floor_id =', floor_id)
             print('max_bin_value =', max_bin_value)
-    else:
-        if verbose: 
-            print('segment_max_height_image.py : no floor segment found...')
     return floor_id, floor_mask
 
 

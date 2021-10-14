@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+
+from __future__ import print_function
 
 import sys
 import rospy
@@ -28,9 +30,9 @@ from scipy.spatial.transform import Rotation
 
 from copy import deepcopy
 
-from stretch_funmap.max_height_image import *
+from max_height_image import *
 
-import stretch_funmap.navigation_planning as na
+import navigation_planning as na
     
 class ROSVolumeOfInterest(VolumeOfInterest):
 
@@ -65,7 +67,7 @@ class ROSVolumeOfInterest(VolumeOfInterest):
             points_to_voi_mat = self.get_points_to_voi_matrix(points_to_frame_id_mat)
             return points_to_voi_mat, stamped_transform.header.stamp
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            rospy.logwarn('ROSVolumeOfInterest.get_points_to_voi_matrix_with_tf2: failed to lookup transform. self.frame_id = {0}, points_frame_id = {1}, lookup_time = {2}, timeout_s = {3}'.format(self.frame_id, points_frame_id, lookup_time, timeout_s))
+            print('WARNING: VolumeOfInterest failed to lookup transform.')
             return None, None
         
     def get_ros_marker(self, duration=0.2):
@@ -89,7 +91,7 @@ class ROSVolumeOfInterest(VolumeOfInterest):
         marker.color.r = r
         marker.color.g = g
         marker.color.b = b
-        marker.color.a = 0.25 
+        marker.color.a = 0.25 #0.33 #0.25 #0.5
 
         # find the middle of the volume of interest
         center_vec = np.array([self.x_in_m/2.0, self.y_in_m/2.0, self.z_in_m/2.0])
@@ -98,7 +100,7 @@ class ROSVolumeOfInterest(VolumeOfInterest):
         marker.pose.position.y = center[1]
         marker.pose.position.z = center[2]
 
-        q = Rotation.from_matrix(self.axes).as_quat()
+        q = Rotation.from_dcm(self.axes).as_quat()
         marker.pose.orientation.x = q[0]
         marker.pose.orientation.y = q[1]
         marker.pose.orientation.z = q[2]
@@ -148,7 +150,7 @@ class ROSMaxHeightImage(MaxHeightImage):
                 voi_to_image_mat[2, 3] = 1.0
                 voi_to_image_mat[2, 2] = 1.0 / self.m_per_height_unit
             else:
-                rospy.logerr('ROSMaxHeightImage.get_points_to_image_mat: unsupported image type used for max_height_image, dtype = {0}'.format(dtype))
+                print('ros_max_height_image.py : ERROR: unsupported image type used for max_height_image, dtype =', dtype)
                 assert(False)
 
             points_to_image_mat = np.matmul(voi_to_image_mat, points_to_voi_mat)
@@ -178,7 +180,7 @@ class ROSMaxHeightImage(MaxHeightImage):
                 image_to_voi_mat[2, 3] = image_to_voi_mat[2,3] - self.m_per_height_unit
                 image_to_voi_mat[2, 2] = self.m_per_height_unit
             else:
-                rospy.logerr('ROSMaxHeightImage.get_image_to_points_mat: unsupported image type used for max_height_image, dtype = {0}'.format(dtype))
+                print('ros_max_height_image.py : ERROR: unsupported image type used for max_height_image, dtype =', dtype)
                 assert(False)
 
             points_in_image_to_frame_id_mat = np.matmul(voi_to_points_mat, image_to_voi_mat)
@@ -249,7 +251,7 @@ class ROSMaxHeightImage(MaxHeightImage):
             else:
                 self.last_update_time = points_timestamp
         else:
-            rospy.logwarn('ROSMaxHeightImage.from_points_with_tf2: failed to update the image likely due to a failure to lookup the transform using TF2. points_frame_id = {0}, points_timestamp = {1}, timeout_s = {2}'.format(points_frame_id, points_timestamp, timeout_s))
+            print('WARNING: MaxHeightImage from_points failed to update the image likely due to a failure to lookup the transform using TF2')
 
     def from_rgb_points_with_tf2(self, rgb_points, points_frame_id, tf2_buffer, points_timestamp=None, timeout_s=None):
         # points should be a numpy array with shape = (N, 3) where N
@@ -271,7 +273,7 @@ class ROSMaxHeightImage(MaxHeightImage):
             else:
                 self.last_update_time = points_timestamp
         else:
-            rospy.logwarn('ROSMaxHeightImage.from_rgb_points_with_tf2: failed to update the image likely due to a failure to lookup the transform using TF2. points_frame_id = {0}, points_timestamp = {1}, timeout_s = {2}'.format(points_frame_id, points_timestamp, timeout_s))
+            print('WARNING: MaxHeightImage from_points failed to update the image likely due to a failure to lookup the transform using TF2')
 
             
     def to_point_cloud(self, color_map=None):

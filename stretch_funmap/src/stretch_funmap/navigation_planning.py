@@ -2,10 +2,10 @@ import copy
 import numpy as np
 import scipy.ndimage as nd
 import cv2
-import stretch_funmap.cython_min_cost_path as cm
-from stretch_funmap.numba_check_line_path import numba_check_line_path
-from stretch_funmap.numba_sample_ridge import numba_sample_ridge, numba_sample_ridge_list
-import stretch_funmap.segment_max_height_image as sm
+import cython_min_cost_path as cm
+from numba_check_line_path import numba_check_line_path
+from numba_sample_ridge import numba_sample_ridge, numba_sample_ridge_list
+import segment_max_height_image as sm
 import hello_helpers.hello_misc as hm
 
 ####################################################
@@ -397,7 +397,7 @@ def estimate_navigation_channels( floor_mask, idealized_height_image, m_per_pix,
 
     # create kernel for morphological operations
     kernel_width_pix = 11
-    kernel_radius_pix = (kernel_width_pix - 1) // 2
+    kernel_radius_pix = (kernel_width_pix - 1) / 2
     kernel = np.zeros((kernel_width_pix, kernel_width_pix), np.uint8)
     cv2.circle(kernel, (kernel_radius_pix, kernel_radius_pix), kernel_radius_pix, 255, -1)
     
@@ -424,7 +424,7 @@ def estimate_navigation_channels( floor_mask, idealized_height_image, m_per_pix,
 
     # find exit regions
     number_of_exits, exit_label_image = simple_connected_components(map_exits)
-    print('number_of_exits =', number_of_exits)
+    print 'number_of_exits =', number_of_exits
 
     distance_map = original_dist_transform.copy()
     distance_map[closed_floor_mask < 1] = 0
@@ -580,9 +580,7 @@ def draw_robot_footprint_rectangle(x_pix, y_pix, ang_rad, m_per_pix, image, verb
         
     poly_points = np.array(corners)
     poly_points = np.round(poly_points).astype(np.int32)
-    
-    if image is not None:
-        cv2.fillConvexPoly(image, poly_points, value)
+    cv2.fillConvexPoly(image, poly_points, value)
 
 def halve_image(image):
     h, w = image.shape
@@ -625,8 +623,9 @@ def find_exits( floor_mask, max_height_image, m_per_pix,
     distance_map = cv2.distanceTransform(traversable_mask, cv2.DIST_L2, 5)
     
     # fill in floor mask holes
+    #kernel = np.ones((11,11), np.uint8)
     kernel_width_pix = 11
-    kernel_radius_pix = (kernel_width_pix - 1) // 2
+    kernel_radius_pix = (kernel_width_pix - 1) / 2
     kernel = np.zeros((kernel_width_pix, kernel_width_pix), np.uint8)
     cv2.circle(kernel, (kernel_radius_pix, kernel_radius_pix), kernel_radius_pix, 255, -1)
     closed_floor_mask = cv2.morphologyEx(floor_mask, cv2.MORPH_CLOSE, kernel)
@@ -654,8 +653,7 @@ def find_exits( floor_mask, max_height_image, m_per_pix,
         # attempt to increase the chance of a vertex being labeled as an exit
         # create kernel for morphological operations
         kernel_width_pix = 11
-        #kernel_radius_pix = (kernel_width_pix - 1) / 2
-        kernel_radius_pix = (kernel_width_pix - 1) // 2
+        kernel_radius_pix = (kernel_width_pix - 1) / 2
         kernel = np.zeros((kernel_width_pix, kernel_width_pix), np.uint8)
         cv2.circle(kernel, (kernel_radius_pix, kernel_radius_pix), kernel_radius_pix, 255, -1)
         map_exits = cv2.dilate(map_exits, kernel, iterations = 1)
@@ -682,8 +680,7 @@ def find_exits( floor_mask, max_height_image, m_per_pix,
     # Dilate exits in order to merge exits that are very close to one
     # another.
     kernel_width_pix = 21 #11 #15
-    #kernel_radius_pix = (kernel_width_pix - 1) / 2
-    kernel_radius_pix = (kernel_width_pix - 1) // 2
+    kernel_radius_pix = (kernel_width_pix - 1) / 2
     kernel = np.zeros((kernel_width_pix, kernel_width_pix), np.uint8)
     cv2.circle(kernel, (kernel_radius_pix, kernel_radius_pix), kernel_radius_pix, 255, -1)
     map_exits = cv2.dilate(map_exits, kernel, iterations = 1)
@@ -927,9 +924,9 @@ def split_paths(pix_path, max_segment_length_pix):
                 new_path.append(list(p_mid))
             new_path.append(p1)
     else:
-        print('WARNING: split_paths given pix_path input with length <= 1.')
-        print('         returning pix_path without modification')
-        print('         pix_path =', pix_path)
+        print 'WARNING: split_paths given pix_path input with length <= 1.'
+        print '         returning pix_path without modification'
+        print '         pix_path =', pix_path
         return pix_path
     return new_path, split_made
 
@@ -958,9 +955,9 @@ def chop_path_at_location(pix_path, best_stopping_location):
         new_path = pix_path[:min_index+1]
         new_path.append(best_stopping_location)
     else:
-        print('WARNING: chop_path_at_location given pix_path input with length <= 1.')
-        print('         returning pix_path without modification')
-        print('         pix_path =', pix_path)
+        print 'WARNING: chop_path_at_location given pix_path input with length <= 1.'
+        print '         returning pix_path without modification'
+        print '         pix_path =', pix_path
         return pix_path
     return new_path
     

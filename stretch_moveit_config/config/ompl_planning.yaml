@@ -154,7 +154,7 @@ stretch_arm:
     - LazyPRMstar
     - SPARS
     - SPARStwo
-stretch_gripper:
+gripper:
   default_planner_config: RRTConnect
   planner_configs:
     - AnytimePathShortening

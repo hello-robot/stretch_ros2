@@ -1,4 +1,4 @@
-![](../images/banner.png)
+![](../images/HelloRobotLogoBar.png)
 
 ## Overview
 

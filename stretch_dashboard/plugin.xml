@@ -1,4 +1,4 @@
-<library path="src">
+<library path="">
     <class name="StretchDashboard" type="stretch_dashboard.stretch_dashboard.StretchDashboard"
            base_class_type="rqt_gui_py::Plugin">
         <description>

@@ -2,6 +2,10 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="stretch_gripper">
 
   <xacro:property name="scale_finger_length" value="0.9" />
+  <xacro:property name="gripper_joint_damping" value="5.75"/>
+  <xacro:property name="gripper_joint_friction" value="5.48"/>
+  <xacro:property name="gripper_joint_spring_stiffness" value="0"/>
+  <xacro:property name="gripper_joint_spring_reference" value="0"/>
 
   <link
     name="link_gripper">
@@ -10,7 +14,7 @@
         xyz="-0.0170229132730066 0.0131410320934285 -0.0371614759484659"
         rpy="0 0 0" />
       <mass
-        value="0.101902711393094" />
+        value="0.000101902711393094" />
       <inertia
         ixx="0.001"
         ixy="0"
@@ -25,13 +29,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_gripper.STL" />
+          filename="package://stretch_description/meshes/link_gripper.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -44,8 +43,6 @@
     </collision>
   </link>
 
-  <!-- rpy="3.1416 0 1.5708" -->
-  <!-- rpy="0.0 0 1.5708" -->
   <joint
     name="joint_gripper"
     type="fixed">
@@ -67,7 +64,7 @@
         xyz="0.0945047483510102 0.0124301080924361 -4.44089209850063E-16"
         rpy="0 0 0" />
       <mass
-        value="0.0476207785199474" />
+        value="0.000476207785199474" />
       <inertia
         ixx="0.001"
         ixy="0"
@@ -82,13 +79,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_gripper_finger_left.STL" scale="${scale_finger_length} 1.0 1.0"/>
+          filename="package://stretch_description/meshes/link_gripper_finger_left.dae" scale="${scale_finger_length} 1.0 1.0"/>
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -114,17 +106,18 @@
     <axis
       xyz="0 0 1" />
     <limit effort="100" lower="-0.6" upper="0.6" velocity="1.0"/>
+    <dynamics damping="${gripper_joint_damping}" friction="${gripper_joint_friction}" spring_reference="${gripper_joint_spring_reference}" spring_stiffness="{gripper_joint_spring_stiffness}"/>
   </joint>
   
-  <link
+  <!-- <link
     name="link_gripper_fingertip_left">
     <inertial>
       <origin
         xyz="-3.16381381648689E-08 -2.91408530639359E-09 0.00812579670381812"
         rpy="0 0 0" />
       <mass
-        value="0.00382159917455729" />
-      <inertia
+        value="0.000382159917455729" />
+        <inertia
         ixx="0.001"
         ixy="0"
         ixz="0"
@@ -138,13 +131,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_gripper_fingertip_left.STL" />
+          filename="package://stretch_description/meshes/link_gripper_fingertip_left.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.250980392156863 0.250980392156863 0.250980392156863 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -169,7 +157,7 @@
       link="link_gripper_fingertip_left" />
     <axis
       xyz="0 0 0" />
-  </joint>
+  </joint> -->
   
   <link
     name="link_gripper_finger_right">
@@ -178,8 +166,8 @@
         xyz="-0.0945047483510099 -0.0124301080924345 0"
         rpy="0 0 0" />
       <mass
-        value="0.0476207785199481" />
-      <inertia
+        value="0.000476207785199481" />
+        <inertia
         ixx="0.001"
         ixy="0"
         ixz="0"
@@ -193,13 +181,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_gripper_finger_right.STL" scale="${scale_finger_length} 1.0 1.0"/>
+          filename="package://stretch_description/meshes/link_gripper_finger_right.dae" scale="${scale_finger_length} 1.0 1.0"/>
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -225,16 +208,17 @@
     <axis
       xyz="0 0 1" />
     <limit effort="100" lower="-0.6" upper="0.6" velocity="1.0"/>
+    <dynamics damping="${gripper_joint_damping}" friction="${gripper_joint_friction}" spring_reference="${gripper_joint_spring_reference}" spring_stiffness="{gripper_joint_spring_stiffness}"/>
   </joint>
   
-  <link
+  <!-- <link
     name="link_gripper_fingertip_right">
     <inertial>
       <origin
         xyz="2.59386303963494E-08 6.70949018566347E-09 0.00812579516130402"
         rpy="0 0 0" />
       <mass
-        value="0.00382160037319545" />
+        value="0.000382160037319545" />
       <inertia
         ixx="0.001"
         ixy="0"
@@ -249,13 +233,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_gripper_fingertip_right.STL" />
+          filename="package://stretch_description/meshes/link_gripper_fingertip_right.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.250980392156863 0.250980392156863 0.250980392156863 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -280,7 +259,7 @@
       link="link_gripper_fingertip_right" />
     <axis
       xyz="0 0 0" />
-  </joint>
+  </joint> -->
 
   
   <link

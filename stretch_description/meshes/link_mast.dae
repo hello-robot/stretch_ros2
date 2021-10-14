@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <asset>
+    <contributor>
+      <author>Blender User</author>
+      <authoring_tool>Blender 2.79.0</authoring_tool>
+    </contributor>
+    <created>2021-06-02T00:29:13</created>
+    <modified>2021-06-02T00:29:13</modified>
+    <unit name="meter" meter="1"/>
+    <up_axis>Z_UP</up_axis>
+  </asset>
+  <library_images/>
+  <library_effects>
+    <effect id="Material_004-effect">
+      <profile_COMMON>
+        <technique sid="common">
+          <phong>
+            <emission>
+              <color sid="emission">0 0 0 1</color>
+            </emission>
+            <ambient>
+              <color sid="ambient">0.145098039 0.156862745 0.164705882 1</color>
+            </ambient>
+            <diffuse>
+              <color sid="diffuse">0.145098039 0.156862745 0.164705882 1</color>
+            </diffuse>
+            <specular>
+              <color sid="specular">0.5 0.5 0.5 1</color>
+            </specular>
+            <shininess>
+              <float sid="shininess">50</float>
+            </shininess>
+            <index_of_refraction>
+              <float sid="index_of_refraction">1</float>
+            </index_of_refraction>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_materials>
+    <material id="Material_004-material" name="Material_004">
+      <instance_effect url="#Material_004-effect"/>
+    </material>
+  </library_materials>
+  <library_geometries>
+    <geometry id="link_mast-mesh" name="link mast">
+      <mesh>
+        <source id="link_mast-mesh-positions">
+          <float_array id="link_mast-mesh-positions-array" count="96">-0.01918303 0.06499993 0.01291674 -0.01918303 1.35 0.01291674 -0.01894068 0.06499993 -0.01326948 -0.01894068 1.35 -0.01326948 -0.01811343 1.35 -0.01624649 -0.01811343 0.06499993 -0.01624649 -0.01590847 1.35 -0.01841098 -0.01590847 0.06499993 -0.01841098 -0.01291674 1.35 -0.01918303 -0.01291674 0.06499993 -0.01918303 0.01326948 1.35 -0.01894068 0.01326948 0.06499993 -0.01894068 0.01624649 1.35 -0.01811343 0.01624649 0.06499993 -0.01811343 0.01841098 1.35 -0.01590847 0.01841098 0.06499993 -0.01590847 0.01918303 1.35 -0.01291674 0.01918303 0.06499993 -0.01291674 0.01894068 1.35 0.01326948 0.01894068 0.06499993 0.01326948 0.01811343 1.35 0.01624649 0.01811343 0.06499993 0.01624649 0.01590847 1.35 0.01841098 0.01590847 0.06499993 0.01841098 0.01291674 1.35 0.01918303 0.01291674 0.06499993 0.01918303 -0.01326948 1.35 0.01894068 -0.01326948 0.06499993 0.01894068 -0.01624649 1.35 0.01811343 -0.01624649 0.06499993 0.01811343 -0.01841098 1.35 0.01590847 -0.01841098 0.06499993 0.01590847</float_array>
+          <technique_common>
+            <accessor source="#link_mast-mesh-positions-array" count="32" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="link_mast-mesh-normals">
+          <float_array id="link_mast-mesh-normals-array" count="186">-0.9926103 0 0.1213467 -0.9926103 0 0.1213463 -0.9901948 0 -0.1396938 -0.9901947 0 -0.1396944 -0.8613616 0 -0.5079923 -0.8613626 0 -0.5079907 -0.7005344 0 -0.7136187 -0.7005339 0 -0.7136191 -0.2498697 0 -0.9682795 -0.2498697 0 -0.9682796 -0.1213458 0 -0.9926103 -0.1213465 0 -0.9926103 0.1396944 0 -0.9901947 0.1396938 0 -0.9901948 0.2677455 0 -0.9634898 0.2677455 0 -0.9634897 0.7136195 0 -0.7005336 0.7136203 0 -0.7005327 0.9682796 0 -0.2498694 0.9682796 0 -0.2498694 0.9926103 0 -0.1213458 0.9926103 0 -0.1213463 0.9901947 0 0.1396942 0.9901948 0 0.1396938 0.9634898 0 0.2677452 0.9634897 0 0.2677454 0.7005332 0 0.7136198 0.7005338 0 0.7136194 0.4919644 0 0.8706153 0.4919656 0 0.8706147 0.1213462 0 0.9926103 0.1213463 0 0.9926103 -0.1396939 0 0.9901948 -0.1396939 0 0.9901948 -0.2677446 0 0.96349 -0.2677455 0 0.9634897 -0.7136189 0 0.7005342 -0.7136202 0 0.7005329 -0.7136203 0 0.7005329 -0.7136188 0 0.7005343 -0.9682794 0 0.2498703 -0.9682793 0 0.2498705 0 -1 -1.31561e-7 0 -1 0 0 -1 0 0 -1 4.67567e-7 0 -1 0 0 -1 0 0 -1 6.30615e-7 0 -1 4.01706e-6 0 1 3.48789e-7 0 1 1.18207e-5 0 1 1.1637e-6 0 1 -1.80859e-5 0 1 0 0 1 6.42729e-5 0 1 1.61742e-6 0 1 5.8514e-7 0 1 4.87479e-6 0 1 -5.8514e-7 0 1 -1.95108e-5 0 1 -1.95108e-4</float_array>
+          <technique_common>
+            <accessor source="#link_mast-mesh-normals-array" count="62" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="link_mast-mesh-vertices">
+          <input semantic="POSITION" source="#link_mast-mesh-positions"/>
+        </vertices>
+        <triangles material="Material_004-material" count="60">
+          <input semantic="VERTEX" source="#link_mast-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#link_mast-mesh-normals" offset="1"/>
+          <p>0 0 1 1 2 2 2 2 1 1 3 3 2 2 3 3 4 4 2 2 4 4 5 5 5 5 4 4 6 6 5 5 6 6 7 7 7 8 6 9 8 10 7 8 8 10 9 11 10 12 11 13 8 10 8 10 11 13 9 11 11 13 10 12 12 14 11 13 12 14 13 15 13 16 12 17 14 17 13 16 14 17 15 16 15 18 14 19 16 20 15 18 16 20 17 21 18 22 19 23 16 20 16 20 19 23 17 21 19 23 18 22 20 24 19 23 20 24 21 25 21 26 20 27 22 28 21 26 22 28 23 29 23 29 22 28 24 30 23 29 24 30 25 31 26 32 27 33 24 30 24 30 27 33 25 31 27 33 26 32 28 34 27 33 28 34 29 35 29 36 28 37 30 38 29 36 30 38 31 39 31 40 30 41 1 1 31 40 1 1 0 0 11 42 25 43 9 44 9 44 25 43 27 45 21 46 23 46 19 46 19 46 23 46 25 43 19 46 25 43 17 47 17 47 25 43 11 42 17 47 11 42 15 46 15 46 11 42 13 46 5 46 7 46 2 46 2 46 7 46 9 44 2 46 9 44 0 48 0 48 9 44 27 45 0 48 27 45 31 49 31 49 27 45 29 46 8 50 26 51 10 52 10 52 26 51 24 53 30 54 28 55 1 56 1 56 28 55 26 51 1 56 26 51 3 57 3 57 26 51 8 50 3 57 8 50 4 54 4 54 8 50 6 54 14 54 12 54 16 58 16 58 12 54 10 52 16 58 10 52 18 59 18 59 10 52 24 53 18 59 24 53 20 60 20 60 24 53 22 61</p>
+        </triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_controllers/>
+  <library_visual_scenes>
+    <visual_scene id="Scene" name="Scene">
+      <node id="link_mast" name="link_mast" type="NODE">
+        <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+        <instance_geometry url="#link_mast-mesh" name="link_mast">
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="Material_004-material" target="#Material_004-material"/>
+            </technique_common>
+          </bind_material>
+        </instance_geometry>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#Scene"/>
+  </scene>
+</COLLADA>

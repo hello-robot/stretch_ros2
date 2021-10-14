@@ -1,0 +1,33 @@
+repositories:
+  moveit_task_constructor:
+    type: git
+    url: https://github.com/JafarAbdi/moveit_task_constructor
+    version: ros2
+  stretch_moveit_plugins:
+    type: git
+    url: https://github.com/PickNikRobotics/stretch_moveit_plugins
+    version: main
+  rosparam_shortcuts:
+    type: git
+    url: https://github.com/PickNikRobotics/rosparam_shortcuts
+    version: ros2
+  realsense-ros:
+    type: git
+    url: https://github.com/vatanaksoytezer/realsense-ros
+    version: ros2
+  ros-ign:
+    type: git
+    url: https://github.com/vatanaksoytezer/ros_ign
+    version: feature/add_system_clock
+  aws-robomaker-small-house-world:
+    type: git
+    url: https://github.com/vatanaksoytezer/aws-robomaker-small-house-world
+    version: ignition-port
+  rviz_visual_tools:
+    type: git
+    url: https://github.com/PickNikRobotics/rviz_visual_tools
+    version: ros2
+  navigation2:
+    type: git
+    url: https://github.com/ros-planning/navigation2
+    version: galactic

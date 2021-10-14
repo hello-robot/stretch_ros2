@@ -1,11 +1,23 @@
-#!/usr/bin/env python
+from setuptools import find_packages, setup
 
-from distutils.core import setup
-from catkin_pkg.python_setup import generate_distutils_setup
-
-package_info = generate_distutils_setup(
-    packages=['stretch_dashboard'],
-    package_dir={'': 'src'}
+package_name = 'stretch_dashboard'
+setup(
+    name=package_name,
+    version='0.2.0',
+    packages=find_packages(),
+    data_files=[
+        ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
+        ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name, ['plugin.xml']),
+    ],
+    install_requires=['setuptools'],
+    license='Apache License 2.0',
+    author='David V. Lu!!',
+    author_email='davidvlu@gmail.com',
+    description='A Python GUI plugin for displaying a dashboard that displays and interacts with the Stretch robot.',
+    entry_points={
+        'console_scripts': [
+            'dashboard = stretch_dashboard.main:main',
+        ],
+    },
 )
-
-setup(**package_info)

@@ -9,7 +9,6 @@ ERROR = diagnostic_msgs.msg.DiagnosticStatus.ERROR
 WARN = diagnostic_msgs.msg.DiagnosticStatus.WARN
 OK = diagnostic_msgs.msg.DiagnosticStatus.OK
 
-
 def add_keyvalues_to_status(status, d, skip_keys=None):
     """Add all the key value pairs in dictionary d (except those keys in skip_keys) to the diagnostic status."""
     for k, v in d.items():
@@ -17,13 +16,11 @@ def add_keyvalues_to_status(status, d, skip_keys=None):
             continue
         status.add(k, str(v))
 
-
 def report_stats(status, d, skip_keys=None):
     """Diagnostic update function that marks the summary as OK and just reports the stats from d."""
     status.summary(OK, 'OK')
     add_keyvalues_to_status(status, d, skip_keys)
     return status
-
 
 def analyze_stepper(status, device):
     """Diagnostic update function for device with stepper motor."""
@@ -39,7 +36,6 @@ def analyze_stepper(status, device):
     add_keyvalues_to_status(status, device.status, ['motor'])
     return status
 
-
 def analyze_dynamixel(status, device, joint_name):
     """Diagnostic update function for device with dynamixel motor."""
     motor = device.motors[joint_name]
@@ -54,7 +50,6 @@ def analyze_dynamixel(status, device, joint_name):
 
     return status
 
-
 def analyze_base(status, base):
     """Diagnostic update function for the base."""
     for wheel in [base.left_wheel, base.right_wheel]:
@@ -66,7 +61,6 @@ def analyze_base(status, base):
 
     add_keyvalues_to_status(status, base.status, ['left_wheel', 'right_wheel'])
     return status
-
 
 def check_range(status, device, key, lower_bound, upper_bound, out_of_bounds_status=ERROR):
     """Diagnostic update function that checks if value(s) exceeds the specified bounds."""

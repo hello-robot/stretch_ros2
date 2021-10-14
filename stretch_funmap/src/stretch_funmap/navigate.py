@@ -1,14 +1,15 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
+from __future__ import print_function
 import numpy as np
 import ros_numpy as rn
-import stretch_funmap.ros_max_height_image as rm
+import ros_max_height_image as rm
 from control_msgs.msg import FollowJointTrajectoryResult
 from actionlib_msgs.msg import GoalStatus
 import rospy
 from std_srvs.srv import Trigger, TriggerRequest
 import hello_helpers.hello_misc as hm
-import stretch_funmap.navigation_planning as na
+import navigation_planning as na
 import cv2
 
 class ForwardMotionObstacleDetector():
@@ -201,8 +202,7 @@ class MoveBase():
         
     def head_to_forward_motion_pose(self):
         # Move head to navigation pose.
-        #pose = {'joint_head_pan': 0.1, 'joint_head_tilt': -0.9}
-        pose = {'joint_head_pan': 0.1, 'joint_head_tilt': -1.1}
+        pose = {'joint_head_pan': 0.1, 'joint_head_tilt': -0.9}
         self.node.move_to_pose(pose)
 
     def check_move_state(self, trajectory_client):
@@ -269,7 +269,7 @@ class MoveBase():
             trigger_request = TriggerRequest() 
 
             pose = {'translate_mobile_base': forward_distance_m}
-            self.node.move_to_pose(pose, return_before_done=True)
+            self.node.move_to_pose(pose, wait_for_result=True)
 
             while (not at_goal) and (not obstacle_detected) and (not unsuccessful_action):
                 if detect_obstacles: 
@@ -319,7 +319,7 @@ class MoveBase():
                 (turn_attempts < max_turn_attempts))):
 
             pose = {'rotate_mobile_base': turn_angle_error_rad}
-            self.node.move_to_pose(pose, return_before_done=True)
+            self.node.move_to_pose(pose, wait_for_result=True)
             at_goal = False
             unsuccessful_action = False
             while (not at_goal) and (not unsuccessful_action):

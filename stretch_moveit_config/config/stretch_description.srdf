@@ -10,6 +10,7 @@
     <!--CHAINS: When a chain is specified, all the links along the chain (including endpoints) are included in the group. Additionally, all the joints that are parents to included links are also included. This means that joints along the chain and the parent joint of the base link are included in the group-->
     <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
     <group name="stretch_arm">
+        <link name="link_gripper"/>
         <joint name="joint_lift"/>
         <joint name="joint_arm_l4"/>
         <joint name="joint_arm_l3"/>
@@ -18,13 +19,20 @@
         <joint name="joint_arm_l0"/>
         <joint name="joint_wrist_yaw"/>
     </group>
-    <group name="stretch_gripper">
+    <group name="gripper">
         <link name="link_gripper"/>
         <link name="link_grasp_center"/>
         <link name="link_gripper_finger_left"/>
-        <link name="link_gripper_finger_right"/>
         <link name="link_gripper_fingertip_left"/>
+        <link name="link_gripper_finger_right"/>
         <link name="link_gripper_fingertip_right"/>
+    </group>
+    <group name="position">
+        <joint name="position" />
+    </group>
+    <group name="mobile_base_arm">
+        <group name="stretch_arm" />
+        <group name="position" />
     </group>
     <group name="stretch_head">
         <joint name="joint_head_pan" />
@@ -60,18 +68,38 @@
         <joint name="joint_head_pan" value="1.0"/>
         <joint name="joint_head_tilt" value="0.5"/>
     </group_state>
-    <group_state name="open" group="stretch_gripper">
+    <group_state name="open" group="gripper">
         <joint name="joint_gripper_finger_left" value="0.3"/>
         <joint name="joint_gripper_finger_right" value="0.3"/>
     </group_state>
-    <group_state name="closed" group="stretch_gripper">
+    <group_state name="closed" group="gripper">
         <joint name="joint_gripper_finger_left" value="0.0"/>
         <joint name="joint_gripper_finger_right" value="0.0"/>
     </group_state>
+    <group_state name="home_base" group="mobile_base_arm">
+        <joint name="joint_arm_l0" value="0"/>
+        <joint name="joint_arm_l1" value="0"/>
+        <joint name="joint_arm_l2" value="0"/>
+        <joint name="joint_arm_l3" value="0"/>
+        <joint name="joint_lift" value="0"/>
+        <joint name="joint_wrist_yaw" value="0"/>
+        <joint name="position" value="0 0 0"/>
+    </group_state>
+    <group_state name="forward_base" group="mobile_base_arm">
+        <joint name="joint_arm_l0" value="0"/>
+        <joint name="joint_arm_l1" value="0"/>
+        <joint name="joint_arm_l2" value="0"/>
+        <joint name="joint_arm_l3" value="0"/>
+        <joint name="joint_lift" value="0"/>
+        <joint name="joint_wrist_yaw" value="0"/>
+        <joint name="position" value="1 0 0"/>
+    </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
-    <end_effector name="gripper" parent_link="link_grasp_center" group="stretch_arm"/>
+    <end_effector name="gripper" parent_link="link_gripper" group="gripper" parent_group="stretch_arm"/>
     <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
-    <!--virtual_joint name="position" type="floating" parent_frame="map" child_link="base_link"/-->
+    <virtual_joint name="position" type="planar" parent_frame="odom" child_link="base_link"/>
+    <joint_property joint_name="position" property_name="motion_model" value="diff_drive" />
+    <joint_property joint_name="position" property_name="min_translational_distance" value="0.05" />
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
     <disable_collisions link1="base_link" link2="camera_link" reason="Never"/>
     <disable_collisions link1="base_link" link2="laser" reason="Adjacent"/>
@@ -404,5 +432,12 @@
     <disable_collisions link1="link_right_wheel" link2="link_wrist_yaw" reason="Never"/>
     <disable_collisions link1="link_right_wheel" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_wrist_yaw" link2="respeaker_base" reason="Never"/>
-    <disable_collisions link1="caster_link" link2="base_link" reason="Adjacent"/>
+
+    <!-- Temporary measure to ignore collisions between the two pieces of the gripper
+        until we figure out a better model for the gripper. -->
+    <disable_collisions link1="link_gripper_finger_left" link2="link_gripper_finger_right" reason="physics"/>
+    <disable_collisions link1="link_gripper_fingertip_left" link2="link_gripper_fingertip_right" reason="physics"/>
+
+    <!-- Ignore collision between caster wheel and base link -->
+    <disable_collisions link1="link_caster" link2="base_link" reason="physics"/>
 </robot>

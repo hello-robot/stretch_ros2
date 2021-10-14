@@ -1,10 +1,15 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="stretch_main">
   <xacro:property name="M_PI" value="3.1415926535897931" /> 
+
   <xacro:property name="joint_damping" value="21.75"/>
   <xacro:property name="joint_friction" value="10.48"/>
   <xacro:property name="joint_spring_stiffness" value="0"/>
   <xacro:property name="joint_spring_reference" value="0"/>
+  <xacro:property name="caster_damping" value="0.005"/>
+  <xacro:property name="caster_friction" value="0.001"/>
+  <xacro:property name="caster_velocity_limit" value="5.0"/>
+  <xacro:property name="caster_effort_limit" value="100"/>
 
   <link
     name="base_link">
@@ -28,13 +33,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/base_link.STL" />
+          filename="package://stretch_description/meshes/base_link.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -54,7 +54,7 @@
         xyz="1.25554620866719E-07 3.54748938447003E-07 0.0239581106165018"
         rpy="0 0 0" />
       <mass
-        value="0.01" />
+        value="0.00356714564938475" />
       <inertia
         ixx="0.001"
         ixy="0"
@@ -69,13 +69,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_right_wheel.STL" />
+          filename="package://stretch_description/meshes/link_right_wheel.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -100,7 +95,7 @@
       link="link_right_wheel" />
     <axis
       xyz="0 0 1" />
-    <dynamics damping="${joint_damping}" friction="${joint_friction}" spring_reference="${joint_spring_reference}" spring_stiffness="{joint_spring_stiffness}"/>
+      <dynamics damping="${joint_damping}" friction="${joint_friction}" spring_reference="${joint_spring_reference}" spring_stiffness="{joint_spring_stiffness}"/>
   </joint>
   
   <link
@@ -110,7 +105,7 @@
         xyz="1.2555462092223E-07 -3.54748938502514E-07 -0.0239581106165035"
         rpy="0 0 0" />
       <mass
-        value="0.01" />
+        value="0.00356714564938459" />
       <inertia
         ixx="0.001"
         ixy="0"
@@ -125,13 +120,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_left_wheel.STL" />
+          filename="package://stretch_description/meshes/link_left_wheel.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -156,10 +146,57 @@
       link="link_left_wheel" />
     <axis
       xyz="0 0 1" />
-    <dynamics damping="${joint_damping}" friction="${joint_friction}" spring_reference="${joint_spring_reference}" spring_stiffness="{joint_spring_stiffness}"/>
+      <dynamics damping="${joint_damping}" friction="${joint_friction}" spring_reference="${joint_spring_reference}" spring_stiffness="{joint_spring_stiffness}"/>
   </joint>
 
-  <link name="caster_link">
+  <!-- Representing a ball joint -->
+  <!-- <joint name="caster_joint_theta" type="continuous">
+    <origin xyz="-0.245 0.0 0.032" rpy="${-M_PI/2} 0 0"/>
+    <parent link="base_link"/>
+    <child link="caster_link_theta"/>
+    <axis xyz="0 1 0" />
+    <dynamics friction="${caster_friction}" damping="${caster_damping}" />
+    <limit lower="${-pi/2}" upper="${-pi/2}" velocity="${caster_velocity_limit}" effort="${caster_effort_limit}" />
+  </joint>
+
+  <link name="caster_link_theta">
+    <inertial>
+      <mass value="0.0025" />
+      <inertia ixx="5.8083e-4" ixy="0" ixz="0" iyy="3.0833e-5" iyz="0" izz="5.9083e-4" />
+    </inertial>
+  </link>
+
+  <joint name="caster_joint_psi" type="continuous">
+    <parent link="caster_link_theta"/>
+    <child link="caster_link_psi"/>
+    <axis xyz="0 0 1" />
+    <dynamics friction="${caster_friction}" damping="${caster_damping}" />
+    <limit lower="${-pi/2}" upper="${-pi/2}" velocity="${caster_velocity_limit}" effort="${caster_effort_limit}" />
+  </joint>
+
+  <link name="caster_link_psi">
+    <inertial>
+      <mass value="0.0025" />
+      <inertia ixx="5.8083e-4" ixy="0" ixz="0" iyy="3.0833e-5" iyz="0" izz="5.9083e-4" />
+    </inertial>  
+  </link>
+
+  <joint name="caster_joint_phi" type="continuous">
+    <parent link="caster_link_theta"/>
+    <child link="caster_link_phi"/>
+    <axis xyz="1 0 0" />
+    <dynamics friction="${caster_friction}" damping="${caster_damping}" />
+  </joint>
+
+  <link name="caster_link_phi">
+    <inertial>
+      <mass value="0.0025" />
+      <inertia ixx="5.8083e-4" ixy="0" ixz="0" iyy="3.0833e-5" iyz="0" izz="5.9083e-4" />
+      <limit lower="${-pi/2}" upper="${-pi/2}" velocity="${caster_velocity_limit}" effort="${caster_effort_limit}" />
+    </inertial>  
+  </link> -->
+
+  <link name="link_caster">
     <collision>
       <geometry>
         <sphere radius="0.032"/>
@@ -174,6 +211,15 @@
             <slip2>1.0</slip2>
           </ode>
         </friction>
+        <contact>
+          <ode>
+            <soft_cfm>0</soft_cfm>
+            <soft_erp>0.2</soft_erp>
+            <kp>1e+13</kp>
+            <kd>1</kd>
+            <min_depth>0.001</min_depth>
+          </ode>
+        </contact>
       </surface>
     </collision>
     <visual>
@@ -182,13 +228,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/omni_wheel_m.STL" />
+          filename="package://stretch_description/meshes/omni_wheel_m.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <inertial>
       <mass value="0.01" />
@@ -203,28 +244,29 @@
     </inertial>
   </link>
 
-  <joint name="caster_joint" type="fixed">
+  <joint name="joint_caster" type="fixed">
+    <!-- <parent link="caster_link_phi"/> -->
     <parent link="base_link"/>
-    <child link="caster_link"/>
+    <child link="link_caster"/>
     <origin xyz="-0.245 0.0 0.032" rpy="${-M_PI/2} 0 0"/>
-    <axis xyz="0 0 1" />
   </joint>
+
 
   <link
     name="link_mast">
     <inertial>
       <origin
-        xyz="0.00755818572975822 0.773971284176834 0.00647313086620024"
+        xyz="-0.109461304328163 -0.000741018909047708 0.0914915269429946"
         rpy="0 0 0" />
       <mass
-        value="0.749143203376401" />
+        value="0.05" />
       <inertia
-        ixx="0.0709854511954588"
-        ixy="-0.00433428742758457"
-        ixz="-0.000186110788697573"
-        iyy="0.000437922053342648"
-        iyz="-0.00288788257713431"
-        izz="0.071104808501661" />
+        ixx="0.001"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="0.001"
+        iyz="0.0"
+        izz="0.001" />
     </inertial>
     <visual>
       <origin
@@ -232,13 +274,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_mast.STL" />
+          filename="package://stretch_description/meshes/link_mast.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -264,7 +301,7 @@
     <axis
       xyz="0 0 0" />
   </joint>
-  
+
   <link
     name="link_lift">
     <inertial>
@@ -272,14 +309,14 @@
         xyz="-0.0547636346252869 0.0380939689802074 0.00933159404448308"
         rpy="0 0 0" />
       <mass
-        value="0.444820831236007" />
+        value="0.044820831236007" />
       <inertia
-        ixx="0.000567192946271367"
-        ixy="-0.00024607534789508"
-        ixz="-0.000128108442260574"
-        iyy="0.00127108364478659"
-        iyz="7.61916855070339E-06"
-        izz="0.00137296635099006" />
+        ixx="0.001"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="0.001"
+        iyz="0.0"
+        izz="0.001" />
     </inertial>
     <visual>
       <origin
@@ -287,13 +324,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_lift.STL" />
+          filename="package://stretch_description/meshes/link_lift.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -310,18 +342,17 @@
     name="joint_lift"
     type="prismatic">
     <origin
-      xyz="-0.0369217062323472 0.165471199999996 -0.000341653286793524"
+      xyz="-0.0369217062323472 0.266771199999996 -0.000341653286793524"
       rpy="-1.57079632679552 1.5615431375292 -6.2942004366467E-13" />
     <parent
       link="link_mast" />
     <child
       link="link_lift" />
     <axis
-	xyz="0 0 1" />
-  <!-- for now, hand copied range_m from lift (from ~/repos/stretch_fleet/stretch-re1-1001/stretch_re1_factory_params.yaml) -->
-  <!--<limit effort="100" lower="0.0" upper="1.095" velocity="1.0"/>-->
-  <!-- copied value did not reach the top of mesh model with GUI sliders and RViz -->
-  <limit effort="100" lower="0.0" upper="1.1" velocity="1.0"/>
+  xyz="0 0 1" />
+    <limit effort="100" lower="-0.1033" upper="0.9967" velocity="1.0"/>
+    <!-- Make this high friction so gripper does not fall -->
+    <dynamics damping="10" friction="10.48" spring_reference="${joint_spring_reference}" spring_stiffness="{joint_spring_stiffness}"/>
   </joint>
   
   <link
@@ -331,14 +362,14 @@
         xyz="-1.61247276464493E-06 1.54715589201215E-06 -0.0953252706040035"
         rpy="0 0 0" />
       <mass
-        value="0.0676525455789735" />
+        value="0.00676525455789735" />
       <inertia
-        ixx="0.000122002023066796"
-        ixy="7.29593356230121E-13"
-        ixz="9.63170353371061E-09"
-        iyy="0.000122002023127152"
-        iyz="-9.24154949889042E-09"
-        izz="1.46043439809638E-12" />
+        ixx="0.001"
+        ixy="0"
+        ixz="0"
+        iyy="0.001"
+        iyz="0"
+        izz="0.001" />
     </inertial>
     <visual>
       <origin
@@ -346,13 +377,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_arm_l4.STL" />
+          filename="package://stretch_description/meshes/link_arm_l4.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -386,7 +412,7 @@
         xyz="-3.34873468621488E-07 4.7411336306924E-07 -0.0974069598289041"
         rpy="0 0 0" />
       <mass
-        value="0.0626921047058405" />
+        value="0.00626921047058405" />
       <inertia
         ixx="0.001"
         ixy="0"
@@ -401,13 +427,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_arm_l3.STL" />
+          filename="package://stretch_description/meshes/link_arm_l3.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -431,9 +452,9 @@
     <child
       link="link_arm_l3" />
     <axis
-	xyz="0 0 1" />
-    <!-- 0.13 = 0.52/4-->
+  xyz="0 0 1" />
     <limit effort="100" lower="0.0" upper="0.13" velocity="1.0"/>
+    <dynamics damping="${joint_damping}" friction="${joint_friction}" spring_reference="${joint_spring_reference}" spring_stiffness="{joint_spring_stiffness}"/>
   </joint>
   
   <link
@@ -443,7 +464,7 @@
         xyz="-3.31043560508615E-07 3.13422303999111E-07 -0.097255883541891"
         rpy="0 0 0" />
       <mass
-        value="0.0569074368576238" />
+        value="0.00569074368576238" />
       <inertia
         ixx="0.001"
         ixy="0"
@@ -458,13 +479,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_arm_l2.STL" />
+          filename="package://stretch_description/meshes/link_arm_l2.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -488,9 +504,9 @@
     <child
       link="link_arm_l2" />
     <axis
-	xyz="0 0 1" />
-    <!-- 0.13 = 0.52/4-->
+  xyz="0 0 1" />
     <limit effort="100" lower="0.0" upper="0.13" velocity="1.0"/>
+    <dynamics damping="${joint_damping}" friction="${joint_friction}" spring_reference="${joint_spring_reference}" spring_stiffness="{joint_spring_stiffness}"/>
   </joint>
   
   <link
@@ -500,7 +516,7 @@
         xyz="-3.36876635420591E-07 3.05876091066803E-07 -0.0969117032232756"
         rpy="0 0 0" />
       <mass
-        value="0.0511763619538321" />
+        value="0.00511763619538321" />
       <inertia
         ixx="0.001"
         ixy="0"
@@ -515,13 +531,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_arm_l1.STL" />
+          filename="package://stretch_description/meshes/link_arm_l1.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -545,9 +556,9 @@
     <child
       link="link_arm_l1" />
     <axis
-	xyz="0 0 1" />
-    <!-- 0.13 = 0.52/4-->
+  xyz="0 0 1" />
     <limit effort="100" lower="0.0" upper="0.13" velocity="1.0"/>
+    <dynamics damping="${joint_damping}" friction="${joint_friction}" spring_reference="${joint_spring_reference}" spring_stiffness="{joint_spring_stiffness}"/>
   </joint>
   
   <link
@@ -557,7 +568,7 @@
         xyz="0.0230715049668191 -0.00195115833662818 -0.0360646347160285"
         rpy="0 0 0" />
       <mass
-        value="0.101241250325294" />
+        value="0.0101241250325294" />
       <inertia
         ixx="0.001"
         ixy="0"
@@ -572,13 +583,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_arm_l0.STL" />
+          filename="package://stretch_description/meshes/link_arm_l0.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -602,9 +608,9 @@
     <child
       link="link_arm_l0" />
     <axis
-	xyz="0 0 1" />
-    <!-- 0.13 = 0.52/4-->
+  xyz="0 0 1" />
     <limit effort="100" lower="0.0" upper="0.13" velocity="1.0"/>
+    <dynamics damping="${joint_damping}" friction="${joint_friction}" spring_reference="${joint_spring_reference}" spring_stiffness="{joint_spring_stiffness}"/>
   </joint>
   
   <link
@@ -629,13 +635,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_wrist_yaw.STL" />
+          filename="package://stretch_description/meshes/link_wrist_yaw.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-	        rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -660,13 +661,8 @@
       link="link_wrist_yaw" />
     <axis
       xyz="0 0 -1" />
-    <!--
-      stowed to front ~225 deg (3.9395 radians)
-      using 4.0
-      stowed to back ~100 deg (1.7453 radians)
-      using -1.75
-    -->
     <limit effort="100" lower="-1.75" upper="4.0" velocity="1.0"/>
+    <dynamics damping="${joint_damping}" friction="${joint_friction}" spring_reference="${joint_spring_reference}" spring_stiffness="{joint_spring_stiffness}"/>
   </joint>
   
   <link
@@ -676,7 +672,7 @@
         xyz="0.0372933550588956 0.045509432985552 0.0281136801213409"
         rpy="0 0 0" />
       <mass
-        value="0.129454717596498" />
+        value="0.00129454717596498" />
       <inertia
         ixx="0.001"
         ixy="0"
@@ -691,13 +687,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_head.STL" />
+          filename="package://stretch_description/meshes/link_head.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -731,14 +722,14 @@
         xyz="-0.00116200255310878 0.0130365621706306 0.00137629842298681"
         rpy="0 0 0" />
       <mass
-        value="0.035858341182617" />
+        value="0.00035858341182617" />
       <inertia
-        ixx="0.001"
+        ixx="0.0001"
         ixy="0"
         ixz="0"
-        iyy="0.001"
+        iyy="0.0001"
         iyz="0"
-        izz="0.001" />
+        izz="0.0001" />
     </inertial>
     <visual>
       <origin
@@ -746,13 +737,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_head_pan.STL" />
+          filename="package://stretch_description/meshes/link_head_pan.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -776,8 +762,8 @@
     <child
       link="link_head_pan" />
     <axis
-	xyz="0 0 1" />
-    <!-- unconstrained range for now -->
+  xyz="0 0 1" />
+    <dynamics damping="${joint_damping}" friction="${joint_friction}" spring_reference="${joint_spring_reference}" spring_stiffness="{joint_spring_stiffness}"/>
     <limit effort="100" lower="-3.9" upper="1.5" velocity="1.0"/>
   </joint>
   
@@ -788,14 +774,14 @@
         xyz="0.00920211049011871 -0.0279724762416447 0.0306580436227023"
         rpy="0 0 0" />
       <mass
-        value="0.0701242408063442" />
+        value="0.000101242408063442" />
       <inertia
-        ixx="0.001"
+        ixx="0.0001"
         ixy="0"
         ixz="0"
-        iyy="0.001"
+        iyy="0.0001"
         iyz="0"
-        izz="0.001" />
+        izz="0.0001" />
     </inertial>
     <visual>
       <origin
@@ -803,13 +789,8 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stretch_description/meshes/link_head_tilt.STL" />
+          filename="package://stretch_description/meshes/link_head_tilt.dae" />
       </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
-      </material>
     </visual>
     <collision>
       <origin
@@ -834,7 +815,7 @@
       link="link_head_tilt" />
     <axis
       xyz="0 0 1" />
-    <!-- unconstrained range for now -->
+    <dynamics damping="${joint_damping}" friction="${joint_friction}" spring_reference="${joint_spring_reference}" spring_stiffness="{joint_spring_stiffness}"/>
     <limit effort="100" lower="-1.53" upper="0.79" velocity="1.0"/>
   </joint>
 

@@ -1,13 +1,21 @@
-# Publish all joint states
-# Creates the /joint_states topic necessary in ROS
-joint_state_controller:
-  type: joint_state_controller/JointStateController
-  publish_rate: 50
-controller_list:
-  - name: stretch_arm_controller
-    action_ns: follow_joint_trajectory
-    default: True
-    type: FollowJointTrajectory
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+
+    stretch_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    joint_state_controller:
+      type: joint_state_controller/JointStateController
+
+stretch_controller:
+  ros__parameters:
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    allow_partial_joints_goal: true
     joints:
       - joint_lift
       - joint_arm_l3
@@ -15,17 +23,8 @@ controller_list:
       - joint_arm_l1
       - joint_arm_l0
       - joint_wrist_yaw
-  - name: stretch_head_controller
-    action_ns: follow_joint_trajectory
-    default: True
-    type: FollowJointTrajectory
-    joints:
       - joint_head_pan
       - joint_head_tilt
-  - name: stretch_gripper_controller
-    action_ns: follow_joint_trajectory
-    default: True
-    type: FollowJointTrajectory
-    joints:
       - joint_gripper_finger_left
       - joint_gripper_finger_right
+      - position
