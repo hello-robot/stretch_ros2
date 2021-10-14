@@ -19,6 +19,7 @@ setup(
     author='Hello Robot Inc.',
     author_email='support@hello-robot.com',
     description='The stretch_core package',
+    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'stretch_driver = stretch_core.stretch_driver:main',

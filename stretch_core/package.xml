@@ -49,7 +49,9 @@
   <exec_depend>teleop_twist_keyboard</exec_depend>
   <!-- stretch_driver_test has not been ported yet
        test_depend>rostest</test_depend-->
-
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
   <export>
     <build_type>ament_python</build_type>
   </export>
