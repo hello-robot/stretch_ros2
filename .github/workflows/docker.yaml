@@ -1,0 +1,33 @@
+name: docker
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ros_world2021
+
+jobs:
+  build_docker:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    env:
+      GH_IMAGE: ghcr.io/hello-robot/stretch_ros2:rosworld2021
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to Github Containter Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and Push
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          no-cache: true
+          cache-to: type=inline
+          tags: ${{ env.GH_IMAGE }}

@@ -1,54 +1,131 @@
-![](./images/banner.png)
+# Stretch Docker Documentation for ROS World Workshop
 
-## Overview
+Welcome to our ROS World Workshop! This README is a documentation to go through installation steps to install docker and setup your docker environment for Stretch.
 
-The *stretch_ros* repository holds ROS related code for the Stretch RE1 mobile manipulator from Hello Robot Inc. For an overview of the capabilities in this repository, we recommend you look at the following forum post: https://forum.hello-robot.com/t/autonomy-video-details
+## Installation (Linux)
 
-**Please be aware that the code in this repository is currently under heavy development.** 
+### Prerequisites
+
+#### Install Docker
+
+Install docker, following the [official installation steps](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository) and verify your installation.
+
+#### Docker post-install steps
+
+Follow the [official post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user) for Linux allow non-root users to manage dockers and verify your post installation.
+
+#### Install nvidia-docker2 (Skip if you don't have an nvidia gpu)
+
+Follow the [official instructions](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#installing-on-ubuntu-and-debian) install nvidia-docker2 and verify your installation.
+
+### Getting Started with Stretch Docker
+
+We provide a pre-built docker image and a set of scripts to easily get you up and running with Stretch on docker! To get your docker running with UI and networking enabled:
+
+1\. Fetch our start_docker script
+
+```bash
+wget https://raw.githubusercontent.com/vatanaksoytezer/stretch_ros/pr-docker/docker/scripts/start_docker.sh
+```
+
+2\. Start your container from our pre-built image
+
+with an nvidia-gpu:
+
+```bash
+chmod +x start_docker.sh && \
+./start_docker.sh stretch_roscon ghcr.io/hello-robot/stretch_ros2:rosworld2021
+```
+
+without an nvidia-gpu:
+
+```bash
+chmod +x start_docker.sh && \
+./start_docker.sh stretch_roscon ghcr.io/hello-robot/stretch_ros2:rosworld2021 nogpu
+```
+
+To open multiple terminals, you can just `./start_docker.sh stretch_roscon` from now on since the docker container is already constructed from the image with the command above.
+
+3\. At this point you should be seeing a terminal window with all the necessary source code pre-built for you. 
+
+Now you can test your Stretch docker by bringing up Stretch in Ignition Gazebo by issuing the following set of commands inside your container:
+
+```bash
+ros2 launch stretch_ignition ignition.launch.py
+```
+
+Congratulations! You brought up Stretch in Ignition Gazebo! Now you should be seeing Stretch in Ignition Gazebo with an empty world around it:
+
+![Stretch with Ignition Gazebo](docker/media/stretch_empty_world.png)
+### Building the docker image from scratch
+
+## Installation (Windows)
+
+### Prerequisites
+
+#### Install WSL2 and Docker
+
+## Installation (MacOS)
+
+## Guided exploration: stretch_moveit_config demo
+
+* Make sure you don't have anything running in your docker terminal and issue the following command:
+
+  ```bash
+  ros2 launch stretch_moveit_config demo.launch.py
+  ```
+
+* Change velocity and acceleration scaling to 1 (esp. on slow machines).
+* Show how to plan from current state to (1) random valid goal state or (2) a specific state by moving the interactive marker. The latter may not always work, because some planning groups are kinematically very constrained.
+* Repeat the previous step for the `stretch_arm` and `mobile_base_arm` groups.
+* Turn on "Query Start State" by checking the checkbox in the Displays panel under "Motion Planning > Planning Request".
+* Turn on "Loop animation" by checking the checkbox in the Displays panel under "Trajectory."
+* Explain structure of `stretch_moveit_config`; show contents of some configuration files and maybe SRDF/URDF .
+
+## Guided exploration: Ignition Demo World
+
+* Run the following commands in three different terminal windows:
+
+* Note: You can open a regular new terminal and use our docker script to connect the same container instance:
+  ```bash
+  ./start_docker.sh stretch_roscon
+  ```
+
+  ```bash
+  # Terminal 1
+  ros2 launch stretch_ignition ignition.launch.py
+  # Terminal 2
+  ros2 launch stretch_moveit_config demo_ignition.launch.py
+  # Terminal 3
+  ros2 launch stretch_roscon_demos move_group_interface_demo.launch.py
+  ```
 
 
-| Resource                                                     | Description                                                  |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-[hello_helpers](https://github.com/hello-robot/stretch_ros/blob/master/hello_helpers/README.md) | Miscellaneous helper code used across the stretch_ros repository 
-[stretch_calibration](https://github.com/hello-robot/stretch_ros/tree/master/stretch_calibration/README.md) | Creates and updates calibrated URDFs for the Stretch RE1      
-[stretch_core](https://github.com/hello-robot/stretch_ros/tree/master/stretch_core/README.md) | Enables basic use of the Stretch RE1 from ROS    
-[stretch_deep_perception](https://github.com/hello-robot/stretch_ros/blob/master/stretch_deep_perception/README.md) | Demonstrations that use open deep learning models to perceive the world 
-[stretch_demos](https://github.com/hello-robot/stretch_ros/tree/master/stretch_demos/README.md) | Demonstrations of simple autonomous manipulation  
-[stretch_description](https://github.com/hello-robot/stretch_ros/blob/master/stretch_description/README.md) | Generate and export URDFs 
-[stretch_funmap](https://github.com/hello-robot/stretch_ros/blob/master/stretch_funmap/README.md) | Demonstrations of Fast Unified Navigation, Manipulation And Planning (FUNMAP) 
-[stretch_navigation](https://github.com/hello-robot/stretch_ros/blob/master/stretch_navigation/README.md) | Support for the ROS navigation stack, including move_base, gmapping, and AMCL.
+## Guided exploration: Pick and place with MoveIt Task Constructor
 
+* Run the following commands in two different terminal windows:
 
+  ```bash
+  # Terminal 1
+  ros2 launch pick_place_task demo.launch.py
+  # Terminal 2
+  ros2 launch pick_place_task pick_place_demo.launch.py 
+  ```
 
-## Code Status & Development Plans
+* Explain MTC panel. Show different solutions.
+* Explain structure of the code.
 
-We intend for the following high-level summary to provide guidance about the current state of the code and planned development activities.
+## Guided exploration: Pick and place with whole body planning
 
-Directory | Testing Status | Notes 
---- | --- | ---
-hello_helpers | GOOD |
-stretch_calibration | GOOD |
-stretch_core | GOOD | 
-stretch_deep_perception | GOOD |
-stretch_demos | FAIR | current development focus
-stretch_description | GOOD |
-stretch_funmap | FAIR | current development focus
-stretch_navigation | GOOD |
+* Run the following commands in two different terminal windows:
 
-## Licenses
+  ```bash
+  # Terminal 1
+  ros2 launch stretch_ignition ignition.launch.py aws:=true
+  # Terminal 2
+  ros2 launch stretch_moveit_config demo_ignition.launch.py
+  ```
 
-This software is intended for use with the Stretch RE1 mobile manipulator, which is a robot produced and sold by Hello Robot Inc. For further information, including inquiries about dual licensing, please contact Hello Robot Inc.
+## Editing the source code during the Workshop
 
-For license details for this repository, see the LICENSE files found in the directories. A summary of the licenses follows: 
-
-Directory | License
---- | ---
-hello_helpers | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-stretch_calibration | [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)
-stretch_core | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-stretch_deep_perception | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-stretch_demos | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-stretch_description | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
-stretch_funmap | [LGPLv3](https://www.gnu.org/licenses/lgpl-3.0.en.html)
-stretch_navigation | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-
+Our docker image comes with a pre-built installation of VS Code, vim and nano. You can also install your editor of choice via apt-get.
