@@ -15,8 +15,8 @@ RUN sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb
 WORKDIR /root/ws_stretch/src
 
 # Download stretch source so that we can get necessary dependencies
-RUN git clone https://github.com/vatanaksoytezer/stretch_ros.git -b pr-docker && \
-    vcs import < stretch_ros/stretch_ros.repos
+RUN git clone https://github.com/hello-robot/stretch_ros2.git -b ros_world2021 && \
+    vcs import < stretch_ros2/stretch_ros2.repos
 
 # Update and install dependencies
 RUN . /opt/ros/galactic/setup.sh && . /root/ws_moveit/install/setup.sh \

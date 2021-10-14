@@ -1,14 +1,14 @@
-# Stretch Docker Documentation for ROS World Workshop
+# Stretch Documentation for ROS World Workshop
 
-Welcome to our ROS World Workshop! This README is a documentation to go through installation steps to install docker and setup your docker environment for Stretch.
+Welcome to our ROS World Workshop! This README is a documentation to go through installation steps to install docker and setup your docker environment for Stretch. Although we strongly recommend docker based installation we are providing source based installation instructions as well.
 
-## Installation (Linux)
+## Linux Installation (with Docker)
 
 ### Prerequisites
 
 #### Install Docker
 
-Install docker, following the [official installation steps](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository) and verify your installation.
+Install docker, following the [official installation steps](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository) and verify your installation. This workshop
 
 #### Docker post-install steps
 
@@ -25,7 +25,7 @@ We provide a pre-built docker image and a set of scripts to easily get you up an
 1\. Fetch our start_docker script
 
 ```bash
-wget https://raw.githubusercontent.com/vatanaksoytezer/stretch_ros/pr-docker/docker/scripts/start_docker.sh
+wget https://raw.githubusercontent.com/hello-robot/stretch_ros2/ros_world2021/docker/scripts/start_docker.sh
 ```
 
 2\. Start your container from our pre-built image
@@ -57,15 +57,118 @@ ros2 launch stretch_ignition ignition.launch.py
 Congratulations! You brought up Stretch in Ignition Gazebo! Now you should be seeing Stretch in Ignition Gazebo with an empty world around it:
 
 ![Stretch with Ignition Gazebo](docker/media/stretch_empty_world.png)
-### Building the docker image from scratch
+## Linux Installation (Source)
 
-## Installation (Windows)
+The following instructions assume you have an Ubuntu 20.04 based installation of Linux.
 
-### Prerequisites
+### Install ROS 2 Galactic
 
-#### Install WSL2 and Docker
+We recommend following the [official instructions](https://docs.ros.org/en/galactic/Installation/Ubuntu-Install-Debians.html) to install ROS 2 Galactic Desktop installation. 
 
-## Installation (MacOS)
+### Install Ignition Fortress
+
+  ```bash
+  sudo apt-get install -y wget python3-pip lsb-release gnupg curl python3-vcstool python3-colcon-common-extensions git && \
+  sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'  && \
+  wget http://packages.osrfoundation.org/gazebo.key -O - | apt-key add -  && \
+  sudo apt-get update  && \
+  sudo apt-get install -y libignition-gazebo6-dev
+  ```
+
+### Install MoveIt 2 and Stetch ROS 2 for Galactic
+
+#### Install Build Tools
+
+  ```bash
+  # Make sure everything is up to date
+  sudo apt update && \
+  sudo apt dist-upgrade && \
+  rosdep update
+  ```
+
+  ```bash
+  # Install some build tools for source building
+  sudo apt install -y \
+  build-essential \
+  cmake \
+  git \
+  libbullet-dev \
+  python3-flake8 \
+  python3-pip \
+  python3-pytest-cov \
+  python3-rosdep \
+  python3-setuptools \
+  clang-format-10
+  ```
+
+  ```bash
+  # Install some pip packages needed for testing
+  python3 -m pip install -U \
+  argcomplete \
+  flake8-blind-except \
+  flake8-builtins \
+  flake8-class-newline \
+  flake8-comprehensions \
+  flake8-deprecated \
+  flake8-docstrings \
+  flake8-import-order \
+  flake8-quotes \
+  pytest-repeat \
+  pytest-rerunfailures \
+  pytest
+  ```
+
+#### Create Workspace and Source
+
+Issue the following commands one by one to create your workspace
+  ```bash
+  export COLCON_WS=~/ws_stretch
+  mkdir -p $COLCON_WS/src
+  cd $COLCON_WS/src
+  ```
+
+#### Download Source Code
+
+Issue the following commands one by one to download source code for MoveIt 2 and Stretch ROS World Workshop
+
+  ```bash
+  # Download MoveIt 2
+  git clone https://github.com/ros-planning/moveit2.git -b main
+  for repo in moveit2/moveit2.repos $(f="moveit2/moveit2_$ROS_DISTRO.repos"; test -r $f && echo $f); do vcs import < "$repo"; done
+  # Download Stretch ROS 2 for ROS World
+  git clone https://github.com/hello-robot/stretch_ros2.git -b ros_world2021
+  vcs import < stretch_ros2/stretch_ros2.repos
+  # Download dependencies
+  export IGNITION_VERSION=fortress
+  rosdep install -r --from-paths . --ignore-src --rosdistro $ROS_DISTRO -y
+  ```
+
+#### Build Source Code
+
+Issue the following commands one by one build the source code
+
+  ```bash
+  cd $COLCON_WS
+  colcon build --event-handlers desktop_notification- status- --cmake-args -DCMAKE_BUILD_TYPE=Release
+  ```
+
+#### Source Your Workspace and Register Gazebo Path
+
+Issue the following commands one by one to make sure your environment is all set up and ready to work. We recommend adding these commands to your .bashrc file to avoid repeated issuing of these commands:
+
+  ```bash
+  export COLCON_WS=~/ws_stretch
+  source /opt/ros/galactic/setup.bash
+  source $COLCON_WS/install/setup.bash
+  export IGNITION_VERSION=fortress
+  export IGN_GAZEBO_RESOURCE_PATH=$COLCON_WS/src/stretch_ros:$COLCON_WS/src/realsense-ros:$COLCON_WS/src/aws-robomaker-small-house-world/models
+  ```
+## Windows Installation
+
+We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the installation instructions for Linux Installation (with Docker).
+## MacOS Installation
+
+We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the installation instructions for Linux Installation (with Docker).
 
 ## Guided exploration: stretch_moveit_config demo
 
@@ -128,4 +231,4 @@ Congratulations! You brought up Stretch in Ignition Gazebo! Now you should be se
 
 ## Editing the source code during the Workshop
 
-Our docker image comes with a pre-built installation of VS Code, vim and nano. You can also install your editor of choice via apt-get.
+Our docker image comes with a pre-built installation of vim, nano and emacs. You can also install your editor of choice via apt-get.
