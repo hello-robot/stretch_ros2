@@ -15,7 +15,6 @@ from rclpy.duration import Duration
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 
-from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import TransformStamped
 
@@ -24,7 +23,7 @@ from std_srvs.srv import SetBool
 
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField
-from std_msgs.msg import Bool, Header, String
+from std_msgs.msg import Bool, String
 
 from hello_helpers.gripper_conversion import GripperConversion
 # from .joint_trajectory_server import JointTrajectoryAction
@@ -49,9 +48,9 @@ class StretchBodyNode(Node):
         self.head_pan_calibrated_offset_rad = 0.0
 
         # Initialize backlash state
-        self.backlash_state = {'head_tilt_looking_up' : False,
-                               'head_pan_looked_left' : False,
-                               'wrist_extension_retracted' : False}
+        self.backlash_state = {'head_tilt_looking_up': False,
+                               'head_pan_looked_left': False,
+                               'wrist_extension_retracted': False}
 
         # Initialize backlash offsets
         self.head_pan_calibrated_looked_left_offset_rad = 0.0
@@ -69,13 +68,14 @@ class StretchBodyNode(Node):
 
         self.ros_setup()
 
-    ###### MOBILE BASE VELOCITY METHODS #######
+    # MOBILE BASE VELOCITY METHODS ############
 
     def set_mobile_base_velocity_callback(self, twist):
         self.robot_mode_rwlock.acquire_read()
         if self.robot_mode != 'navigation':
-            error_string = '{0} action server must be in navigation mode to receive a twist on cmd_vel. Current mode = {1}.'.format(self.node_name, self.robot_mode)
-            self.get_logger().error(error_string)
+            self.get_logger().error('{0} action server must be in navigation mode to '
+                                    'receive a twist on cmd_vel. '
+                                    'Current mode = {1}.'.format(self.node_name, self.robot_mode))
             return
         self.linear_velocity_mps = twist.linear.x
         self.angular_velocity_radps = twist.angular.z
@@ -104,13 +104,12 @@ class StretchBodyNode(Node):
         # get copy of the current robot status (uses lock held by the robot)
         robot_status = self.robot.get_status()
 
-
         # In the future, consider using time stamps from the robot's
         # motor control boards and other boards. These would need to
         # be synchronized with the ros clock.
-        #robot_time = robot_status['timestamp_pc']
-        #self.get_logger().info('robot_time =', robot_time)
-        #current_time = rospy.Time.from_sec(robot_time)
+        # robot_time = robot_status['timestamp_pc']
+        # self.get_logger().info('robot_time =', robot_time)
+        # current_time = rospy.Time.from_sec(robot_time)
 
         current_clock = self.get_clock().now()
         current_time = current_clock.to_msg()
@@ -119,25 +118,20 @@ class StretchBodyNode(Node):
         # assign relevant base status to variables
         base_status = robot_status['base']
         x = base_status['x']
-        x_raw = x
         y = base_status['y']
         theta = base_status['theta']
         x_vel = base_status['x_vel']
-        x_vel_raw = x_vel
         y_vel = base_status['y_vel']
-        x_effort = base_status['effort'][0]
-        x_effort_raw = x_effort
         theta_vel = base_status['theta_vel']
-        pose_time_s = base_status['pose_time_s']
 
         # assign relevant arm status to variables
         arm_status = robot_status['arm']
         if self.backlash_state['wrist_extension_retracted']:
             arm_backlash_correction = self.wrist_extension_calibrated_retracted_offset_m
-        else: 
+        else:
             arm_backlash_correction = 0.0
 
-        if BACKLASH_DEBUG: 
+        if BACKLASH_DEBUG:
             print('arm_backlash_correction =', arm_backlash_correction)
         pos_out = arm_status['pos'] + arm_backlash_correction
         vel_out = arm_status['vel']
@@ -148,7 +142,7 @@ class StretchBodyNode(Node):
         vel_up = lift_status['vel']
         eff_up = lift_status['motor']['effort']
 
-        if self.use_robotis_end_of_arm:         
+        if self.use_robotis_end_of_arm:
             # assign relevant wrist status to variables
             wrist_status = robot_status['end_of_arm']['wrist_yaw']
             wrist_rad = wrist_status['pos']
@@ -157,24 +151,25 @@ class StretchBodyNode(Node):
 
             # assign relevant gripper status to variables
             gripper_status = robot_status['end_of_arm']['stretch_gripper']
-            if GRIPPER_DEBUG: 
+            if GRIPPER_DEBUG:
                 print('-----------------------')
                 print('gripper_status[\'pos\'] =', gripper_status['pos'])
                 print('gripper_status[\'pos_pct\'] =', gripper_status['pos_pct'])
-            gripper_aperture_m, gripper_finger_rad, gripper_finger_effort, gripper_finger_vel = self.gripper_conversion.status_to_all(gripper_status)
-            if GRIPPER_DEBUG: 
+            gripper_aperture_m, gripper_finger_rad, gripper_finger_effort, gripper_finger_vel = \
+                self.gripper_conversion.status_to_all(gripper_status)
+            if GRIPPER_DEBUG:
                 print('gripper_aperture_m =', gripper_aperture_m)
                 print('gripper_finger_rad =', gripper_finger_rad)
                 print('-----------------------')
 
-        if self.use_robotis_head: 
+        if self.use_robotis_head:
             # assign relevant head pan status to variables
             head_pan_status = robot_status['head']['head_pan']
             if self.backlash_state['head_pan_looked_left']:
-                pan_backlash_correction = self.head_pan_calibrated_looked_left_offset_rad 
+                pan_backlash_correction = self.head_pan_calibrated_looked_left_offset_rad
             else:
                 pan_backlash_correction = 0.0
-            if BACKLASH_DEBUG: 
+            if BACKLASH_DEBUG:
                 print('pan_backlash_correction =', pan_backlash_correction)
             head_pan_rad = head_pan_status['pos'] + self.head_pan_calibrated_offset_rad + pan_backlash_correction
             head_pan_vel = head_pan_status['vel']
@@ -186,7 +181,7 @@ class StretchBodyNode(Node):
                 tilt_backlash_correction = self.head_tilt_calibrated_looking_up_offset_rad
             else:
                 tilt_backlash_correction = 0.0
-            if BACKLASH_DEBUG: 
+            if BACKLASH_DEBUG:
                 print('tilt_backlash_correction =', tilt_backlash_correction)
             head_tilt_rad = head_tilt_status['pos'] + self.head_tilt_calibrated_offset_rad + tilt_backlash_correction
             head_tilt_vel = head_tilt_status['vel']
@@ -194,7 +189,7 @@ class StretchBodyNode(Node):
 
         q = quaternion_from_euler(0.0, 0.0, theta)
 
-        if self.broadcast_odom_tf: 
+        if self.broadcast_odom_tf:
             # publish odometry via TF
             t = TransformStamped()
             t.header.stamp = current_time
@@ -221,6 +216,7 @@ class StretchBodyNode(Node):
         odom.pose.pose.orientation.z = q[2]
         odom.pose.pose.orientation.w = q[3]
         odom.twist.twist.linear.x = x_vel
+        odom.twist.twist.linear.y = y_vel
         odom.twist.twist.angular.z = theta_vel
         self.odom_pub.publish(odom)
 
@@ -259,14 +255,14 @@ class StretchBodyNode(Node):
         joint_state.name = ['wrist_extension', 'joint_lift', 'joint_arm_l3', 'joint_arm_l2', 'joint_arm_l1', 'joint_arm_l0']
 
         # set positions of the telescoping joints
-        positions = [pos_out/4.0 for i in range(4)]
+        positions = [pos_out / 4.0 for i in range(4)]
         # set lift position
         positions.insert(0, pos_up)
         # set wrist_extension position
         positions.insert(0, pos_out)
 
         # set velocities of the telescoping joints
-        velocities = [vel_out/4.0 for i in range(4)]
+        velocities = [vel_out / 4.0 for i in range(4)]
         # set lift velocity
         velocities.insert(0, vel_up)
         # set wrist_extension velocity
@@ -291,7 +287,7 @@ class StretchBodyNode(Node):
             velocities.append(head_tilt_vel)
             efforts.append(head_tilt_effort)
 
-        if self.use_robotis_end_of_arm: 
+        if self.use_robotis_end_of_arm:
             end_of_arm_joint_names = ['joint_wrist_yaw', 'joint_gripper_finger_left', 'joint_gripper_finger_right']
             joint_state.name.extend(end_of_arm_joint_names)
 
@@ -322,9 +318,6 @@ class StretchBodyNode(Node):
         gx = imu_status['gx']
         gy = imu_status['gy']
         gz = imu_status['gz']
-        mx = imu_status['mx']
-        my = imu_status['my']
-        mz = imu_status['mz']
 
         i = Imu()
         i.header.stamp = current_time
@@ -359,7 +352,7 @@ class StretchBodyNode(Node):
 
         self.robot_mode_rwlock.release_read()
 
-    ######## CHANGE MODES #########
+    # CHANGE MODES ################
 
     def change_mode(self, new_mode, code_to_run):
         self.robot_mode_rwlock.acquire_write()
@@ -395,7 +388,7 @@ class StretchBodyNode(Node):
             self.robot.home()
         self.change_mode('calibration', code_to_run)
 
-    ######## SERVICE CALLBACKS #######
+    # SERVICE CALLBACKS ##############
 
     def stop_the_robot_callback(self, request, response):
         with self.robot_stop_lock:
@@ -463,7 +456,7 @@ class StretchBodyNode(Node):
         response.message = 'is_runstopped: {0}'.format(request.data)
         return response
 
-    ########### ROS Setup #######
+    # ROS Setup #################
     def ros_setup(self):
         self.node_name = self.get_name()
 
@@ -488,7 +481,7 @@ class StretchBodyNode(Node):
         if self.broadcast_odom_tf:
             self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
-        large_ang = 45.0 * np.pi/180.0
+        large_ang = np.radians(45.0)
 
         self.declare_parameter('controller_calibration_file')
         filename = self.get_parameter('controller_calibration_file').value
@@ -502,37 +495,47 @@ class StretchBodyNode(Node):
             ang = self.head_tilt_calibrated_offset_rad
             if (abs(ang) > large_ang):
                 self.get_logger().warn('self.head_tilt_calibrated_offset_rad HAS AN UNUSUALLY LARGE MAGNITUDE')
-            self.get_logger().info('self.head_tilt_calibrated_offset_rad in degrees = {0}'.format(np.degrees(self.head_tilt_calibrated_offset_rad)))
+            self.get_logger().info('self.head_tilt_calibrated_offset_rad in degrees ='
+                                   ' {0}'.format(np.degrees(self.head_tilt_calibrated_offset_rad)))
 
             self.head_pan_calibrated_offset_rad = controller_parameters['pan_angle_offset']
             ang = self.head_pan_calibrated_offset_rad
             if (abs(ang) > large_ang):
                 self.get_logger().warn('self.head_pan_calibrated_offset_rad HAS AN UNUSUALLY LARGE MAGNITUDE')
-            self.get_logger().info('self.head_pan_calibrated_offset_rad in degrees = {0}'.format(np.degrees(self.head_pan_calibrated_offset_rad)))
+            self.get_logger().info('self.head_pan_calibrated_offset_rad in degrees ='
+                                   ' {0}'.format(np.degrees(self.head_pan_calibrated_offset_rad)))
 
             self.head_pan_calibrated_looked_left_offset_rad = controller_parameters['pan_looked_left_offset']
             ang = self.head_pan_calibrated_looked_left_offset_rad
             if (abs(ang) > large_ang):
                 self.get_logger().warn('self.head_pan_calibrated_looked_left_offset_rad HAS AN UNUSUALLY LARGE MAGNITUDE')
-            self.get_logger().info('self.head_pan_calibrated_looked_left_offset_rad in degrees = {0}'.format(np.degrees(self.head_pan_calibrated_looked_left_offset_rad)))
+            self.get_logger().info(
+                'self.head_pan_calibrated_looked_left_offset_rad in degrees = {0}'.format(
+                    np.degrees(self.head_pan_calibrated_looked_left_offset_rad)))
 
             self.head_tilt_backlash_transition_angle_rad = controller_parameters['tilt_angle_backlash_transition']
-            self.get_logger().info('self.head_tilt_backlash_transition_angle_rad in degrees = {0}'.format(np.degrees(self.head_tilt_backlash_transition_angle_rad)))
+            self.get_logger().info(
+                'self.head_tilt_backlash_transition_angle_rad in degrees = {0}'.format(
+                    np.degrees(self.head_tilt_backlash_transition_angle_rad)))
 
             self.head_tilt_calibrated_looking_up_offset_rad = controller_parameters['tilt_looking_up_offset']
             ang = self.head_tilt_calibrated_looking_up_offset_rad
             if (abs(ang) > large_ang):
                 self.get_logger().warn('self.head_tilt_calibrated_looking_up_offset_rad HAS AN UNUSUALLY LARGE MAGNITUDE')
-            self.get_logger().info('self.head_tilt_calibrated_looking_up_offset_rad in degrees = {0}'.format(np.degrees(self.head_tilt_calibrated_looking_up_offset_rad)))
+            self.get_logger().info(
+                'self.head_tilt_calibrated_looking_up_offset_rad in degrees = {0}'.format(
+                    np.degrees(self.head_tilt_calibrated_looking_up_offset_rad)))
 
             self.wrist_extension_calibrated_retracted_offset_m = controller_parameters['arm_retracted_offset']
             m = self.wrist_extension_calibrated_retracted_offset_m
             if (abs(m) > 0.05):
                 self.get_logger().warn('self.wrist_extension_calibrated_retracted_offset_m HAS AN UNUSUALLY LARGE MAGNITUDE')
-            self.get_logger().info('self.wrist_extension_calibrated_retracted_offset_m in meters = {0}'.format(self.wrist_extension_calibrated_retracted_offset_m))
+            self.get_logger().info(
+                'self.wrist_extension_calibrated_retracted_offset_m in meters = {0}'.format(
+                    self.wrist_extension_calibrated_retracted_offset_m))
 
-        self.linear_velocity_mps = 0.0 # m/s ROS SI standard for cmd_vel (REP 103)
-        self.angular_velocity_radps = 0.0 # rad/s ROS SI standard for cmd_vel (REP 103)
+        self.linear_velocity_mps = 0.0  # m/s ROS SI standard for cmd_vel (REP 103)
+        self.angular_velocity_radps = 0.0  # rad/s ROS SI standard for cmd_vel (REP 103)
 
         self.max_arm_height = 1.1
 
@@ -601,6 +604,7 @@ class StretchBodyNode(Node):
         # odometry, and publish joint states
         timer_period = 1.0 / self.joint_state_rate
         self.timer = self.create_timer(timer_period, self.command_mobile_base_velocity_and_publish_state)
+
 
 def main():
     try:

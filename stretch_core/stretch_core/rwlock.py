@@ -1,5 +1,7 @@
 #! /usr/bin/env python3
-"""rwlock.py
+"""
+Non-reentrant write-preferring rwlock.
+
 This write-preferring implementation of the readwrite lock
 was made available via the Creative Commons license at:
 https://stackoverflow.com/a/22109979
@@ -7,8 +9,10 @@ https://stackoverflow.com/a/22109979
 
 import threading
 
+
 class RWLock:
-    """ Non-reentrant write-preferring rwlock. """
+    """Non-reentrant write-preferring rwlock."""
+
     DEBUG = 0
 
     def __init__(self):
@@ -31,9 +35,11 @@ class RWLock:
         class _ReadAccess:
             def __init__(self, rwlock):
                 self.rwlock = rwlock
+
             def __enter__(self):
                 self.rwlock.acquire_read()
                 return self.rwlock
+
             def __exit__(self, type, value, tb):
                 self.rwlock.release_read()
         # support for the with statement
@@ -42,9 +48,11 @@ class RWLock:
         class _WriteAccess:
             def __init__(self, rwlock):
                 self.rwlock = rwlock
+
             def __enter__(self):
                 self.rwlock.acquire_write()
                 return self.rwlock
+
             def __exit__(self, type, value, tb):
                 self.rwlock.release_write()
         # support for the with statement
