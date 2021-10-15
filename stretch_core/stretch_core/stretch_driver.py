@@ -452,7 +452,7 @@ class StretchBodyNode(Node):
         else:
             self.robot.pimu.runstop_event_reset()
 
-        response.success = True,
+        response.success = True
         response.message = 'is_runstopped: {0}'.format(request.data)
         return response
 
