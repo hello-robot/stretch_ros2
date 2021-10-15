@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="stretch_description">
+
+  <xacro:include filename="$(find stretch_description)/urdf/stretch_description.xacro" />
+
+  <!-- Import stretch ros2_control description -->
+  <xacro:include filename="stretch_arm.ros2_control.xacro" />
+  <xacro:include filename="stretch_head.ros2_control.xacro" />
+  <xacro:include filename="stretch_gripper.ros2_control.xacro" />
+  <xacro:include filename="stretch_base.ros2_control.xacro" />
+
+  <xacro:stretch_arm_ros2_control name="StretchFakeJointDriver" />
+  <xacro:stretch_head_ros2_control name="StretchHeadFakeJointDriver" />
+  <xacro:stretch_base_ros2_control name="StretchFakeJointDriver" />
+  <xacro:stretch_gripper_ros2_control name="StretchGripperFakeJointDriver" />
+
+</robot>
