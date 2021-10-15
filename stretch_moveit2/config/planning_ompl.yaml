@@ -1,0 +1,217 @@
+move_group:
+  planner_configs:
+    AnytimePathShortening:
+      hybridize: true
+      max_hybrid_paths: 24
+      num_planners: 4
+      planners: ''
+      shortcut: true
+      type: geometric::AnytimePathShortening
+    BFMT:
+      balanced: 0
+      cache_cc: 1
+      extended_fmt: 1
+      heuristics: 1
+      nearest_k: 1
+      num_samples: 1000
+      optimality: 1
+      radius_multiplier: 1.0
+      type: geometric::BFMT
+    BKPIECE:
+      border_fraction: 0.9
+      failed_expansion_score_factor: 0.5
+      min_valid_path_fraction: 0.5
+      range: 0.0
+      type: geometric::BKPIECE
+    BiEST:
+      range: 0.0
+      type: geometric::BiEST
+    BiTRRT:
+      cost_threshold: 1e300
+      frountier_node_ratio: 0.1
+      frountier_threshold: 0.0
+      init_temperature: 100
+      range: 0.0
+      temp_change_factor: 0.1
+      type: geometric::BiTRRT
+    EST:
+      goal_bias: 0.05
+      range: 0.0
+      type: geometric::EST
+    FMT:
+      cache_cc: 1
+      extended_fmt: 1
+      heuristics: 0
+      nearest_k: 1
+      num_samples: 1000
+      radius_multiplier: 1.1
+      type: geometric::FMT
+    KPIECE:
+      border_fraction: 0.9
+      failed_expansion_score_factor: 0.5
+      goal_bias: 0.05
+      min_valid_path_fraction: 0.5
+      range: 0.0
+      type: geometric::KPIECE
+    LBKPIECE:
+      border_fraction: 0.9
+      min_valid_path_fraction: 0.5
+      range: 0.0
+      type: geometric::LBKPIECE
+    LBTRRT:
+      epsilon: 0.4
+      goal_bias: 0.05
+      range: 0.0
+      type: geometric::LBTRRT
+    LazyPRM:
+      range: 0.0
+      type: geometric::LazyPRM
+    LazyPRMstar:
+      type: geometric::LazyPRMstar
+    PDST:
+      type: geometric::PDST
+    PRM:
+      max_nearest_neighbors: 10
+      type: geometric::PRM
+    PRMstar:
+      type: geometric::PRMstar
+    ProjEST:
+      goal_bias: 0.05
+      range: 0.0
+      type: geometric::ProjEST
+    RRT:
+      goal_bias: 0.05
+      range: 0.0
+      type: geometric::RRT
+    RRTConnect:
+      range: 0.0
+      type: geometric::RRTConnect
+    RRTstar:
+      delay_collision_checking: 1
+      goal_bias: 0.05
+      range: 0.0
+      type: geometric::RRTstar
+    SBL:
+      range: 0.0
+      type: geometric::SBL
+    SPARS:
+      dense_delta_fraction: 0.001
+      max_failures: 1000
+      sparse_delta_fraction: 0.25
+      stretch_factor: 3.0
+      type: geometric::SPARS
+    SPARStwo:
+      dense_delta_fraction: 0.001
+      max_failures: 5000
+      sparse_delta_fraction: 0.25
+      stretch_factor: 3.0
+      type: geometric::SPARStwo
+    STRIDE:
+      degree: 16
+      estimated_dimension: 0.0
+      goal_bias: 0.05
+      max_degree: 18
+      max_pts_per_leaf: 6
+      min_degree: 12
+      min_valid_path_fraction: 0.2
+      range: 0.0
+      type: geometric::STRIDE
+      use_projected_distance: 0
+    TRRT:
+      frountierNodeRatio: 0.1
+      frountier_threshold: 0.0
+      goal_bias: 0.05
+      init_temperature: 10e-6
+      k_constant: 0.0
+      max_states_failed: 10
+      min_temperature: 10e-10
+      range: 0.0
+      temp_change_factor: 2.0
+      type: geometric::TRRT
+  planning_plugin: ompl_interface/OMPLPlanner
+  request_adapters: default_planner_request_adapters/AddTimeOptimalParameterization
+    default_planner_request_adapters/FixWorkspaceBounds default_planner_request_adapters/FixStartStateBounds
+    default_planner_request_adapters/FixStartStateCollision default_planner_request_adapters/FixStartStatePathConstraints
+  resample_dt: 100.0
+  start_state_max_bounds_error: 0.1
+  stretch_arm:
+    default_planner_config: RRTConnect
+    planner_configs:
+    - AnytimePathShortening
+    - SBL
+    - EST
+    - LBKPIECE
+    - BKPIECE
+    - KPIECE
+    - RRT
+    - RRTConnect
+    - RRTstar
+    - TRRT
+    - PRM
+    - PRMstar
+    - FMT
+    - BFMT
+    - PDST
+    - STRIDE
+    - BiTRRT
+    - LBTRRT
+    - BiEST
+    - ProjEST
+    - LazyPRM
+    - LazyPRMstar
+    - SPARS
+    - SPARStwo
+  stretch_gripper:
+    default_planner_config: RRTConnect
+    planner_configs:
+    - AnytimePathShortening
+    - SBL
+    - EST
+    - LBKPIECE
+    - BKPIECE
+    - KPIECE
+    - RRT
+    - RRTConnect
+    - RRTstar
+    - TRRT
+    - PRM
+    - PRMstar
+    - FMT
+    - BFMT
+    - PDST
+    - STRIDE
+    - BiTRRT
+    - LBTRRT
+    - BiEST
+    - ProjEST
+    - LazyPRM
+    - LazyPRMstar
+    - SPARS
+    - SPARStwo
+  stretch_head:
+    default_planner_config: RRTConnect
+    planner_configs:
+    - AnytimePathShortening
+    - SBL
+    - EST
+    - LBKPIECE
+    - BKPIECE
+    - KPIECE
+    - RRT
+    - RRTConnect
+    - RRTstar
+    - TRRT
+    - PRM
+    - PRMstar
+    - FMT
+    - BFMT
+    - PDST
+    - STRIDE
+    - BiTRRT
+    - LBTRRT
+    - BiEST
+    - ProjEST
+    - LazyPRM
+    - LazyPRMstar
+    - SPARS
+    - SPARStwo

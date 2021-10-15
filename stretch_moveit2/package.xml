@@ -23,12 +23,16 @@
   <depend>moveit_planners_ompl</depend>
   <depend>moveit_ros_move_group</depend>
   <depend>moveit_ros_visualization</depend>
+  <depend>moveit_ros_perception</depend>
+  <depend>moveit_simple_controller_manager</depend>
   <!-- TODO: uncomment once MSA is ported to ROS2 -->
   <!-- <depend>moveit_setup_assistant</depend> -->
   <depend>ros2_control</depend>
   <depend>ros2_controllers</depend>
   <depend>robot_state_publisher</depend>
   <depend>stretch_description</depend>
+  <depend>stretch_kinematics_plugin</depend>
+  <depend>stretch_sensor_manager</depend>
   <depend>tf2_ros</depend>
   <depend>xacro</depend>
 
