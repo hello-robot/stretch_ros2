@@ -9,14 +9,13 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    stretch_moveit_config_path = get_package_share_path('stretch_moveit2')
+    stretch_moveit2_path = get_package_share_path('stretch_moveit2')
     stretch_description_path = get_package_share_path('stretch_description')
 
     # Load ROS2 Control backed XACRO and YAML
-    fake_description_content = Command(['xacro ',
-                                         str(stretch_moveit_config_path / 'urdf' / 'fake_description.xacro')])
+    fake_description_content = Command(['xacro ', str(stretch_moveit2_path / 'urdf' / 'fake_description.xacro')])
     fake_description = {'robot_description': fake_description_content}
-    fake_ros2_controllers = str(stretch_moveit_config_path / 'config' / 'fake_ros2_controllers.yaml')
+    fake_ros2_controllers = str(stretch_moveit2_path / 'config' / 'fake_ros2_controllers.yaml')
 
     # Launch args
     declare_rviz_arg = DeclareLaunchArgument(

@@ -2,6 +2,7 @@ from ament_index_python.packages import get_package_share_path
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
 from launch.substitutions import Command, LaunchConfiguration
 
 from launch_ros.actions import Node
@@ -9,6 +10,20 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     stretch_core_path = get_package_share_path('stretch_core')
+    stretch_description_path = get_package_share_path('stretch_description')
+
+    # Launch args
+    declare_rviz_arg = DeclareLaunchArgument(
+        'rviz',
+        default_value='False', choices=['True', 'False'],
+        description='Whether to show Rviz'
+    )
+
+    declare_rviz_cfg_fpath_arg = DeclareLaunchArgument(
+        'rviz_cfg_fpath',
+        default_value=str(stretch_description_path / 'rviz' / 'stretch.rviz'),
+        description='Full path to the RVIZ config file to use'
+    )
 
     declare_broadcast_odom_tf_arg = DeclareLaunchArgument(
         'broadcast_odom_tf',
@@ -34,8 +49,13 @@ def generate_launch_description():
         description='Path to the calibrated controller args file'
     )
 
-    robot_description_content = Command(['xacro ',
-                                         str(get_package_share_path('stretch_description') / 'urdf' / 'stretch.urdf')])
+    # Nodes
+    rviz_node = Node(package='rviz2',
+                     executable='rviz2',
+                     arguments=['-d', LaunchConfiguration('rviz_cfg_fpath')],
+                     condition=IfCondition(LaunchConfiguration("rviz")))
+
+    robot_description_content = Command(['xacro ', str(stretch_description_path / 'urdf' / 'stretch.urdf')])
 
     joint_state_publisher = Node(package='joint_state_publisher',
                                  executable='joint_state_publisher',
@@ -71,10 +91,13 @@ def generate_launch_description():
                                       ('joint_states', '/stretch/joint_states')],
                           parameters=stretch_driver_params)
 
-    return LaunchDescription([declare_broadcast_odom_tf_arg,
+    return LaunchDescription([declare_rviz_arg,
+                              declare_rviz_cfg_fpath_arg,
+                              declare_broadcast_odom_tf_arg,
                               declare_fail_out_of_range_goal_arg,
                               declare_mode_arg,
                               declare_controller_arg,
+                              rviz_node,
                               joint_state_publisher,
                               robot_state_publisher,
                               aggregator,
