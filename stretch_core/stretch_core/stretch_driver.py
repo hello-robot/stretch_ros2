@@ -383,6 +383,21 @@ class StretchBodyNode(Node):
             self.robot.base.enable_pos_incr_mode()
         self.change_mode('position', code_to_run)
 
+    def turn_on_manipulation_mode(self):
+        # Manipulation mode is able to execute plans from
+        # high level planners like MoveIt2. These planners
+        # send whole robot waypoint trajectories to the
+        # joint trajectory action server, and the underlying
+        # Python interface to the robot (Stretch Body) executes
+        # the trajectory, respecting each waypoints' time_from_start
+        # attribute of the trajectory_msgs/JointTrajectoryPoint
+        # message. This allows coordinated motion of the base + arm.
+        def code_to_run():
+            self.robot.stop_trajectory()
+            self.robot.base.first_step = True
+            self.robot.base.pull_status()
+        self.change_mode('manipulation', code_to_run)
+
     def calibrate(self):
         def code_to_run():
             self.robot.home()
@@ -431,6 +446,12 @@ class StretchBodyNode(Node):
         response.message = 'Now in position mode.'
         return response
 
+    def manipulation_mode_service_callback(self, request, response):
+        self.turn_on_manipulation_mode()
+        response.success = True
+        response.message = 'Now in manipulation mode.'
+        return response
+
     def runstop_service_callback(self, request, response):
         if request.data:
             with self.robot_stop_lock:
@@ -474,6 +495,8 @@ class StretchBodyNode(Node):
             self.turn_on_position_mode()
         elif mode == "navigation":
             self.turn_on_navigation_mode()
+        elif mode == "manipulation":
+            self.turn_on_manipulation_mode()
 
         self.declare_parameter('broadcast_odom_tf', False)
         self.broadcast_odom_tf = self.get_parameter('broadcast_odom_tf').value
@@ -587,6 +610,10 @@ class StretchBodyNode(Node):
         self.switch_to_position_mode_service = self.create_service(Trigger,
                                                                    '/switch_to_position_mode',
                                                                    self.position_mode_service_callback)
+
+        self.switch_to_manipulation_mode_service = self.create_service(Trigger,
+                                                                       '/switch_to_manipulation_mode',
+                                                                       self.manipulation_mode_service_callback)
 
         self.stop_the_robot_service = self.create_service(Trigger,
                                                           '/stop_the_robot',
