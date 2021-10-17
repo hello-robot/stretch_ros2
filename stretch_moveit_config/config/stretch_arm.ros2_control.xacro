@@ -32,13 +32,13 @@
                 <state_interface name="velocity"/>
             </joint>
             <joint name="joint_lift">
-                <param name="initial_position">0.1033</param>
+                <param name="initial_position">0.2</param>
                 <command_interface name="position" />
                 <state_interface name="position"/>
                 <state_interface name="velocity"/>
             </joint>
             <joint name="joint_wrist_yaw">
-                <param name="initial_position">0.0</param>
+                <param name="initial_position">3.14159265358979323846264338327950</param>
                 <command_interface name="position" />
                 <state_interface name="position"/>
                 <state_interface name="velocity"/>

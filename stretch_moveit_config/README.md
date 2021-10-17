@@ -1,26 +1,25 @@
 ![](../images/banner.png)
 
-## Stretch & MoveIt!
-MoveIt is the standard ROS manipulation platform, and this package is the configuration for working with Stretch with the MoveIt framework.
+## Overview
+
+*stretch_moveit2* configures MoveIt2 for Stretch RE1. The MoveIt Motion Planning Framework makes whole body planning, manipulation, 3D perception, control/navigation, and more available on Stretch.
 
 
-### Offline Demo
+## Drag & Drop Rviz Planning
 
-To experiment with the planning capabilities of MoveIt on Stretch, you can run a demo _without_ Stretch hardware.
+### Demo with Simulated Robot
 
-    roslaunch stretch_moveit_config demo.launch
+To experiment with the planning capabilities of MoveIt2 on Stretch, you can run a demo _without_ Stretch hardware. The fake robot will be backed by [ros2_control controllers](https://github.com/ros-controls/ros2_controllers) that provide MoveIt2 with the action server required for planning, however, the 'execution' button in Rviz will not be able to execute plans that include mobile base motion.
+
+```
+ros2 launch stretch_moveit_config demo.launch.py
+```
 
 This will allow you to move the robot around using interactive markers and create plans between poses.
 
 ### Hardware Integration
 
-To run MoveIt with the actual hardware, (assuming `stretch_driver` is already running) simply run
-
-    roslaunch stretch_moveit_config move_group.launch
-
-This will runs all of the planning capabilities, but without the setup, simulation and interface that the above demo provides. In order to create plans for the robot with the same interface as the offline demo, you can run
-
-    roslaunch stretch_moveit_config moveit_rviz.launch
+TBD
 
 ## License
 
