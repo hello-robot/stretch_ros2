@@ -357,9 +357,10 @@ class StretchBodyNode(Node):
     def change_mode(self, new_mode, code_to_run):
         self.robot_mode_rwlock.acquire_write()
         self.robot_mode = new_mode
-        code_to_run()
+        success, message = code_to_run()
         self.get_logger().info('{0}: Changed to mode = {1}'.format(self.node_name, self.robot_mode))
         self.robot_mode_rwlock.release_write()
+        return success, message
 
     # TODO : add a freewheel mode or something comparable for the mobile base?
 
@@ -370,7 +371,8 @@ class StretchBodyNode(Node):
         def code_to_run():
             self.linear_velocity_mps = 0.0
             self.angular_velocity_radps = 0.0
-        self.change_mode('navigation', code_to_run)
+            return True, 'Now in navigation mode.'
+        return self.change_mode('navigation', code_to_run)
 
     def turn_on_position_mode(self):
         # Position mode enables mobile base translation and rotation
@@ -381,7 +383,8 @@ class StretchBodyNode(Node):
         # 'base_link' become identical in this mode.
         def code_to_run():
             self.robot.base.enable_pos_incr_mode()
-        self.change_mode('position', code_to_run)
+            return True, 'Now in position mode.'
+        return self.change_mode('position', code_to_run)
 
     def turn_on_manipulation_mode(self):
         # Manipulation mode is able to execute plans from
@@ -393,15 +396,20 @@ class StretchBodyNode(Node):
         # attribute of the trajectory_msgs/JointTrajectoryPoint
         # message. This allows coordinated motion of the base + arm.
         def code_to_run():
-            self.robot.stop_trajectory()
+            try:
+                self.robot.stop_trajectory()
+            except NotImplementedError as e:
+                return False, str(e)
             self.robot.base.first_step = True
             self.robot.base.pull_status()
-        self.change_mode('manipulation', code_to_run)
+            return True, 'Now in manipulation mode.'
+        return self.change_mode('manipulation', code_to_run)
 
     def calibrate(self):
         def code_to_run():
             self.robot.home()
-        self.change_mode('calibration', code_to_run)
+            return True, 'Homed.'
+        return self.change_mode('calibration', code_to_run)
 
     # SERVICE CALLBACKS ##############
 
@@ -428,28 +436,27 @@ class StretchBodyNode(Node):
 
     def calibrate_callback(self, request, response):
         self.get_logger().info('Received calibrate_the_robot service call.')
-        self.calibrate()
-
-        response.success = True
-        response.message = 'Calibrated.'
+        success, message = self.calibrate()
+        response.success = success
+        response.message = message
         return response
 
     def navigation_mode_service_callback(self, request, response):
-        self.turn_on_navigation_mode()
-        response.success = True
-        response.message = 'Now in navigation mode.'
+        success, message = self.turn_on_navigation_mode()
+        response.success = success
+        response.message = message
         return response
 
     def position_mode_service_callback(self, request, response):
-        self.turn_on_position_mode()
-        response.success = True
-        response.message = 'Now in position mode.'
+        success, message = self.turn_on_position_mode()
+        response.success = success
+        response.message = message
         return response
 
     def manipulation_mode_service_callback(self, request, response):
-        self.turn_on_manipulation_mode()
-        response.success = True
-        response.message = 'Now in manipulation mode.'
+        success, message = self.turn_on_manipulation_mode()
+        response.success = success
+        response.message = message
         return response
 
     def runstop_service_callback(self, request, response):
