@@ -9,6 +9,7 @@ We are beginning to use this port internally at Hello Robot to test it, improve 
 ## Ported to ROS 2
 
  - Stretch Description
+ - Stretch MoveIt Config
  - Stretch Core (Driver Node)
 
 ## Known Issues
@@ -22,7 +23,6 @@ No support for:
  - Stretch Demos
  - Stretch FUNMAP
  - Stretch Gazebo
- - Stretch MoveIt Config
  - Stretch Navigation
  - Stretch OctoMap
  - Stretch RTABMap
