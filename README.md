@@ -214,7 +214,7 @@ Issue the following commands one by one to make sure your environment is all set
   source /opt/ros/galactic/setup.bash
   source $COLCON_WS/install/setup.bash
   export IGNITION_VERSION=fortress
-  export IGN_GAZEBO_RESOURCE_PATH=$COLCON_WS/src/stretch_ros:$COLCON_WS/src/realsense-ros:$COLCON_WS/src/aws-robomaker-small-house-world/models
+  export IGN_GAZEBO_RESOURCE_PATH=$COLCON_WS/src/stretch_ros2:$COLCON_WS/src/realsense-ros:$COLCON_WS/src/aws-robomaker-small-house-world/models
   ```
 
 <a name="windows_install"/>
