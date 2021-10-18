@@ -14,9 +14,11 @@ Install docker, following the [official installation steps](https://docs.docker.
 
 Follow the [official post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user) for Linux allow non-root users to manage dockers and verify your post installation. Be sure to reboot after running the commands.
 
-#### Install nvidia-docker2 (Skip if you don't have an nvidia gpu)
+#### Check if you have an Nvidia GPU
 
-Follow the [official instructions](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#setting-up-nvidia-container-toolkit). Install nvidia-docker2 and verify your installation.
+Now, check if your machine has an Nvidia GPU. If it does, you need to follow the Docker Nvidia installation instructions. **The non-Nvidia installation will fail if you have an Nvidia GPU.**
+
+Install nvidia-docker2 if you have an Nvidia GPU. Follow the [official instructions](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#setting-up-nvidia-container-toolkit). Install nvidia-docker2 and verify your installation.
 
 ### Getting Started with a Docker Container for Stretch
 
