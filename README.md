@@ -203,7 +203,6 @@ We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the i
   ros2 launch stretch_moveit_config demo.launch.py
   ```
 
-* Change velocity and acceleration scaling to 1 (esp. on slow machines).
 * Show how to plan from current state to (1) random valid goal state or (2) a specific state by moving the interactive marker. The latter may not always work, because some planning groups are kinematically very constrained.
 * Repeat the previous step for the `stretch_arm` and `mobile_base_arm` groups.
 * Turn on "Query Start State" by checking the checkbox in the Displays panel under "Motion Planning > Planning Request".
