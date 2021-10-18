@@ -43,7 +43,7 @@ RUN echo "source /opt/ros/galactic/setup.bash" >> ~/.bashrc && \
     echo "source /root/ws_moveit/install/setup.bash" >> ~/.bashrc && \
     echo "source /root/ws_stretch/install/setup.bash" >> ~/.bashrc && \
     echo "export IGNITION_VERSION=fortress" >> ~/.bashrc && \
-    echo "export IGN_GAZEBO_RESOURCE_PATH=/root/ws_stretch/src/stretch_ros:/root/ws_stretch/src/realsense-ros:/root/ws_stretch/src/aws-robomaker-small-house-world/models" >> ~/.bashrc
+    echo "export IGN_GAZEBO_RESOURCE_PATH=/root/ws_stretch/src/stretch_ros2:/root/ws_stretch/src/realsense-ros:/root/ws_stretch/src/aws-robomaker-small-house-world/models" >> ~/.bashrc
 
 
 # Install some choice of editors (nano, vim, emacs)
