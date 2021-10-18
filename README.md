@@ -61,7 +61,7 @@ ros2 launch stretch_ignition ignition.launch.py
 
 Congratulations! You brought up Stretch in Ignition Gazebo! Now you should be seeing Stretch in Ignition Gazebo with an empty world around it:
 
-![Stretch with Ignition Gazebo](docker/media/stretch_empty_world_improved.png)
+![Stretch with Ignition Gazebo](docker/media/stretch_empty_world.png)
 
 ## Updating the Docker Image
 If you would like to update your docker image you can start by pulling the latest docker image with
