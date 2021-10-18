@@ -71,7 +71,13 @@ docker pull ghcr.io/hello-robot/stretch_ros2:rosworld2021
 and remove the previous container so you can start a new one with the same name with the following commands:
 
 ```bash
-docker container rm stretch_roscon && ./start_docker.sh stretch_roscon ghcr.io/hello-robot/stretch_ros2:rosworld2021 
+docker container rm stretch_roscon && ./start_docker.sh stretch_roscon ghcr.io/hello-robot/stretch_ros2:rosworld2021
+```
+
+or without gpu:
+
+```bash
+docker container rm stretch_roscon && ./start_docker.sh stretch_roscon ghcr.io/hello-robot/stretch_ros2:rosworld2021 nogpu
 ```
 
 ## Linux Installation (Source)
