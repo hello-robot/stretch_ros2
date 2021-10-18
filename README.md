@@ -240,9 +240,16 @@ The ROS World tutorial will include several guided explorations, which we descri
 
 ## stretch_moveit_config Demo
 
-* Make sure you don't have anything running in your docker terminal and issue the following command:
+* Make sure you don't have anything running in your docker terminal and run the following commands in two different terminal windows. In each terminal, the commands start by running our docker script to connect to the same container instance. If the terminal is already connected to the container instance, you don't need to run the script.
 
   ```bash
+  # Terminal 1
+  ./start_docker.sh stretch_roscon
+  ros2 launch stretch_ignition ignition.launch.py
+  ```
+  ```bash
+  # Terminal 1
+  ./start_docker.sh stretch_roscon
   ros2 launch stretch_moveit_config demo.launch.py
   ```
 
@@ -323,8 +330,6 @@ You should see a terminal with task-related information in text and an RViz wind
 <a name="whole_body_planning"/>
 
 ## Pick and Place with Whole Body Planning
-
-Run the following commands in two different terminal windows. In each terminal, the commands start by running our docker script to connect to the same container instance. If the terminal is already connected to the container instance, you don't need to run the script.
 
   ```bash
   # Terminal 1
