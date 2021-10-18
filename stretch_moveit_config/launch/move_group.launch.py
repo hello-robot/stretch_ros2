@@ -19,33 +19,7 @@ CONFIGURATION_TRANSLATION = {
 }
 
 def load_joint_limits_from_config(moveit_config_path, mode='default'):
-    """Translate the values from the robot configuration to params to be used by MoveIt."""
-    params = {'joint_limits': {}}
-    try:
-        from stretch_body.device import Device
-        d = Device()
-        for config_name, joint_names in CONFIGURATION_TRANSLATION.items():
-            config = d.robot_params[config_name]
-            config_limits = config['motion'].get(mode, {})
-            result = {}
-            for name, abrev in [('velocity', 'vel'), ('acceleration', 'accel')]:
-                if abrev in config_limits:
-                    result[f'has_{name}_limits'] = True
-                    result[f'max_{name}'] = config_limits[abrev]
-                elif f'{abrev}_m' in config_limits:
-                    result[f'has_{name}_limits'] = True
-                    result[f'max_{name}'] = config_limits[f'{abrev}_m']
-                else:
-                    result[f'has_{name}_limits'] = False
-            for joint_name in joint_names:
-                params['joint_limits'][joint_name] = dict(result)
-    except (KeyError, ModuleNotFoundError):
-        # We may reach here if HELLO_FLEET_ID or HELLO_FLEET_PATH is not set
-        # or stretch_body.device is not on the PYTHONPATH
-        # in which case we load the defaults
-        print('Load from default')
-        return str(moveit_config_path / 'config/joint_limits.yaml')
-    return params
+    return str(moveit_config_path / 'config/joint_limits.yaml')
 
 
 def generate_launch_description():

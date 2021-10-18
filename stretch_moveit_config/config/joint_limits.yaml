@@ -66,8 +66,13 @@
                 max_velocity: 0.15
                 has_acceleration_limits: true
                 max_acceleration: 0.2
-              position/theta:
+              position/y:
                 has_velocity_limits: true
                 max_velocity: 0.15
                 has_acceleration_limits: true
                 max_acceleration: 0.2
+              position/theta:
+                has_velocity_limits: true
+                max_velocity: 0.05
+                has_acceleration_limits: true
+                max_acceleration: 0.05
