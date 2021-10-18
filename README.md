@@ -204,6 +204,9 @@ We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the i
   ```
 
 * Show how to plan from current state to (1) random valid goal state or (2) a specific state by moving the interactive marker. The latter may not always work, because some planning groups are kinematically very constrained.
+
+<img src="./images/interactive_marker.png" alt="Interactive Marker with Stretch" width="300"/>
+
 * Repeat the previous step for the `stretch_arm` and `mobile_base_arm` groups.
 
 ![Planning Group Selection](./images/planning_group.png) 
