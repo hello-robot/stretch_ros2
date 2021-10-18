@@ -9,7 +9,8 @@
             # Allow more than the expected execution time before triggering a trajectory cancel (applied after scaling)
             allowed_goal_duration_margin: 0.5
             # Allowed joint-value tolerance for validation that trajectory's first point matches current robot state
-            allowed_start_tolerance: 0.01
+            # TODO: investigate separate allowed start tolerances for dynamixel and stepper joints
+            allowed_start_tolerance: 0.03
         stretch_simple_controller_manager:
             controller_names:
               - stretch_controller
