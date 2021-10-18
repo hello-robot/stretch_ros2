@@ -268,18 +268,20 @@ The ROS World tutorial will include several guided explorations, which we descri
 
 ## Ignition Demo World
 
-* Run the following commands in three different terminal windows. In each terminal, the commands start by running our docker script to connect to the same container instance. 
+Run the following commands in three different terminal windows. In each terminal, the commands start by running our docker script to connect to the same container instance. If the terminal is already connected to the container instance, you don't need to run the script.
 
   ```bash
   # Terminal 1
   ./start_docker.sh stretch_roscon
   ros2 launch stretch_ignition ignition.launch.py
   ```
+  
   ```bash
   # Terminal 2
   ./start_docker.sh stretch_roscon
   ros2 launch stretch_moveit_config demo_ignition.launch.py
   ```
+  
   ```bash
   # Terminal 3
   ./start_docker.sh stretch_roscon
@@ -300,12 +302,17 @@ You will press the `Next` button in the RViz window to make the robot move throu
 
 ## Pick and Place with MoveIt Task Constructor
 
-* Run the following commands in two different terminal windows:
+Run the following commands in two different terminal windows. In each terminal, the commands start by running our docker script to connect to the same container instance. If the terminal is already connected to the container instance, you don't need to run the script.
 
   ```bash
   # Terminal 1
+  ./start_docker.sh stretch_roscon
   ros2 launch pick_place_task demo.launch.py
+  ```
+  
+  ```bash
   # Terminal 2
+  ./start_docker.sh stretch_roscon
   ros2 launch pick_place_task pick_place_demo.launch.py 
   ```
 
@@ -317,12 +324,17 @@ You will press the `Next` button in the RViz window to make the robot move throu
 
 ## Pick and Place with Whole Body Planning
 
-* Run the following commands in two different terminal windows:
+Run the following commands in two different terminal windows. In each terminal, the commands start by running our docker script to connect to the same container instance. If the terminal is already connected to the container instance, you don't need to run the script.
 
   ```bash
   # Terminal 1
+  ./start_docker.sh stretch_roscon
   ros2 launch stretch_ignition ignition.launch.py aws:=true
+  ```
+  
+  ```bash
   # Terminal 2
+  ./start_docker.sh stretch_roscon
   ros2 launch stretch_moveit_config demo_ignition.launch.py
   ```
 
