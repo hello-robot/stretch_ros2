@@ -1,20 +1,31 @@
+
+
 # Stretch Documentation for ROS World Workshop
 
 Welcome to our ROS World Workshop! This README is a documentation to go through installation steps to install docker and setup your docker environment for Stretch. Although we strongly recommend docker based installation we are providing source based installation instructions as well.
 
+## Table of Contents
+
++ [Linux Installation (with Docker)](#linux_docker_install)
++ [Updating the Docker Image](#docker_update)
++ [Linux Installation (Source)](#linux_source_install)
++ [Windows Installation](#windows_install)
++ [MacOS Installation](#macos_install)
++ [Guided Explorations During the ROS World Tutorial](#guided_explorations)
+
+<a name="linux_docker_install"/>
+
 ## Linux Installation (with Docker)
 
-### Prerequisites
-
-#### Install Docker
+### Install Docker
 
 Install docker, following the [official installation steps](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository) and verify your installation. Follow the instructions under "Install using the repository" and the stable release.
 
-#### Docker post-install steps
+### Docker post-install steps
 
 Follow the [official post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user) for Linux allow non-root users to manage dockers and verify your post installation. Be sure to reboot after running the commands.
 
-#### Check if you have an Nvidia GPU
+### Check if you have an Nvidia GPU
 
 Now, check if your machine has an Nvidia GPU. If it does, you need to follow the Docker Nvidia installation instructions. **The non-Nvidia installation will fail if you have an Nvidia GPU.**
 
@@ -63,7 +74,10 @@ Congratulations! You brought up Stretch in Ignition Gazebo! Now you should be se
 
 ![Stretch with Ignition Gazebo](docker/media/stretch_empty_world.png)
 
+<a name="docker_update"/>
+
 ## Updating the Docker Image
+
 If you would like to update your docker image you can start by pulling the latest docker image with
 
 ```bash
@@ -81,6 +95,7 @@ or without an NVIDIA gpu:
 ```bash
 docker container rm stretch_roscon && ./start_docker.sh stretch_roscon ghcr.io/hello-robot/stretch_ros2:rosworld2021 nogpu
 ```
+<a name="linux_source_install"/>
 
 ## Linux Installation (Source)
 
@@ -188,14 +203,26 @@ Issue the following commands one by one to make sure your environment is all set
   export IGNITION_VERSION=fortress
   export IGN_GAZEBO_RESOURCE_PATH=$COLCON_WS/src/stretch_ros:$COLCON_WS/src/realsense-ros:$COLCON_WS/src/aws-robomaker-small-house-world/models
   ```
+
+<a name="windows_install"/>
+
 ## Windows Installation
 
 We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the installation instructions for Linux Installation (with Docker).
+
+<a name="macos_install"/>
+
 ## MacOS Installation
 
 We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the installation instructions for Linux Installation (with Docker).
 
-## Guided exploration: stretch_moveit_config demo
+<a name="guided_explorations"/>
+
+## Guided Explorations During the ROS World Tutorial
+
+The ROS World tutorial will include several guided explorations, which we describe below.
+
+### stretch_moveit_config demo
 
 * Make sure you don't have anything running in your docker terminal and issue the following command:
 
@@ -221,7 +248,7 @@ We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the i
 
 * Explain structure of `stretch_moveit_config`; show contents of some configuration files and maybe SRDF/URDF .
 
-## Guided exploration: Ignition Demo World
+### Ignition Demo World
 
 * Run the following commands in three different terminal windows:
 
@@ -240,7 +267,7 @@ We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the i
   ```
 
 
-## Guided exploration: Pick and place with MoveIt Task Constructor
+### Pick and place with MoveIt Task Constructor
 
 * Run the following commands in two different terminal windows:
 
@@ -254,7 +281,7 @@ We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the i
 * Explain MTC panel. Show different solutions.
 * Explain structure of the code.
 
-## Guided exploration: Pick and place with whole body planning
+### Pick and place with whole body planning
 
 * Run the following commands in two different terminal windows:
 
@@ -265,6 +292,6 @@ We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the i
   ros2 launch stretch_moveit_config demo_ignition.launch.py
   ```
 
-## Editing the source code during the Workshop
+### Editing the source code during the Workshop
 
 Our docker image comes with a pre-built installation of vim, nano and emacs. You can also install your editor of choice via apt-get.
