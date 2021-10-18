@@ -234,12 +234,9 @@ class StretchBodyNode(Node):
         battery_state.present = True
         self.power_pub.publish(battery_state)
 
-        calibration_status = Bool()
-        if self.robot.is_calibrated():  # Returns status as integer, need to convert to bool
-            calibration_status.data = True
-        else:
-            calibration_status.data = False
-        self.calibration_pub.publish(calibration_status)
+        homed_status = Bool()
+        homed_status.data = bool(self.robot.is_calibrated())
+        self.homed_pub.publish(homed_status)
 
         mode_msg = String()
         mode_msg.data = self.robot_mode
@@ -405,11 +402,11 @@ class StretchBodyNode(Node):
             return True, 'Now in manipulation mode.'
         return self.change_mode('manipulation', code_to_run)
 
-    def calibrate(self):
+    def home_the_robot(self):
         def code_to_run():
             self.robot.home()
             return True, 'Homed.'
-        return self.change_mode('calibration', code_to_run)
+        return self.change_mode('homing', code_to_run)
 
     # SERVICE CALLBACKS ##############
 
@@ -434,9 +431,9 @@ class StretchBodyNode(Node):
         response.message = 'Stopped the robot.'
         return response
 
-    def calibrate_callback(self, request, response):
-        self.get_logger().info('Received calibrate_the_robot service call.')
-        success, message = self.calibrate()
+    def home_the_robot_callback(self, request, response):
+        self.get_logger().info('Received home_the_robot service call.')
+        success, message = self.home_the_robot()
         response.success = success
         response.message = message
         return response
@@ -577,7 +574,7 @@ class StretchBodyNode(Node):
         self.odom_pub = self.create_publisher(Odometry, 'odom', 1)
 
         self.power_pub = self.create_publisher(BatteryState, 'battery', 1)
-        self.calibration_pub = self.create_publisher(Bool, 'is_calibrated', 1)
+        self.homed_pub = self.create_publisher(Bool, 'is_homed', 1)
         self.mode_pub = self.create_publisher(String, 'mode', 1)
 
         self.imu_mobile_base_pub = self.create_publisher(Imu, 'imu_mobile_base', 1)
@@ -630,9 +627,9 @@ class StretchBodyNode(Node):
                                                           '/stop_the_robot',
                                                           self.stop_the_robot_callback)
 
-        self.calibrate_the_robot_service = self.create_service(Trigger,
-                                                               '/calibrate_the_robot',
-                                                               self.calibrate_callback)
+        self.home_the_robot_service = self.create_service(Trigger,
+                                                          '/home_the_robot',
+                                                          self.home_the_robot_callback)
 
         self.runstop_service = self.create_service(SetBool,
                                                    '/runstop',
