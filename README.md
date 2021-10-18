@@ -206,6 +206,10 @@ We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the i
 * Show how to plan from current state to (1) random valid goal state or (2) a specific state by moving the interactive marker. The latter may not always work, because some planning groups are kinematically very constrained.
 * Repeat the previous step for the `stretch_arm` and `mobile_base_arm` groups.
 * Turn on "Query Start State" by checking the checkbox in the Displays panel under "Motion Planning > Planning Request".
+
+
+![Displays Panel Motion Planning Options](./images/displays_panel_motionplanning.png) 
+
 * Turn on "Loop animation" by checking the checkbox in the Displays panel under "Trajectory."
 * Explain structure of `stretch_moveit_config`; show contents of some configuration files and maybe SRDF/URDF .
 
