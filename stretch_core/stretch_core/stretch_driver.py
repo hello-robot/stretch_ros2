@@ -26,7 +26,7 @@ from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField
 from std_msgs.msg import Bool, String
 
 from hello_helpers.gripper_conversion import GripperConversion
-# from .joint_trajectory_server import JointTrajectoryAction
+from .joint_trajectory_server import JointTrajectoryAction
 from .stretch_diagnostics import StretchDiagnostics
 
 GRIPPER_DEBUG = False
@@ -61,7 +61,6 @@ class StretchDriver(Node):
         self.gripper_conversion = GripperConversion()
 
         self.robot_stop_lock = threading.Lock()
-        self.stop_the_robot = False
 
         self.robot_mode_rwlock = RWLock()
         self.robot_mode = None
@@ -406,8 +405,6 @@ class StretchDriver(Node):
 
     def stop_the_robot_callback(self, request, response):
         with self.robot_stop_lock:
-            self.stop_the_robot = True
-
             self.robot.base.translate_by(0.0)
             self.robot.base.rotate_by(0.0)
             self.robot.arm.move_by(0.0)
@@ -455,8 +452,6 @@ class StretchDriver(Node):
     def runstop_service_callback(self, request, response):
         if request.data:
             with self.robot_stop_lock:
-                self.stop_the_robot = True
-
                 self.robot.base.translate_by(0.0)
                 self.robot.base.rotate_by(0.0)
                 self.robot.arm.move_by(0.0)
@@ -601,10 +596,10 @@ class StretchDriver(Node):
         self.last_twist_time = self.get_clock().now()
 
         # start action server for joint trajectories
-        self.declare_parameter('fail_out_of_range_goal', True)
-        self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
-        # self.joint_trajectory_action = JointTrajectoryAction(self)
-        # self.joint_trajectory_action.server.start()
+        self.declare_parameter('action_server_rate', 15.0)
+        self.action_server_rate = self.get_parameter('action_server_rate').value
+        self.joint_trajectory_action = JointTrajectoryAction(self, self.action_server_rate)
+
         self.diagnostics = StretchDiagnostics(self, self.robot)
 
         self.switch_to_navigation_mode_service = self.create_service(Trigger,
@@ -643,6 +638,7 @@ def main():
         executor = MultiThreadedExecutor(num_threads=2)
         node = StretchDriver()
         executor.add_node(node)
+        executor.add_node(node.joint_trajectory_action)
         executor.spin()
     except (KeyboardInterrupt, ThreadServiceExit):
         node.robot.stop()
