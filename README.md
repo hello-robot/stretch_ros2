@@ -12,7 +12,7 @@ This documentation is for the [ROS World 2021](https://roscon.ros.org/world/2021
   + [Linux Installation (Source)](#linux_source_install)
   + [Windows Installation](#windows_install)
   + [MacOS Installation](#macos_install)
-+ [Guided Explorations During the ROS World Tutorial](#guided_explorations)
++ [Guided Explorations](#guided_explorations)
   + [stretch_moveit_config Demo](#moveit_config_demo)
   + [Ignition Demo World](#ignition_demo)
   + [Pick and Place with MoveIt Task Constructor](#task_constructor_demo)
@@ -231,10 +231,10 @@ We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the i
 
 <a name="guided_explorations"/>
 
-# Guided Explorations During the ROS World Tutorial
+
+# Guided Explorations
 
 The ROS World tutorial will include several guided explorations, which we describe below.
-
 
 <a name="moveit_config_demo"/>
 
