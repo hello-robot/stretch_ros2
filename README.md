@@ -268,21 +268,25 @@ The ROS World tutorial will include several guided explorations, which we descri
 
 ## Ignition Demo World
 
-* Run the following commands in three different terminal windows:
-
-* Note: You can open a regular new terminal and use our docker script to connect the same container instance:
-  ```bash
-  ./start_docker.sh stretch_roscon
-  ```
+* Run the following commands in three different terminal windows. In each terminal, the commands start by running our docker script to connect to the same container instance. 
 
   ```bash
   # Terminal 1
+  ./start_docker.sh stretch_roscon
   ros2 launch stretch_ignition ignition.launch.py
+  ```
+  ```bash
   # Terminal 2
+  ./start_docker.sh stretch_roscon
   ros2 launch stretch_moveit_config demo_ignition.launch.py
+  ```
+  ```bash
   # Terminal 3
+  ./start_docker.sh stretch_roscon
   ros2 launch stretch_roscon_demos move_group_interface_demo.launch.py
   ```
+  
+After executing these commands, you should see the simulation window (Ignition) and an RViz window that displays sensor information. You will press the `Next` button in the RViz window to make the robot move through a series of actions. 
 
 <a name="task_constructor_demo"/>
 
