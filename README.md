@@ -275,13 +275,11 @@ Run the following commands in three different terminal windows. In each terminal
   ./start_docker.sh stretch_roscon
   ros2 launch stretch_ignition ignition.launch.py
   ```
-  
   ```bash
   # Terminal 2
   ./start_docker.sh stretch_roscon
   ros2 launch stretch_moveit_config demo_ignition.launch.py
   ```
-  
   ```bash
   # Terminal 3
   ./start_docker.sh stretch_roscon
@@ -309,7 +307,6 @@ Run the following commands in two different terminal windows. In each terminal, 
   ./start_docker.sh stretch_roscon
   ros2 launch pick_place_task demo.launch.py
   ```
-  
   ```bash
   # Terminal 2
   ./start_docker.sh stretch_roscon
@@ -331,7 +328,6 @@ Run the following commands in two different terminal windows. In each terminal, 
   ./start_docker.sh stretch_roscon
   ros2 launch stretch_ignition ignition.launch.py aws:=true
   ```
-  
   ```bash
   # Terminal 2
   ./start_docker.sh stretch_roscon
