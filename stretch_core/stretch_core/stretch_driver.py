@@ -493,7 +493,12 @@ class StretchBodyNode(Node):
         self.get_logger().info("{0} started".format(self.node_name))
 
         self.robot = rb.Robot()
-        self.robot.startup()
+        if not self.robot.startup():
+            self.get_logger().fatal('Robot startup failed.')
+            rclpy.shutdown()
+            exit()
+        if not self.robot.is_calibrated():
+            self.get_logger().warn("Robot not homed. Call /home_the_robot service.")
 
         self.declare_parameter('mode', "position")
         mode = self.get_parameter('mode').value
@@ -581,7 +586,6 @@ class StretchBodyNode(Node):
 
         self.create_subscription(Twist, "cmd_vel", self.set_mobile_base_velocity_callback, 1)
 
-        # ~ symbol gets parameter from private namespace
         self.declare_parameter('rate', 15.0)
         self.joint_state_rate = self.get_parameter('rate').value
         self.declare_parameter('timeout', 1.0)
