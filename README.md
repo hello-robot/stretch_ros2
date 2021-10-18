@@ -64,19 +64,19 @@ Congratulations! You brought up Stretch in Ignition Gazebo! Now you should be se
 ![Stretch with Ignition Gazebo](docker/media/stretch_empty_world_improved.png)
 
 ## Updating the Docker Image
-If you would like to update your docker image you shoudl first pull the newest docker with
+If you would like to update your docker image you can start by pulling the latest docker image with
 
 ```bash
 docker pull ghcr.io/hello-robot/stretch_ros2:rosworld2021
 ```
 
-and remove the previous container so you can start a new one with the same name with the following commands:
+and remove the previous container so you can start a new one with the same name with the following command with NVIDIA GPU:
 
 ```bash
 docker container rm stretch_roscon && ./start_docker.sh stretch_roscon ghcr.io/hello-robot/stretch_ros2:rosworld2021
 ```
 
-or without gpu:
+or without an NVIDIA gpu:
 
 ```bash
 docker container rm stretch_roscon && ./start_docker.sh stretch_roscon ghcr.io/hello-robot/stretch_ros2:rosworld2021 nogpu
