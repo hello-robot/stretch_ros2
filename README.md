@@ -288,6 +288,8 @@ The ROS World tutorial will include several guided explorations, which we descri
   
 After executing these commands, you should see the simulation window (Ignition) and an RViz window that displays sensor information. You will press the `Next` button in the RViz window to make the robot move through a series of actions. 
 
+![RViz Next Button](./images/rviz_next.png) 
+
 <a name="task_constructor_demo"/>
 
 ## Pick and Place with MoveIt Task Constructor
