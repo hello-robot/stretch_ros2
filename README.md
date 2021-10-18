@@ -18,7 +18,7 @@ Follow the [official post-installation steps](https://docs.docker.com/engine/ins
 
 Follow the [official instructions](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#setting-up-nvidia-container-toolkit). Install nvidia-docker2 and verify your installation.
 
-### Getting Started with Stretch Docker
+### Getting Started with a Docker Container for Stretch
 
 We provide a pre-built docker image and a set of scripts to easily get you up and running with Stretch on docker! To get your docker running with UI and networking enabled:
 
@@ -43,14 +43,15 @@ without an nvidia-gpu:
 chmod +x start_docker.sh && \
 ./start_docker.sh stretch_roscon ghcr.io/hello-robot/stretch_ros2:rosworld2021 nogpu
 ```
+You should now be in the `~/ws_stretch/src/` directory. If you type `ls`, you should see a number of directories, including `stretch_ros2` and `stretch_moveit_plugins`.  
 
-To exit at any time, type `exit`.
+You can access the same container from multiple terminals. For example, you can open a new terminal and run `./start_docker.sh stretch_roscon` to access a running container.
 
-To open multiple terminals, you can just `./start_docker.sh stretch_roscon` from now on since the docker container is already constructed from the image with the command above.
+You can leave the container at any time by typing `exit` in a terminal. If you exit from all the terminals accessing the container, the container will stop running. To find out if a container is running, you can open a new terminal and type `docker ps`. 
 
-3\. At this point you should be seeing a terminal window with all the necessary source code pre-built for you. 
+3\. Test the container by running a simulation of the robot Stretch. First, make sure you are accessing the container via a terminal.
 
-Now you can test your Stretch docker by bringing up Stretch in Ignition Gazebo by issuing the following set of commands inside your container:
+Now you can test the container by bringing up Stretch in Ignition Gazebo by issuing the following set of commands inside your container:
 
 ```bash
 ros2 launch stretch_ignition ignition.launch.py
