@@ -60,6 +60,20 @@ ros2 launch stretch_ignition ignition.launch.py
 Congratulations! You brought up Stretch in Ignition Gazebo! Now you should be seeing Stretch in Ignition Gazebo with an empty world around it:
 
 ![Stretch with Ignition Gazebo](docker/media/stretch_empty_world.png)
+
+## Updating the Docker Image
+If you would like to update your docker image you shoudl first pull the newest docker with
+
+```bash
+docker pull ghcr.io/hello-robot/stretch_ros2:rosworld2021
+```
+
+and remove the previous container so you can start a new one with the same name with the following commands:
+
+```bash
+docker container rm stretch_roscon && ./start_docker.sh stretch_roscon ghcr.io/hello-robot/stretch_ros2:rosworld2021 
+```
+
 ## Linux Installation (Source)
 
 The following instructions assume you have an Ubuntu 20.04 based installation of Linux.
