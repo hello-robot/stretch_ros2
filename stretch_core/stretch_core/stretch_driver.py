@@ -33,7 +33,7 @@ GRIPPER_DEBUG = False
 BACKLASH_DEBUG = False
 
 
-class StretchBodyNode(Node):
+class StretchDriver(Node):
 
     def __init__(self):
         super().__init__('stretch_driver')
@@ -641,7 +641,7 @@ def main():
     try:
         rclpy.init()
         executor = MultiThreadedExecutor(num_threads=2)
-        node = StretchBodyNode()
+        node = StretchDriver()
         executor.add_node(node)
         executor.spin()
     except (KeyboardInterrupt, ThreadServiceExit):
