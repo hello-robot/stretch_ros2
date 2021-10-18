@@ -47,7 +47,7 @@ You should now be in the `~/ws_stretch/src/` directory. If you type `ls`, you sh
 
 You can access the same container from multiple terminals. For example, you can open a new terminal and run `./start_docker.sh stretch_roscon` to access a running container.
 
-You can leave the container at any time by typing `exit` in a terminal. If you exit from all the terminals accessing the container, the container will stop running. To find out if a container is running, you can open a new terminal and type `docker ps`. 
+You can leave the container at any time by typing `exit` in a terminal. To find out if a container is running, you can open a new terminal and type `docker ps`. 
 
 3\. Test the container by running a simulation of the robot Stretch. First, make sure you are accessing the container via a terminal.
 
