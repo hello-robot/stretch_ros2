@@ -213,10 +213,12 @@ We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the i
 
 * Turn on "Query Start State" by checking the checkbox in the Displays panel under "Motion Planning > Planning Request".
 
-
 ![Displays Panel Motion Planning Options](./images/displays_panel_motionplanning_improved.png) 
 
 * Turn on "Loop animation" by checking the checkbox in the Displays panel under "Trajectory."
+
+![Displays Panel Trajectory Options](./images/displays_panel_trajectory.png) 
+
 * Explain structure of `stretch_moveit_config`; show contents of some configuration files and maybe SRDF/URDF .
 
 ## Guided exploration: Ignition Demo World
