@@ -286,7 +286,13 @@ The ROS World tutorial will include several guided explorations, which we descri
   ros2 launch stretch_roscon_demos move_group_interface_demo.launch.py
   ```
   
-After executing these commands, you should see the simulation window (Ignition) and an RViz window that displays sensor information. You will press the `Next` button in the RViz window to make the robot move through a series of actions. 
+After executing these commands, you should see the simulation window (Ignition) and an RViz window that displays sensor information. 
+
+<img src="./images/ignition_1.png" alt="Ignition" height="200"/>
+
+<img src="./images/rviz_1.png" alt="RViz" height="200"/>
+
+You will press the `Next` button in the RViz window to make the robot move through a series of actions. 
 
 ![RViz Next Button](./images/rviz_next.png) 
 
