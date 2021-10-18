@@ -1,17 +1,30 @@
 
 
-# Stretch Documentation for ROS World Workshop
+# ROS World 2021 Tutorial on Mobile Manipulation with MoveIt 2
 
-Welcome to our ROS World Workshop! This README is a documentation to go through installation steps to install docker and setup your docker environment for Stretch. Although we strongly recommend docker based installation we are providing source based installation instructions as well.
+Welcome to our ROS World tutorial! This README is a documentation to go through installation steps to install docker and setup your docker environment for Stretch. Although we strongly recommend docker based installation we are providing source based installation instructions as well.
 
 ## Table of Contents
 
-+ [Linux Installation (with Docker)](#linux_docker_install)
-+ [Updating the Docker Image](#docker_update)
-+ [Linux Installation (Source)](#linux_source_install)
-+ [Windows Installation](#windows_install)
-+ [MacOS Installation](#macos_install)
++ [Software Installation](#software_install)
+  + [Linux Installation (with Docker)](#linux_docker_install)
+  + [Updating the Docker Image](#docker_update)
+  + [Linux Installation (Source)](#linux_source_install)
+  + [Windows Installation](#windows_install)
+  + [MacOS Installation](#macos_install)
 + [Guided Explorations During the ROS World Tutorial](#guided_explorations)
+  + [stretch_moveit_config Demo](#moveit_config_demo)
+  + [Ignition Demo World](#ignition_demo)
+  + [Pick and Place with MoveIt Task Constructor](#task_constructor_demo)
+  + [Pick and Place with Whole Body Planning](#whole_body_planning)
+  + [Editing the Source Code During the Workshop](#editing_source_code)
+
+
+<a name="software_install"/>
+
+# Software Installation
+
+Prior to the workshop, you need to install software in order to actively try things out.
 
 <a name="linux_docker_install"/>
 
@@ -218,11 +231,14 @@ We recommend installing an Ubuntu 20.04 in a Virtual Machine and following the i
 
 <a name="guided_explorations"/>
 
-## Guided Explorations During the ROS World Tutorial
+# Guided Explorations During the ROS World Tutorial
 
 The ROS World tutorial will include several guided explorations, which we describe below.
 
-### stretch_moveit_config demo
+
+<a name="moveit_config_demo"/>
+
+## stretch_moveit_config Demo
 
 * Make sure you don't have anything running in your docker terminal and issue the following command:
 
@@ -248,7 +264,9 @@ The ROS World tutorial will include several guided explorations, which we descri
 
 * Explain structure of `stretch_moveit_config`; show contents of some configuration files and maybe SRDF/URDF .
 
-### Ignition Demo World
+<a name="ignition_demo"/>
+
+## Ignition Demo World
 
 * Run the following commands in three different terminal windows:
 
@@ -266,8 +284,9 @@ The ROS World tutorial will include several guided explorations, which we descri
   ros2 launch stretch_roscon_demos move_group_interface_demo.launch.py
   ```
 
+<a name="task_constructor_demo"/>
 
-### Pick and place with MoveIt Task Constructor
+## Pick and Place with MoveIt Task Constructor
 
 * Run the following commands in two different terminal windows:
 
@@ -281,7 +300,10 @@ The ROS World tutorial will include several guided explorations, which we descri
 * Explain MTC panel. Show different solutions.
 * Explain structure of the code.
 
-### Pick and place with whole body planning
+
+<a name="whole_body_planning"/>
+
+## Pick and Place with Whole Body Planning
 
 * Run the following commands in two different terminal windows:
 
@@ -292,6 +314,8 @@ The ROS World tutorial will include several guided explorations, which we descri
   ros2 launch stretch_moveit_config demo_ignition.launch.py
   ```
 
-### Editing the source code during the Workshop
+<a name="editing_source_code"/>
+
+## Editing the Source Code During the Workshop
 
 Our docker image comes with a pre-built installation of vim, nano and emacs. You can also install your editor of choice via apt-get.
