@@ -402,12 +402,6 @@ class StretchBodyNode(Node):
             return True, 'Now in manipulation mode.'
         return self.change_mode('manipulation', code_to_run)
 
-    def home_the_robot(self):
-        def code_to_run():
-            self.robot.home()
-            return True, 'Homed.'
-        return self.change_mode('homing', code_to_run)
-
     # SERVICE CALLBACKS ##############
 
     def stop_the_robot_callback(self, request, response):
@@ -432,10 +426,12 @@ class StretchBodyNode(Node):
         return response
 
     def home_the_robot_callback(self, request, response):
+        with self.robot_stop_lock:
+            self.robot.home()
+
         self.get_logger().info('Received home_the_robot service call.')
-        success, message = self.home_the_robot()
-        response.success = success
-        response.message = message
+        response.success = True
+        response.message = 'Homed.'
         return response
 
     def navigation_mode_service_callback(self, request, response):
