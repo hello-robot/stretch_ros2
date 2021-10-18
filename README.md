@@ -262,7 +262,7 @@ The ROS World tutorial will include several guided explorations, which we descri
 
 ![Displays Panel Trajectory Options](./images/displays_panel_trajectory.png) 
 
-* Explain structure of `stretch_moveit_config`; show contents of some configuration files and maybe SRDF/URDF .
+* Explain structure of `stretch_moveit_config`; show contents of some configuration files and maybe SRDF/URDF.
 
 <a name="ignition_demo"/>
 
