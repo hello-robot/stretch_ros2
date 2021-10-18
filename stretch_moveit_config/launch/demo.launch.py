@@ -80,7 +80,7 @@ def load_joint_limits_from_config(mode='default'):
 
 def generate_launch_description():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--use_fake_controller', default=False, type=eval, choices=[True, False])
+    parser.add_argument('--use_fake_controller', default=True, type=eval, choices=[True, False])
     args, _ = parser.parse_known_args([arg for sys_arg in sys.argv[4:] for arg in ('--' + sys_arg).split(':=')])
 
     ld = LaunchDescription()
