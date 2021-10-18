@@ -1,10 +1,14 @@
 #! /usr/bin/env python3
 
 import pickle
+import numpy as np
 from pathlib import Path
 import stretch_body.hello_utils as hu
+from hello_helpers.hello_misc import *
+from .trajectory_components import get_trajectory_components
 
 from rclpy.node import Node
+from rclpy.duration import Duration
 from rclpy.action import ActionServer
 
 from control_msgs.action import FollowJointTrajectory
@@ -18,6 +22,7 @@ class JointTrajectoryAction(Node):
         self.action_server_rate = self.node.create_rate(action_server_rate_hz)
         self.server = ActionServer(self.node, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory',
                                    self.execute_cb)
+        self.joints = get_trajectory_components(self.node.robot)
         self.debug_dir = Path(hu.get_stretch_directory('goals'))
         if not self.debug_dir.exists():
             self.debug_dir.mkdir()
@@ -27,11 +32,69 @@ class JointTrajectoryAction(Node):
             self.node.get_logger().warn('Only manipulation mode support currently. Use /switch_to_manipulation_mode service.')
 
         # save goal to log directory
+        goal = goal_handle.request
         goal_fpath = self.debug_dir / f'goal_{hu.create_time_string()}.pickle'
         with goal_fpath.open('wb') as s:
-            pickle.dump(goal_handle.request, s)
+            pickle.dump(goal, s)
+
+        # pre-process
+        try:
+            goal.trajectory = merge_arm_joints(goal.trajectory)
+            goal.trajectory = preprocess_gripper_trajectory(goal.trajectory)
+        except FollowJointTrajectoryException as e:
+            self.error_callback(goal_handle, e.CODE, str(e))
+        path_tolerance_dict = {tol.name: tol for tol in goal.path_tolerance}
+        goal_tolerance_dict = {tol.name: tol for tol in goal.goal_tolerance}
+
+        # load and start trajectory
+        trajectories = [goal.trajectory, goal.multi_dof_trajectory]
+        trajectories = [trajectory for trajectory in trajectories if len(trajectory.points) >= 2]
+        if len(trajectories) == 0:
+            return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_JOINTS, 'no trajectory in goal contains enough waypoints')
+        n_points = max([len(trajectory.points) for trajectory in trajectories])
+        duration = max([Duration.from_msg(trajectory.points[-1].time_from_start) for trajectory in trajectories])
+        self.node.get_logger().info(f"{self.node.node_name} joint_traj action: new traj with {n_points} points over {to_sec(duration.to_msg())} seconds")
+        for trajectory in trajectories:
+            for joint_index, joint_name in enumerate(trajectory.joint_names):
+                try:
+                    self.joints[joint_name].add_waypoints(trajectory.points, joint_index)
+                except KeyError as e:
+                    return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, str(e))
+        # self.node.robot.follow_trajectory()
+
+        # update trajectory and publish feedback
+        ts = self.node.get_clock().now()
+        while rclpy.ok() and self.node.get_clock().now() - ts <= duration:
+            if self.node.get_clock().now().seconds_nanoseconds()[0] % 3 == 0:
+                self.feedback_callback(goal_handle, ts)
+            self.action_server_rate.sleep()
 
         return self.success_callback(goal_handle, 'nothing happened')
+
+    def error_callback(self, goal_handle, error_code, error_str):
+        self.node.get_logger().info("{0} joint_traj action: {1}".format(self.node.node_name, error_str))
+        result = FollowJointTrajectory.Result()
+        result.error_code = error_code
+        result.error_string = error_str
+        goal_handle.abort()
+        return result
+
+    def feedback_callback(self, goal_handle, start_time):
+        goal = goal_handle.request
+        time_along_traj = (self.node.get_clock().now() - start_time).to_msg()
+
+        feedback = FollowJointTrajectory.Feedback()
+        feedback.header.stamp = self.node.get_clock().now().to_msg()
+        feedback.joint_names = goal.trajectory.joint_names
+        feedback.desired.time_from_start = time_along_traj
+        feedback.actual.time_from_start = time_along_traj
+        feedback.error.time_from_start = time_along_traj
+        for joint_name in feedback.joint_names:
+            joint = self.joints[joint_name]
+            actual_pos = joint.get_position()
+
+        feedback.multi_dof_joint_names = goal.multi_dof_trajectory.joint_names
+        goal_handle.publish_feedback(feedback)
 
     def success_callback(self, goal_handle, success_str):
         self.node.get_logger().info("{0} joint_traj action: {1}".format(self.node.node_name, success_str))

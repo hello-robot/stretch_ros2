@@ -60,6 +60,15 @@ class TestAction(unittest.TestCase):
         rclpy.spin_until_future_complete(self.node, result_promise, timeout_sec=1.0)
         self.assertTrue(result_promise.done())
         status = result_promise.result().status
-        self.assertEqual(status, GoalStatus.STATUS_SUCCEEDED)
+        self.assertEqual(status, GoalStatus.STATUS_ABORTED)
         result = result_promise.result().result
-        self.assertEqual(result.error_code, FollowJointTrajectory.Result().SUCCESSFUL)
+        self.assertEqual(result.error_code, FollowJointTrajectory.Result.INVALID_JOINTS)
+
+    def test_feedback_correctly_formed(self, proc_output):
+        action_client = ActionClient(self.node, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
+        self.assertTrue(action_client.wait_for_server(timeout_sec=1.0))
+        self.assertTrue(action_client.server_is_ready())
+        goal = FollowJointTrajectory.Goal()
+        goal.trajectory.joint_names = ['joint_lift']
+        # goal.trajectory.
+        goal.multi_dof_trajectory.joint_names = ['position']
