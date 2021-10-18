@@ -1,8 +1,8 @@
 
 
-# ROS World 2021 Tutorial on Mobile Manipulation with MoveIt 2
+# Mobile Manipulation with MoveIt 2 and Stretch 
 
-Welcome to our ROS World tutorial! This README is a documentation to go through installation steps to install docker and setup your docker environment for Stretch. Although we strongly recommend docker based installation we are providing source based installation instructions as well.
+This documentation is for the [ROS World 2021](https://roscon.ros.org/world/2021/) tutorial from [PickNik](https://picknik.ai/) and [Hello Robot](https://hello-robot.com/). You'll learn how to use [MoveIt 2](https://moveit.ros.org/) for mobile manipulation with the [Stretch RE1 mobile manipulator](https://hello-robot.com/product) from Hello Robot.
 
 ## Table of Contents
 
@@ -24,7 +24,7 @@ Welcome to our ROS World tutorial! This README is a documentation to go through 
 
 # Software Installation
 
-Prior to the workshop, you need to install software in order to actively try things out.
+Prior to the workshop, you need to install software in order to actively try things out. **We strongly recommend the Docker-based installation**, but we also provide instructions for installation from source.
 
 <a name="linux_docker_install"/>
 
