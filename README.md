@@ -316,6 +316,9 @@ Run the following commands in two different terminal windows. In each terminal, 
 * Explain MTC panel. Show different solutions.
 * Explain structure of the code.
 
+You should see a terminal with task-related information in text and an RViz window. 
+
+<img src="./images/rviz_2.png" alt="RViz" height="200"/>
 
 <a name="whole_body_planning"/>
 
@@ -333,6 +336,12 @@ Run the following commands in two different terminal windows. In each terminal, 
   ./start_docker.sh stretch_roscon
   ros2 launch stretch_moveit_config demo_ignition.launch.py
   ```
+
+You should see a more complex simulation environment that uses assets from AWS in the Ignition window and an RViz window showing the robot's state.
+  
+<img src="./images/ignition_3.png" alt="Ignition" height="200"/>
+
+<img src="./images/rviz_3.png" alt="RViz" height="200"/>
 
 <a name="editing_source_code"/>
 
