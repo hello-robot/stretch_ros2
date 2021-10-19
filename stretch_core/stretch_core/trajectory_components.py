@@ -74,9 +74,9 @@ class GripperComponent(TrajectoryComponent):
 
     def add_waypoint(self, t, x, v, a):
         x = self.finger_rad_to_robotis(x)
-        v = self.finger_rad_to_robotis(v) if v else None
-        a = self.finger_rad_to_robotis(a) if a else None
-        self.trajectory_manager.trajectory.add(t, x, v, a)
+        # v = self.finger_rad_to_robotis(v) if v is not None else None
+        # a = self.finger_rad_to_robotis(a) if a is not None else None
+        self.trajectory_manager.trajectory.add(t, x, None, None)
 
 
 class ArmComponent(TrajectoryComponent):

@@ -5,6 +5,7 @@ import os
 import sys
 import glob
 import math
+import numpy as np
 
 import rclpy
 import tf2_ros
@@ -383,31 +384,33 @@ def preprocess_gripper_trajectory(trajectory):
     # If no gripper joint names are present, no changes needed
     if not present_gripper_joints:
         return trajectory
-    elif len(present_gripper_joints) == 2:
+    elif 'joint_gripper_finger_left' in present_gripper_joints and 'joint_gripper_finger_right' in present_gripper_joints:
         if (gripper_joint_names[0] in present_gripper_joints and gripper_joint_names[1] in present_gripper_joints):
             # Make sure that all the points are the same
             left_index = trajectory.joint_names.index(gripper_joint_names[0])
             right_index = trajectory.joint_names.index(gripper_joint_names[1])
             for pt in trajectory.points:
-                if pt.positions[left_index] != pt.positions[right_index]:
+                if not np.isclose(pt.positions[left_index], pt.positions[right_index], atol=0.1):
                     raise InvalidGoalException('Recieved a command that includes both the left and right gripper '
                                                'joints and their commanded positions are not the same. '
-                                               f'{pt.position[left_index]} != {pt.position[right_index]}')
+                                               f'{pt.positions[left_index]} != {pt.positions[right_index]}')
                 # Due dilligence would also check the velocity/acceleration, but leaving for now
 
             # If all the points are the same, then we can safely eliminate one
-            trajectory.joint_names = trajectory.joint_names[:right_index] + trajectory.joint_names[right_index + 1:]
+            trajectory.joint_names.pop(right_index)
             for pt in trajectory.points:
-                pt.positions = pt.positions[:right_index] + pt.positions[right_index + 1:]
-                if pt.velocity:
-                    pt.velocity = pt.velocity[:right_index] + pt.velocity[right_index + 1:]
-                if pt.acceleration:
-                    pt.acceleration = pt.acceleration[:right_index] + pt.acceleration[right_index + 1:]
-            present_gripper_joints = gripper_joint_names[:1]
+                pt.positions.pop(right_index)
+                if pt.velocities:
+                    pt.velocities.pop(right_index)
+                if pt.accelerations:
+                    pt.accelerations.pop(right_index)
+            gripper_joint_names = ['joint_gripper_finger_left', 'gripper_aperture']
         else:
             raise InvalidJointException('Recieved a command that includes an odd combination of gripper joints: '
                                         f'{present_gripper_joints}')
-    elif len(present_gripper_joints) != 1:
+
+    present_gripper_joints = list(set(gripper_joint_names) & set(trajectory.joint_names))
+    if len(present_gripper_joints) != 1:
         raise InvalidJointException('Recieved a command that includes too many gripper joints: '
                                     f'{present_gripper_joints}')
 

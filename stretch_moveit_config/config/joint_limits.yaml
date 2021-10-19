@@ -33,14 +33,14 @@
                 max_acceleration: 0.04
               joint_gripper_finger_left:
                 has_velocity_limits: true
-                max_velocity: 4.0
+                max_velocity: 0.07
                 has_acceleration_limits: true
-                max_acceleration: 10.0
+                max_acceleration: 0.07
               joint_gripper_finger_right:
                 has_velocity_limits: true
-                max_velocity: 4.0
+                max_velocity: 0.07
                 has_acceleration_limits: true
-                max_acceleration: 10.0
+                max_acceleration: 0.07
               joint_head_pan:
                 has_velocity_limits: true
                 max_velocity: 0.5
