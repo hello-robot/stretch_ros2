@@ -64,25 +64,24 @@ class JointTrajectoryAction(Node):
                     self.joints[joint_name].add_waypoints(trajectory.points, joint_index)
                 except KeyError as e:
                     return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, str(e))
-        # self.node.robot.follow_trajectory()
-        self.node.robot.end_of_arm.follow_trajectory(move_to_start_point=False)
-        self.node.robot.head.follow_trajectory(move_to_start_point=False)
+        self.node.robot.follow_trajectory()
 
         # update trajectory and publish feedback
         ts = self.node.get_clock().now()
         while rclpy.ok() and self.node.get_clock().now() - ts <= duration:
-            # update dynamixels
+            # update dynamixels at 15 hz
             self._update_trajectory_dynamixel()
 
-            # update steppers
+            # update steppers at 5 hz
             if self.node.get_clock().now().seconds_nanoseconds()[0] % 3 == 0:
-                pass
+                self._update_trajectory_non_dynamixel()
 
             self.feedback_callback(goal_handle, ts)
             self.action_server_rate.sleep()
 
         time.sleep(0.1)
         self._update_trajectory_dynamixel()
+        self._update_trajectory_non_dynamixel()
         self.node.robot.stop_trajectory()
         return self.success_callback(goal_handle, 'nothing happened')
 
@@ -125,3 +124,8 @@ class JointTrajectoryAction(Node):
             self.node.robot.head.update_trajectory()
         except SerialException:
             self.get_logger().warn(f'{self.node.node_name} joint_traj action: Serial Exception on updating dynamixel waypoint trajectories')
+
+    def _update_trajectory_non_dynamixel(self):
+        self.node.robot.arm.update_trajectory()
+        self.node.robot.lift.update_trajectory()
+        self.node.robot.base.update_trajectory()
