@@ -28,6 +28,14 @@ class TrajectoryComponent:
             v = waypoint.velocities[index] if index < len(waypoint.velocities) else None
             a = waypoint.accelerations[index] if index < len(waypoint.accelerations) else None
             self.add_waypoint(t, x, v, a)
+        if len(self.trajectory_manager.trajectory) > 0:
+            self.trajectory_manager.trajectory.pop()
+            last_waypoint = waypoints[-1]
+            t = to_sec(last_waypoint.time_from_start)
+            x = last_waypoint.positions[index]
+            v = last_waypoint.velocities[index] if index < len(last_waypoint.velocities) else None
+            a = last_waypoint.accelerations[index] if index < len(last_waypoint.accelerations) else None
+            self.add_waypoint(t, x, v, a)
 
     def add_waypoint(self, t, x, v, a):
         self.trajectory_manager.trajectory.add(t, x, v, a)
@@ -75,10 +83,20 @@ class ArmComponent(TrajectoryComponent):
     def __init__(self, robot):
         TrajectoryComponent.__init__(self, 'wrist_extension', robot.arm)
 
+    def add_waypoint(self, t, x, v, a):
+        # v = None
+        a = None
+        self.trajectory_manager.trajectory.add(t, x, v, a)
+
 
 class LiftComponent(TrajectoryComponent):
     def __init__(self, robot):
         TrajectoryComponent.__init__(self, 'joint_lift', robot.lift)
+
+    def add_waypoint(self, t, x, v, a):
+        # v = None
+        a = None
+        self.trajectory_manager.trajectory.add(t, x, v, a)
 
 
 class BaseComponent(TrajectoryComponent):
@@ -102,6 +120,14 @@ class BaseComponent(TrajectoryComponent):
             x = waypoint.transforms[index]
             v = waypoint.velocities[index] if index < len(waypoint.velocities) else None
             a = waypoint.accelerations[index] if index < len(waypoint.accelerations) else None
+            self.add_waypoint(t, x, v, a)
+        if len(self.trajectory_manager.trajectory) > 0:
+            self.trajectory_manager.trajectory.pop()
+            last_waypoint = waypoints[-1]
+            t = to_sec(last_waypoint.time_from_start)
+            x = last_waypoint.transforms[index]
+            v = last_waypoint.velocities[index] if index < len(last_waypoint.velocities) else None
+            a = last_waypoint.accelerations[index] if index < len(last_waypoint.accelerations) else None
             self.add_waypoint(t, x, v, a)
 
     def add_waypoint(self, t, x, v, a):

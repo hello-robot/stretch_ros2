@@ -59,27 +59,24 @@ class JointTrajectoryAction(Node):
         n_points = max([len(trajectory.points) for trajectory in trajectories])
         duration = max([Duration.from_msg(trajectory.points[-1].time_from_start) for trajectory in trajectories])
         self.node.get_logger().info(f"{self.node.node_name} joint_traj action: new traj with {n_points} points over {to_sec(duration.to_msg())} seconds")
+        for joint in self.joints:
+            self.joints[joint].trajectory_manager.trajectory.clear()
         for trajectory in trajectories:
             for joint_index, joint_name in enumerate(trajectory.joint_names):
                 try:
                     self.joints[joint_name].add_waypoints(trajectory.points, joint_index)
                 except KeyError as e:
                     return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, str(e))
-        valid_check_error = self._check_trajectories_valid(goal_handle)
-        if valid_check_error is not None:
-            return valid_check_error
-        self.node.robot.follow_trajectory()
+        self.node.robot.stop_trajectory()
+        if not self.node.robot.follow_trajectory():
+            self.node.robot.stop_trajectory()
+            return self.error_callback(goal_handle, -100, 'hardware failed to start trajectory')
 
         # update trajectory and publish feedback
         ts = self.node.get_clock().now()
         while rclpy.ok() and self.node.get_clock().now() - ts <= duration:
-            # update dynamixels at 15 hz
             self._update_trajectory_dynamixel()
-
-            # update steppers at 5 hz
-            if self.node.get_clock().now().seconds_nanoseconds()[0] % 3 == 0:
-                self._update_trajectory_non_dynamixel()
-
+            self._update_trajectory_non_dynamixel()
             self.feedback_callback(goal_handle, ts)
             self.action_server_rate.sleep()
 
@@ -128,6 +125,8 @@ class JointTrajectoryAction(Node):
         return result
 
     def _check_trajectories_valid(self, goal_handle):
+        """TODO: re-evaluating after determining chosen dynamic limits
+        """
         valid, error_str = self.joints['joint_head_pan'].trajectory_manager.trajectory.is_valid(4.0, 8.0)
         if not valid and error_str != "must have atleast two waypoints":
             return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, f"joint_head_pan: {error_str}")
@@ -167,6 +166,10 @@ class JointTrajectoryAction(Node):
             self.get_logger().warn(f'{self.node.node_name} joint_traj action: Serial Exception on updating dynamixel waypoint trajectories')
 
     def _update_trajectory_non_dynamixel(self):
+        self.node.robot.arm.motor.pull_status()
         self.node.robot.arm.update_trajectory()
+        self.node.robot.lift.motor.pull_status()
         self.node.robot.lift.update_trajectory()
+        self.node.robot.base.left_wheel.pull_status()
+        self.node.robot.base.right_wheel.pull_status()
         self.node.robot.base.update_trajectory()
