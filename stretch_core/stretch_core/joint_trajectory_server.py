@@ -64,6 +64,9 @@ class JointTrajectoryAction(Node):
                     self.joints[joint_name].add_waypoints(trajectory.points, joint_index)
                 except KeyError as e:
                     return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, str(e))
+        valid_check_error = self._check_trajectories_valid(goal_handle)
+        if valid_check_error is not None:
+            return valid_check_error
         self.node.robot.follow_trajectory()
 
         # update trajectory and publish feedback
@@ -83,7 +86,7 @@ class JointTrajectoryAction(Node):
         self._update_trajectory_dynamixel()
         self._update_trajectory_non_dynamixel()
         self.node.robot.stop_trajectory()
-        return self.success_callback(goal_handle, 'nothing happened')
+        return self.success_callback(goal_handle, 'traj succeeded!')
 
     def error_callback(self, goal_handle, error_code, error_str):
         self.node.get_logger().info("{0} joint_traj action: {1}".format(self.node.node_name, error_str))
@@ -117,6 +120,38 @@ class JointTrajectoryAction(Node):
         result.error_string = success_str
         goal_handle.succeed()
         return result
+
+    def _check_trajectories_valid(self, goal_handle):
+        valid, error_str = self.joints['joint_head_pan'].trajectory_manager.trajectory.is_valid(4.0, 8.0)
+        if not valid and error_str != "must have atleast two waypoints":
+            return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, f"joint_head_pan: {error_str}")
+
+        valid, error_str = self.joints['joint_head_tilt'].trajectory_manager.trajectory.is_valid(4.0, 8.0)
+        if not valid and error_str != "must have atleast two waypoints":
+            return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, f"joint_head_tilt: {error_str}")
+
+        valid, error_str = self.joints['joint_wrist_yaw'].trajectory_manager.trajectory.is_valid(4.0, 8.0)
+        if not valid and error_str != "must have atleast two waypoints":
+            return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, f"joint_wrist_yaw: {error_str}")
+
+        valid, error_str = self.joints['stretch_gripper'].trajectory_manager.trajectory.is_valid(50.0, 100.0)
+        if not valid and error_str != "must have atleast two waypoints":
+            return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, f"stretch_gripper: {error_str}")
+
+        valid, error_str = self.joints['wrist_extension'].trajectory_manager.trajectory.is_valid(0.1, 0.15)
+        if not valid and error_str != "must have atleast two waypoints":
+            return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, f"wrist_extension: {error_str}")
+
+        valid, error_str = self.joints['joint_lift'].trajectory_manager.trajectory.is_valid(0.1, 0.15)
+        if not valid and error_str != "must have atleast two waypoints":
+            return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, f"joint_lift: {error_str}")
+
+        valid, error_str = self.joints['position'].trajectory_manager.trajectory.is_valid(25.0, 10.0,
+            self.node.robot.base.translate_to_motor_rad, self.node.robot.base.rotate_to_motor_rad)
+        if not valid and error_str != "must have atleast two waypoints":
+            return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, f"position: {error_str}")
+
+        return None
 
     def _update_trajectory_dynamixel(self):
         try:
