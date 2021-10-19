@@ -1,8 +1,10 @@
 #! /usr/bin/env python3
 
+import time
 import pickle
 import numpy as np
 from pathlib import Path
+from serial import SerialException
 import stretch_body.hello_utils as hu
 from hello_helpers.hello_misc import *
 from .trajectory_components import get_trajectory_components
@@ -23,6 +25,8 @@ class JointTrajectoryAction(Node):
         self.server = ActionServer(self.node, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory',
                                    self.execute_cb)
         self.joints = get_trajectory_components(self.node.robot)
+        self.node.robot._update_trajectory_dynamixel = lambda : None
+        self.node.robot._update_trajectory_non_dynamixel = lambda : None
         self.debug_dir = Path(hu.get_stretch_directory('goals'))
         if not self.debug_dir.exists():
             self.debug_dir.mkdir()
@@ -61,14 +65,25 @@ class JointTrajectoryAction(Node):
                 except KeyError as e:
                     return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, str(e))
         # self.node.robot.follow_trajectory()
+        self.node.robot.end_of_arm.follow_trajectory(move_to_start_point=False)
+        self.node.robot.head.follow_trajectory(move_to_start_point=False)
 
         # update trajectory and publish feedback
         ts = self.node.get_clock().now()
         while rclpy.ok() and self.node.get_clock().now() - ts <= duration:
+            # update dynamixels
+            self._update_trajectory_dynamixel()
+
+            # update steppers
             if self.node.get_clock().now().seconds_nanoseconds()[0] % 3 == 0:
-                self.feedback_callback(goal_handle, ts)
+                pass
+
+            self.feedback_callback(goal_handle, ts)
             self.action_server_rate.sleep()
 
+        time.sleep(0.1)
+        self._update_trajectory_dynamixel()
+        self.node.robot.stop_trajectory()
         return self.success_callback(goal_handle, 'nothing happened')
 
     def error_callback(self, goal_handle, error_code, error_str):
@@ -103,3 +118,10 @@ class JointTrajectoryAction(Node):
         result.error_string = success_str
         goal_handle.succeed()
         return result
+
+    def _update_trajectory_dynamixel(self):
+        try:
+            self.node.robot.end_of_arm.update_trajectory()
+            self.node.robot.head.update_trajectory()
+        except SerialException:
+            self.get_logger().warn(f'{self.node.node_name} joint_traj action: Serial Exception on updating dynamixel waypoint trajectories')
