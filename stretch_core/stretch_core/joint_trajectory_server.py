@@ -23,7 +23,8 @@ class JointTrajectoryAction(Node):
         self.node = node
         self.action_server_rate = self.node.create_rate(action_server_rate_hz)
         self.server = ActionServer(self.node, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory',
-                                   self.execute_cb)
+                                   execute_callback=self.execute_cb,
+                                   cancel_callback=self.cancel_cb)
         self.joints = get_trajectory_components(self.node.robot)
         self.node.robot._update_trajectory_dynamixel = lambda : None
         self.node.robot._update_trajectory_non_dynamixel = lambda : None
@@ -87,6 +88,11 @@ class JointTrajectoryAction(Node):
         self._update_trajectory_non_dynamixel()
         self.node.robot.stop_trajectory()
         return self.success_callback(goal_handle, 'traj succeeded!')
+
+    def cancel_cb(self, goal_handle):
+        self.node.get_logger().info("{0} joint_traj action: received cancel request".format(self.node.node_name))
+        self.node.robot.stop_trajectory()
+        return 2 # Accepting cancel request
 
     def error_callback(self, goal_handle, error_code, error_str):
         self.node.get_logger().info("{0} joint_traj action: {1}".format(self.node.node_name, error_str))
