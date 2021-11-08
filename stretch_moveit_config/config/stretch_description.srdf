@@ -38,26 +38,56 @@
         <joint name="joint_head_tilt" />
         <link name="camera_link"/>
     </group>
+
     <!--GROUP STATES Purpose Define a named state for a particular group, in terms of joint values. This is useful to define states like 'folded arms'-->
+    <group_state name="lift_down" group="stretch_arm">
+        <joint name="joint_lift" value="0.2"/>
+    </group_state>
+    <group_state name="lift_up" group="stretch_arm">
+        <joint name="joint_lift" value="1.0"/>
+    </group_state>
+    <group_state name="arm_in" group="stretch_arm">
+        <joint name="joint_arm_l0" value="0.0"/>
+        <joint name="joint_arm_l1" value="0.0"/>
+        <joint name="joint_arm_l2" value="0.0"/>
+        <joint name="joint_arm_l3" value="0.0"/>
+    </group_state>
+    <group_state name="arm_out" group="stretch_arm">
+        <joint name="joint_arm_l0" value="0.025"/>
+        <joint name="joint_arm_l1" value="0.025"/>
+        <joint name="joint_arm_l2" value="0.025"/>
+        <joint name="joint_arm_l3" value="0.025"/>
+    </group_state>
+    <group_state name="wrist_out" group="stretch_arm">
+        <joint name="joint_wrist_yaw" value="0.0"/>
+    </group_state>
+    <group_state name="wrist_in" group="stretch_arm">
+        <joint name="joint_wrist_yaw" value="3.1415"/>
+    </group_state>
+
     <group_state name="stow" group="stretch_arm">
-        <joint name="joint_arm_l0" value="0"/>
-        <joint name="joint_arm_l1" value="0"/>
-        <joint name="joint_arm_l2" value="0"/>
-        <joint name="joint_arm_l3" value="0"/>
-        <joint name="joint_lift" value="0"/>
-        <joint name="joint_wrist_yaw" value="0"/>
+        <joint name="joint_arm_l0" value="0.0"/>
+        <joint name="joint_arm_l1" value="0.0"/>
+        <joint name="joint_arm_l2" value="0.0"/>
+        <joint name="joint_arm_l3" value="0.0"/>
+        <joint name="joint_lift" value="0.2"/>
+        <joint name="joint_wrist_yaw" value="3.4"/>
     </group_state>
     <group_state name="extended" group="stretch_arm">
-        <joint name="joint_arm_l0" value="0.13"/>
-        <joint name="joint_arm_l1" value="0.13"/>
-        <joint name="joint_arm_l2" value="0.13"/>
-        <joint name="joint_arm_l3" value="0.13"/>
-        <joint name="joint_lift" value="0.9967"/>
-        <joint name="joint_wrist_yaw" value="4"/>
+        <joint name="joint_arm_l0" value="0.05"/>
+        <joint name="joint_arm_l1" value="0.05"/>
+        <joint name="joint_arm_l2" value="0.05"/>
+        <joint name="joint_arm_l3" value="0.05"/>
+        <joint name="joint_lift" value="0.9"/>
+        <joint name="joint_wrist_yaw" value="0.0"/>
     </group_state>
     <group_state name="stow" group="stretch_head">
         <joint name="joint_head_pan" value="0.0"/>
         <joint name="joint_head_tilt" value="0.0"/>
+    </group_state>
+    <group_state name="look_right" group="stretch_head">
+        <joint name="joint_head_pan" value="-1.5"/>
+        <joint name="joint_head_tilt" value="-0.5"/>
     </group_state>
     <group_state name="low_head" group="stretch_head">
         <joint name="joint_head_pan" value="-3.5"/>

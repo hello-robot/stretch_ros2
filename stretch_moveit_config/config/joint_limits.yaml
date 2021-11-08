@@ -13,24 +13,24 @@
             joint_limits:
               joint_arm_l0:
                 has_velocity_limits: true
-                max_velocity: 0.04
+                max_velocity: 0.02
                 has_acceleration_limits: true
-                max_acceleration: 0.04
+                max_acceleration: 0.02
               joint_arm_l1:
                 has_velocity_limits: true
-                max_velocity: 0.04
+                max_velocity: 0.02
                 has_acceleration_limits: true
-                max_acceleration: 0.04
+                max_acceleration: 0.02
               joint_arm_l2:
                 has_velocity_limits: true
-                max_velocity: 0.04
+                max_velocity: 0.02
                 has_acceleration_limits: true
-                max_acceleration: 0.04
+                max_acceleration: 0.02
               joint_arm_l3:
                 has_velocity_limits: true
-                max_velocity: 0.04
+                max_velocity: 0.02
                 has_acceleration_limits: true
-                max_acceleration: 0.04
+                max_acceleration: 0.02
               joint_gripper_finger_left:
                 has_velocity_limits: true
                 max_velocity: 0.07
@@ -53,7 +53,7 @@
                 max_acceleration: 1.0
               joint_lift:
                 has_velocity_limits: true
-                max_velocity: 0.04
+                max_velocity: 0.06
                 has_acceleration_limits: true
                 max_acceleration: 0.04
               joint_wrist_yaw:
@@ -63,12 +63,12 @@
                 max_acceleration: 1.0
               position/x:
                 has_velocity_limits: true
-                max_velocity: 0.02
+                max_velocity: 0.04
                 has_acceleration_limits: true
                 max_acceleration: 0.02
               position/y:
                 has_velocity_limits: true
-                max_velocity: 0.02
+                max_velocity: 0.04
                 has_acceleration_limits: true
                 max_acceleration: 0.02
               position/theta:
