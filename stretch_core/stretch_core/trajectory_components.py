@@ -56,6 +56,16 @@ class WristYawComponent(TrajectoryComponent):
         TrajectoryComponent.__init__(self, 'joint_wrist_yaw', robot.end_of_arm.get_joint('wrist_yaw'))
 
 
+class WristPitchComponent(TrajectoryComponent):
+    def __init__(self, robot):
+        TrajectoryComponent.__init__(self, 'joint_wrist_pitch', robot.end_of_arm.get_joint('wrist_pitch'))
+
+
+class WristRollComponent(TrajectoryComponent):
+    def __init__(self, robot):
+        TrajectoryComponent.__init__(self, 'joint_wrist_roll', robot.end_of_arm.get_joint('wrist_roll'))
+
+
 class GripperComponent(TrajectoryComponent):
     def __init__(self, robot):
         TrajectoryComponent.__init__(self, 'stretch_gripper', robot.end_of_arm.get_joint('stretch_gripper'))
@@ -141,6 +151,8 @@ def get_trajectory_components(robot):
     return {component.name: component for component in [HeadPanComponent(robot),
                                                         HeadTiltComponent(robot),
                                                         WristYawComponent(robot),
+                                                        WristPitchComponent(robot),
+                                                        WristRollComponent(robot),
                                                         GripperComponent(robot),
                                                         ArmComponent(robot),
                                                         LiftComponent(robot),
