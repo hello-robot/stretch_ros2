@@ -143,10 +143,20 @@ class StretchDriver(Node):
 
         if self.use_robotis_end_of_arm:
             # assign relevant wrist status to variables
-            wrist_status = robot_status['end_of_arm']['wrist_yaw']
-            wrist_rad = wrist_status['pos']
-            wrist_vel = wrist_status['vel']
-            wrist_effort = wrist_status['effort']
+            wrist_yaw_status = robot_status['end_of_arm']['wrist_yaw']
+            wrist_yaw_rad = wrist_yaw_status['pos']
+            wrist_yaw_vel = wrist_yaw_status['vel']
+            wrist_yaw_effort = wrist_yaw_status['effort']
+
+            wrist_pitch_status = robot_status['end_of_arm']['wrist_pitch']
+            wrist_pitch_rad = wrist_pitch_status['pos']
+            wrist_pitch_vel = wrist_pitch_status['vel']
+            wrist_pitch_effort = wrist_pitch_status['effort']
+
+            wrist_roll_status = robot_status['end_of_arm']['wrist_roll']
+            wrist_roll_rad = wrist_roll_status['pos']
+            wrist_roll_vel = wrist_roll_status['vel']
+            wrist_roll_effort = wrist_roll_status['effort']
 
             # assign relevant gripper status to variables
             gripper_status = robot_status['end_of_arm']['stretch_gripper']
@@ -284,12 +294,20 @@ class StretchDriver(Node):
             efforts.append(head_tilt_effort)
 
         if self.use_robotis_end_of_arm:
-            end_of_arm_joint_names = ['joint_wrist_yaw', 'joint_gripper_finger_left', 'joint_gripper_finger_right']
+            end_of_arm_joint_names = ['joint_wrist_yaw', 'joint_wrist_pitch', 'joint_wrist_roll', 'joint_gripper_finger_left', 'joint_gripper_finger_right']
             joint_state.name.extend(end_of_arm_joint_names)
 
-            positions.append(wrist_rad)
-            velocities.append(wrist_vel)
-            efforts.append(wrist_effort)
+            positions.append(wrist_yaw_rad)
+            velocities.append(wrist_yaw_vel)
+            efforts.append(wrist_yaw_effort)
+
+            positions.append(wrist_pitch_rad)
+            velocities.append(wrist_pitch_vel)
+            efforts.append(wrist_pitch_effort)
+
+            positions.append(wrist_roll_rad)
+            velocities.append(wrist_roll_vel)
+            efforts.append(wrist_roll_effort)
 
             positions.append(gripper_finger_rad)
             velocities.append(gripper_finger_vel)
