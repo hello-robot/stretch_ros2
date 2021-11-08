@@ -427,9 +427,12 @@
     <disable_collisions link1="link_right_wheel" link2="link_wrist_pitch" reason="Never"/>
     <disable_collisions link1="link_right_wheel" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_right_wheel" link2="respeaker_base" reason="Never"/>
-    <disable_collisions link1="link_wrist_yaw" link2="link_wrist_pitch" reason="Adjacent"/>
+    <disable_collisions link1="link_wrist_yaw" link2="link_wrist_yaw_bottom" reason="Adjacent"/>
+    <disable_collisions link1="link_wrist_yaw" link2="link_wrist_pitch" reason="Never"/>
     <disable_collisions link1="link_wrist_yaw" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_wrist_yaw" link2="respeaker_base" reason="Never"/>
+    <disable_collisions link1="link_wrist_yaw_bottom" link2="link_wrist_pitch" reason="Adjacent"/>
+    <disable_collisions link1="link_wrist_yaw_bottom" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_wrist_pitch" link2="link_wrist_roll" reason="Adjacent"/>
     <disable_collisions link1="link_wrist_pitch" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_wrist_roll" link2="respeaker_base" reason="Never"/>
