@@ -2,9 +2,11 @@
 
 ## ROS 2 Galactic Development Branch
 
-This is a development branch that we are using to port [stretch_ros](https://github.com/hello-robot/stretch_ros) to ROS 2 Galactic, Python 3, and Ubuntu 20.04. We plan to begin shipping this version preinstalled on Stretch RE1 robots in the future. It is **not in a usable state**. It is also unstable, since we are actively conducting development in this branch. Since we have performed limited testing, you may encounter unexpected behaviors. Also, installation **requires Ubuntu 20.04 on a second partition** of your robot's hard drive.
+This is a development branch that we are using to port [stretch_ros](https://github.com/hello-robot/stretch_ros) to ROS 2 Galactic, Python 3, and Ubuntu 20.04. We plan to begin shipping Ubuntu 20.04 with the ROS2 packages in this repo and the [Noetic ROS1 packages](https://github.com/hello-robot/stretch_ros/tree/dev/noetic) preinstalled on Stretch RE1 robots in the upcoming months. Currently, these packages are **not in a usable state**. It is also unstable, since we are actively conducting development in this branch. Since we have performed limited testing, you may encounter unexpected behaviors. Also, installation **requires Ubuntu 20.04 on a second partition** of your robot's hard drive.
 
-We are beginning to use this port internally at Hello Robot to test it, improve it, and add new capabilities.
+We are beginning to use this port internally at Hello Robot to test it, improve it, and add new capabilities. We also anticipate that some customers will begin working with this development branch. If you wish to try it, please see the [installation guide](https://github.com/hello-robot/stretch_ros/blob/dev/noetic/install_noetic.md). **Both this branch and the installation guide are under active development. Please proceed with caution.**
+
+**Please file issues here and ask general questions on the [forum](https://forum.hello-robot.com/).**
 
 ## Ported to ROS 2
 
@@ -29,6 +31,25 @@ No support for:
  - The deep perception demos won't work with a default installation, since they require OpenCV compiled with OpenVINO.
  - There is no support for the Respeaker Microphone Array.
  - There is no support for the Dexterous Wrist.
+
+## Code Status & Development Plans
+
+We intend to port every ROS1 package availble for Stretch to ROS2. This table provides a high-level summary of the current state of the code. We're beginning by porting the lowest level packages first (e.g. Stretch Core, Stretch Description) and working towards the higher level packages (e.g. Nav2, Octomap). One notable exception is the 'stretch_moveit_config' package, which was ported in October 2021 to demo MoveIt2 + Stretch at ROS World 2021. See the README for instructions to run MoveIt2 planning/execution on Stretch RE1.
+
+| Package                                                      | Status         | Notes                                                                  |
+|--------------------------------------------------------------|----------------|------------------------------------------------------------------------|
+| [hello_helpers](hello_helpers/README.md)                     | IN DEVELOPMENT | HelloNode class is ported to ROS2                                      |
+| [stretch_calibration](stretch_calibration/README.md)         | NOT YET PORTED |                                                                        |
+| [stretch_core](stretch_core/README.md)                       | IN DEVELOPMENT | stretch_driver node and launch file is ported to ROS2                  |
+| [stretch_deep_perception](stretch_deep_perception/README.md) | NOT YET PORTED |                                                                        |
+| [stretch_demos](stretch_demos/README.md)                     | NOT YET PORTED |                                                                        |
+| [stretch_description](stretch_description/README.md)         | PORTED - GOOD  | Generate and export URDFs                                              |
+| [stretch_funmap](stretch_funmap/README.md)                   | NOT YET PORTED |                                                                        |
+| [stretch_gazebo](stretch_gazebo/README.md)                   | NOT YET PORTED | Ignition simulation in 'ros_world2021' branch                          |
+| [stretch_moveit_config](stretch_gazebo/README.md)            | PORTED - GOOD  | Config files to use Stretch with the MoveIt2 Motion Planning Framework |
+| [stretch_navigation](stretch_navigation/README.md)           | NOT YET PORTED |                                                                        |
+| [stretch_octomap](stretch_octomap/README.md)                 | NOT YET PORTED |                                                                        |
+| [stretch_rtabmap](stretch_rtabmap/README.md)                 | NOT YET PORTED |                                                                        |
 
 ---
 
@@ -58,17 +79,17 @@ This software is intended for use with the Stretch RE1 mobile manipulator, which
 
 For license details for this repository, see the LICENSE files found in the directories. A summary of the licenses follows: 
 
-Directory | License
---- | ---
-hello_helpers | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-stretch_calibration | [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)
-stretch_core | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+Directory               | License
+------------------------|--------------------------------------------------------------------------------------
+hello_helpers           | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+stretch_calibration     | [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)
+stretch_core            | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 stretch_deep_perception | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-stretch_demos | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-stretch_description | [BSD 3-Clause Clear License](https://choosealicense.com/licenses/bsd-3-clause-clear/)
-stretch_funmap | [LGPLv3](https://www.gnu.org/licenses/lgpl-3.0.en.html)
-stretch_gazebo | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-stretch_moveit_config | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-stretch_navigation | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-stretch_octomap | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-stretch_rtabmap | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+stretch_demos           | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+stretch_description     | [BSD 3-Clause Clear License](https://choosealicense.com/licenses/bsd-3-clause-clear/)
+stretch_funmap          | [LGPLv3](https://www.gnu.org/licenses/lgpl-3.0.en.html)
+stretch_gazebo          | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+stretch_moveit_config   | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+stretch_navigation      | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+stretch_octomap         | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+stretch_rtabmap         | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
