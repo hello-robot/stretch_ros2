@@ -34,7 +34,7 @@ No support for:
 
 ## Code Status & Development Plans
 
-We intend to port every ROS1 package available for Stretch to ROS2. This table provides a high-level summary of the current state of the code. We're beginning by porting the lowest level packages first (e.g. Stretch Core, Stretch Description) and working towards the higher level packages (e.g. Nav2, Octomap). One notable exception is the 'stretch_moveit_config' package, which was ported in October 2021 to demo MoveIt2 + Stretch at ROS World 2021. See the README for instructions to run MoveIt2 planning/execution on Stretch RE1.
+We intend to port every ROS1 package available for Stretch to ROS2. This table provides a high-level summary of the current state of the code. We're beginning by porting the lowest level packages first (e.g. Stretch Core, Stretch Description) and working towards the higher level packages (e.g. Nav2, Octomap). One notable exception is the 'stretch_moveit_config' package, which was ported in October 2021 to demo [MoveIt2 + Stretch at ROS World 2021](https://moveit.ros.org//events/rosworld-2021-workshop/). See the README for instructions to run MoveIt2 planning/execution on Stretch RE1.
 
 | Package                                                      | Status         | Notes                                                                  |
 |--------------------------------------------------------------|----------------|------------------------------------------------------------------------|
