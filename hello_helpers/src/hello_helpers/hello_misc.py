@@ -1,24 +1,24 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+
+from __future__ import print_function
 
 import time
 import os
-import sys
 import glob
 import math
 
-import rospy
-import tf2_ros
-import ros_numpy
+import rclpy
+from rclpy.node import Node
+from rclpy.action import ActionClient
+# import ros_numpy  TODO(dlu): Fix https://github.com/eric-wieser/ros_numpy/issues/20
 import numpy as np
 import cv2
 
-import actionlib
-from control_msgs.msg import FollowJointTrajectoryAction
-from control_msgs.msg import FollowJointTrajectoryGoal
+from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 import tf2_ros
 from sensor_msgs.msg import PointCloud2
-from std_srvs.srv import Trigger, TriggerRequest
+from std_srvs.srv import Trigger
 
 
 #######################
@@ -64,7 +64,7 @@ def get_left_finger_state(joint_states):
     left_finger_effort = joint_states.effort[i]
     return [left_finger_position, left_finger_velocity, left_finger_effort]
 
-class HelloNode:
+class HelloNode(Node):
     def __init__(self):
         self.joint_state = None
         self.point_cloud = None
@@ -74,11 +74,10 @@ class HelloNode:
 
     def point_cloud_callback(self, point_cloud):
         self.point_cloud = point_cloud
-    
-    def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
+
+    def move_to_pose(self, pose, wait_for_result=False, custom_contact_thresholds=False):
         joint_names = [key for key in pose]
         point = JointTrajectoryPoint()
-        point.time_from_start = rospy.Duration(0.0)
 
         trajectory_goal = FollowJointTrajectoryGoal()
         trajectory_goal.goal_time_tolerance = rospy.Time(1.0)
@@ -99,7 +98,7 @@ class HelloNode:
             trajectory_goal.trajectory.points = [point]
         trajectory_goal.trajectory.header.stamp = rospy.Time.now()
         self.trajectory_client.send_goal(trajectory_goal)
-        if not return_before_done: 
+        if not wait_for_result:
             self.trajectory_client.wait_for_result()
             #print('Received the following result:')
             #print(self.trajectory_client.get_result())
@@ -120,12 +119,9 @@ class HelloNode:
         # Query TF2 to obtain the current estimated transformation
         # from the robot's base_link frame to the frame.
         robot_to_odom_mat, timestamp = get_p1_to_p2_matrix('base_link', floor_frame, self.tf2_buffer)
-        print('robot_to_odom_mat =', robot_to_odom_mat)
-        print('timestamp =', timestamp)
 
         # Find the robot's current location in the frame.
         r0 = np.array([0.0, 0.0, 0.0, 1.0])
-        print('r0 =', r0)
         r0 = np.matmul(robot_to_odom_mat, r0)[:2]
 
         # Find the current angle of the robot in the frame.
@@ -138,34 +134,34 @@ class HelloNode:
 
 
     def main(self, node_name, node_topic_namespace, wait_for_first_pointcloud=True):
-        rospy.init_node(node_name)
-        self.node_name = rospy.get_name()
-        rospy.loginfo("{0} started".format(self.node_name))
+        super().__init__(node_name)
+        self.node_name = node_name
+        self.get_logger().info("{0} started".format(self.node_name))
 
-        self.trajectory_client = actionlib.SimpleActionClient('/stretch_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
-        server_reached = self.trajectory_client.wait_for_server(timeout=rospy.Duration(60.0))
-        if not server_reached:
-            rospy.signal_shutdown('Unable to connect to arm action server. Timeout exceeded.')
-            sys.exit()
-        
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
+        while not self.trajectory_client.wait_for_server(timeout_sec=2.0):
+            self.get_logger().info("Waiting on '/stretch_controller/follow_joint_trajectory' action server...")
+
         self.tf2_buffer = tf2_ros.Buffer()
-        self.tf2_listener = tf2_ros.TransformListener(self.tf2_buffer)
-        
-        self.point_cloud_subscriber = rospy.Subscriber('/camera/depth/color/points', PointCloud2, self.point_cloud_callback)
-        self.point_cloud_pub = rospy.Publisher('/' + node_topic_namespace + '/point_cloud2', PointCloud2, queue_size=1)
+        self.tf2_listener = tf2_ros.TransformListener(self.tf2_buffer, self)
 
-        rospy.wait_for_service('/stop_the_robot')
-        rospy.loginfo('Node ' + self.node_name + ' connected to /stop_the_robot service.')
-        self.stop_the_robot_service = rospy.ServiceProxy('/stop_the_robot', Trigger)
-        
+        self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 10)
+        self.point_cloud_pub = self.create_publisher(PointCloud2, '/' + node_topic_namespace + '/point_cloud2', 10)
+
+        self.stop_the_robot_client = self.create_client(Trigger, '/stop_the_robot')
+        while not self.stop_the_robot_client.wait_for_service(timeout_sec=2.0):
+            self.get_logger().info("Waiting on '/stop_the_robot' service...")
+        self.get_logger().info('Node ' + self.node_name + ' connected to /stop_the_robot service.')
+
         if wait_for_first_pointcloud:
             # Do not start until a point cloud has been received
             point_cloud_msg = self.point_cloud
-            print('Node ' + node_name + ' waiting to receive first point cloud.')
+            self.get_logger().info('Node ' + node_name + ' waiting to receive first point cloud.')
             while point_cloud_msg is None:
-                rospy.sleep(0.1)
+                time.sleep(0.1)
+                rclpy.spin_once(self)
                 point_cloud_msg = self.point_cloud
-            print('Node ' + node_name + ' received first point cloud, so continuing.')
+            self.get_logger().info('Node ' + node_name + ' received first point cloud, so continuing.')
 
 
 def create_time_string():
@@ -245,3 +241,8 @@ def bound_ros_command(bounds, ros_pos, fail_out_of_range_goal, clip_ros_toleranc
             return bounds[1]
 
     return ros_pos
+
+
+def to_sec(duration):
+    """Given a message of type builtin_interfaces/Duration return the number of seconds as a float."""
+    return duration.sec + duration.nanosec / 1e9
