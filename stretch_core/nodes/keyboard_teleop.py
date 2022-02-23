@@ -266,8 +266,7 @@ class KeyboardTeleopNode(hm.HelloNode):
     def __init__(self, mapping_on=False, hello_world_on=False, open_drawer_on=False, clean_surface_on=False, grasp_object_on=False, deliver_object_on=False):
         hm.HelloNode.__init__(self)
         self.keys = GetKeyboardCommands(mapping_on, hello_world_on, open_drawer_on, clean_surface_on, grasp_object_on, deliver_object_on)
-        self.rate = 10.0
-        self.joint_state = None
+        self.joint_state = JointState()
         self.mapping_on = mapping_on
         self.hello_world_on = hello_world_on
         self.open_drawer_on = open_drawer_on
@@ -280,32 +279,26 @@ class KeyboardTeleopNode(hm.HelloNode):
 
     def send_command(self, command):
         joint_state = self.joint_state
-        self.get_logger().info(joint_state)
-        self.get_logger().info('joint_name = {0}, inc = {1}'.format(command['joint'], command['inc']))
-        if (joint_state is None) and (command is not None):
+        if (joint_state is not None) and (command is not None):
             point = JointTrajectoryPoint()
             trajectory_goal = FollowJointTrajectory.Goal()
-            #trajectory_goal.goal_time_tolerance = rclpy.duration.Duration(1.0)
+            # trajectory_goal.goal_time_tolerance = rclpy.time.Time()
             joint_name = command['joint']
             trajectory_goal.trajectory.joint_names = [joint_name]
             if 'inc' in command:
                 inc = command['inc']
-                self.get_logger().info('inc = {0}'.format(inc))
+                # self.get_logger().info('inc = {0}'.format(inc))
                 new_value = inc
             elif 'delta' in command:
                 joint_index = joint_state.name.index(joint_name)
                 joint_value = joint_state.position[joint_index]
                 delta = command['delta']
-                self.get_logger().info('delta = {0}, joint_index = {1}, joint_value = {2}'.format(delta, joint_index, joint_value))
+                # self.get_logger().info('delta = {0}, joint_index = {1}, joint_value = {2}'.format(delta, joint_index, joint_value))
                 new_value = joint_value + delta
             point.positions = [new_value]
             trajectory_goal.trajectory.points = [point]
-            #trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
             trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
-            self.get_logger().info('joint_name = {0}, trajectory_goal = {1}'.format(joint_name, trajectory_goal))
             self.trajectory_client.send_goal_async(trajectory_goal)
-            self.get_logger().info('Done sending pose.')
-            self.keys.print_commands()
 
     def main(self):
         hm.HelloNode.main(self, 'keyboard_teleop', 'keyboard_teleop', wait_for_first_pointcloud=False)
@@ -377,16 +370,14 @@ class KeyboardTeleopNode(hm.HelloNode):
             self.get_logger().info('Node ' + self.node_name + ' connected to /deliver_object/trigger_deliver_object.')
             self.trigger_deliver_object_service = rospy.ServiceProxy('/deliver_object/trigger_deliver_object', Trigger)
 
-        self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10)
-
-        rate = self.create_rate(self.rate)
+        self.subscription = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10)
+        self.subscription
 
         self.keys.print_commands()
         while rclpy.ok():
             command = self.keys.get_command(self)
             self.send_command(command)
             rclpy.spin_once(self)
-            rate.sleep()
 
 
 if __name__ == '__main__':
