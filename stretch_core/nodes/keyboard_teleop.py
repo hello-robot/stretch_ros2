@@ -5,6 +5,7 @@ import keyboard as kb
 import argparse as ap
 
 import rclpy
+from rclpy.time import Time
 from std_srvs.srv import Trigger
 from sensor_msgs.msg import JointState
 from control_msgs.action import FollowJointTrajectory
@@ -279,11 +280,12 @@ class KeyboardTeleopNode(hm.HelloNode):
 
     def send_command(self, command):
         joint_state = self.joint_state
-        if (joint_state is not None) and (command is not None):
+        self.get_logger().info(joint_state)
+        self.get_logger().info('joint_name = {0}, inc = {1}'.format(command['joint'], command['inc']))
+        if (joint_state is None) and (command is not None):
             point = JointTrajectoryPoint()
             trajectory_goal = FollowJointTrajectory.Goal()
-            trajectory_goal.goal_time_tolerance = rclpy.Time(1.0)
-            
+            #trajectory_goal.goal_time_tolerance = rclpy.duration.Duration(1.0)
             joint_name = command['joint']
             trajectory_goal.trajectory.joint_names = [joint_name]
             if 'inc' in command:
@@ -298,6 +300,7 @@ class KeyboardTeleopNode(hm.HelloNode):
                 new_value = joint_value + delta
             point.positions = [new_value]
             trajectory_goal.trajectory.points = [point]
+            #trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
             trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
             self.get_logger().info('joint_name = {0}, trajectory_goal = {1}'.format(joint_name, trajectory_goal))
             self.trajectory_client.send_goal_async(trajectory_goal)
