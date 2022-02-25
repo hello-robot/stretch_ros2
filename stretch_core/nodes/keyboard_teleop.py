@@ -266,13 +266,13 @@ class KeyboardTeleopNode(hm.HelloNode):
     def __init__(self, mapping_on=False, hello_world_on=False, open_drawer_on=False, clean_surface_on=False, grasp_object_on=False, deliver_object_on=False):
         hm.HelloNode.__init__(self)
         self.keys = GetKeyboardCommands(mapping_on, hello_world_on, open_drawer_on, clean_surface_on, grasp_object_on, deliver_object_on)
-        self.joint_state = JointState()
         self.mapping_on = mapping_on
         self.hello_world_on = hello_world_on
         self.open_drawer_on = open_drawer_on
         self.clean_surface_on = clean_surface_on
         self.grasp_object_on = grasp_object_on
         self.deliver_object_on = deliver_object_on
+        self.joint_state = JointState()
 
     def joint_states_callback(self, joint_state):
         self.joint_state = joint_state
@@ -301,6 +301,7 @@ class KeyboardTeleopNode(hm.HelloNode):
             self.trajectory_client.send_goal_async(trajectory_goal)
 
     def main(self):
+        rclpy.init()
         hm.HelloNode.main(self, 'keyboard_teleop', 'keyboard_teleop', wait_for_first_pointcloud=False)
 
         if self.mapping_on: 
@@ -375,12 +376,13 @@ class KeyboardTeleopNode(hm.HelloNode):
 
         self.keys.print_commands()
         while rclpy.ok():
+            rclpy.spin_once(self)
             command = self.keys.get_command(self)
             self.send_command(command)
-            rclpy.spin_once(self)
+        self.destroy_node()
+        rclpy.shutdown()
 
-
-if __name__ == '__main__':
+def main():
     try:
         parser = ap.ArgumentParser(description='Keyboard teleoperation for stretch.')
         parser.add_argument('--mapping_on', action='store_true', help='Turn on mapping control. For example, the space bar will trigger a head scan. This requires that the mapping node be run (funmap).')
@@ -398,9 +400,10 @@ if __name__ == '__main__':
         grasp_object_on = args.grasp_object_on
         deliver_object_on = args.deliver_object_on
 
-        rclpy.init()
         node = KeyboardTeleopNode(mapping_on, hello_world_on, open_drawer_on, clean_surface_on, grasp_object_on, deliver_object_on)
         node.main()
-        rclpy.shutdown()
     except KeyboardInterrupt:
         node.get_logger().info('interrupt received, so shutting down')
+
+if __name__ == '__main__':
+    main()
