@@ -6,6 +6,8 @@ import argparse as ap
 
 import rclpy
 from rclpy.time import Time
+from rclpy.action import ActionClient
+from rclpy.node import Node
 from std_srvs.srv import Trigger
 from sensor_msgs.msg import JointState
 from control_msgs.action import FollowJointTrajectory
@@ -121,66 +123,70 @@ class GetKeyboardCommands:
         return command
 
 
-class KeyboardTeleopNode(hm.HelloNode):
+class KeyboardTeleopNode(Node):
 
     def __init__(self, mapping_on=False, hello_world_on=False, open_drawer_on=False, clean_surface_on=False, grasp_object_on=False, deliver_object_on=False):
-        hm.HelloNode.__init__(self)
         self.keys = GetKeyboardCommands(mapping_on, hello_world_on, open_drawer_on, clean_surface_on, grasp_object_on, deliver_object_on)
         self.rate = 10.0
-        self.joint_state = None
+        self.joint_state = JointState()
 
     def joint_states_callback(self, joint_state):
         self.joint_state = joint_state
+        # self.get_logger().info(self.joint_state.name[0])
 
     def send_command(self, command):
+        print('command received')
         joint_state = self.joint_state
-        self.get_logger().info(joint_state)
-        self.get_logger().info('joint_name = {0}, inc = {1}'.format(command['joint'], command['inc']))
-        if (joint_state is None) and (command is not None):
+        # self.get_logger().info('joint_name = {0}, inc = {1}'.format(command['joint'], command['inc']))
+        if (joint_state is not None) and (command is not None):
             point = JointTrajectoryPoint()
             trajectory_goal = FollowJointTrajectory.Goal()
-            #trajectory_goal.goal_time_tolerance = rclpy.duration.Duration(1.0)
+            # trajectory_goal.goal_time_tolerance = rclpy.Time(1.0)
             joint_name = command['joint']
             trajectory_goal.trajectory.joint_names = [joint_name]
             if 'inc' in command:
                 inc = command['inc']
-                self.get_logger().info('inc = {0}'.format(inc))
                 new_value = inc
             elif 'delta' in command:
                 joint_index = joint_state.name.index(joint_name)
                 joint_value = joint_state.position[joint_index]
                 delta = command['delta']
-                self.get_logger().info('delta = {0}, joint_index = {1}, joint_value = {2}'.format(delta, joint_index, joint_value))
                 new_value = joint_value + delta
             point.positions = [new_value]
             trajectory_goal.trajectory.points = [point]
-            #trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
-            trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
-            self.get_logger().info('joint_name = {0}, trajectory_goal = {1}'.format(joint_name, trajectory_goal))
+            current_time = self.get_clock().now()
+            trajectory_goal.trajectory.header.stamp = current_time.to_msg()
             self.trajectory_client.send_goal_async(trajectory_goal)
-            self.get_logger().info('Done sending pose.')
-            self.keys.print_commands()
+            # self.get_logger().info('Done sending pose.')
+            # self.keys.print_commands()
 
     def main(self):
-        hm.HelloNode.main(self, 'keyboard_teleop', 'keyboard_teleop', wait_for_first_pointcloud=False)
+        rclpy.init()
+        super().__init__('keyboard_test')
 
-        self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10)
+        self.subscription = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10)
+        self.subscription  # prevent unused variable warning
+
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
+        while not self.trajectory_client.wait_for_server(timeout_sec=2.0):
+            self.get_logger().info("Waiting on '/stretch_controller/follow_joint_trajectory' action server...")
 
         rate = self.create_rate(self.rate)
 
         self.keys.print_commands()
         while rclpy.ok():
+            rclpy.spin_once(self)
             command = self.keys.get_command(self)
             self.send_command(command)
-            rclpy.spin_once(self)
-            rate.sleep()
+        self.destroy_node()
+        rclpy.shutdown()
 
-
-if __name__ == '__main__':
+def main():
     try:
-        rclpy.init()
         node = KeyboardTeleopNode()
         node.main()
-        rclpy.shutdown()
     except KeyboardInterrupt:
-        node.get_logger().info('interrupt received, so shutting down')
+        print('interrupt received, so shutting down')
+
+if __name__ == '__main__':
+    main()
