@@ -284,24 +284,26 @@ class KeyboardTeleopNode(hm.HelloNode):
 
     def send_command(self, command):
         joint_state = self.joint_state
+        print(joint_state.name)
         if (joint_state is not None) and (command is not None):
             trajectory_goal = FollowJointTrajectory.Goal()
             # trajectory_goal.goal_time_tolerance = rclpy.time.Time()
             joint_name = command['joint']
-            duration = Duration(seconds=5.0)
+            duration1 = Duration(seconds=0.0)
+            duration2 = Duration(seconds=1.0)
 
             # for base joints
             if 'inc' in command:
                 inc = command['inc']
                 point1 = MultiDOFJointTrajectoryPoint()
                 point2 = MultiDOFJointTrajectoryPoint()
-                point1.time_from_start = duration.to_msg()
-                point2.time_from_start = duration.to_msg()
+                point1.time_from_start = duration1.to_msg()
+                point2.time_from_start = duration2.to_msg()
                 transform1 = Transform()
                 transform2 = Transform()
                 transform1.translation.x = 0.0
-                transform2.translation.x = inc + 2.0
                 transform1.rotation.w = 1.0
+                transform2.translation.x = inc
                 transform2.rotation.w = 1.0
                 point1.transforms = [transform1]
                 point2.transforms = [transform2]
@@ -316,8 +318,8 @@ class KeyboardTeleopNode(hm.HelloNode):
             elif 'delta' in command:
                 point1 = JointTrajectoryPoint()
                 point2 = JointTrajectoryPoint()
-                point1.time_from_start = duration.to_msg()
-                point2.time_from_start = duration.to_msg()
+                point1.time_from_start = duration1.to_msg()
+                point2.time_from_start = duration2.to_msg()
                 joint_index = joint_state.name.index(joint_name)
                 joint_value = joint_state.position[joint_index]
                 delta = command['delta']
