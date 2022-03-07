@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import math
-import keyboard as kb
+from keyboard import KBHit
 import argparse as ap
 
 import rclpy
@@ -28,7 +28,7 @@ class GetKeyboardCommands:
         self.clean_surface_on = clean_surface_on
         self.grasp_object_on = grasp_object_on
         self.deliver_object_on = deliver_object_on
-
+        self.kb = KBHit()
         self.step_size = 'medium'
         self.rad_per_deg = math.pi/180.0
         self.small_deg = 3.0
@@ -87,9 +87,11 @@ class GetKeyboardCommands:
 
     def get_command(self, node):
         command = None
+        c = None
 
-        c = kb.getch()
-        
+        if self.kb.kbhit(): # Returns True if any key pressed
+            c = self.kb.getch()
+             
         ####################################################
         ## MOSTLY MAPPING RELATED CAPABILITIES
         ## (There are non-mapping outliers.)
@@ -281,10 +283,11 @@ class KeyboardTeleopNode(hm.HelloNode):
         
     def joint_states_callback(self, joint_state):
         self.joint_state = joint_state
+        command = self.keys.get_command(self)
+        self.send_command(command)
 
     def send_command(self, command):
         joint_state = self.joint_state
-        print(joint_state.name)
         if (joint_state is not None) and (command is not None):
             trajectory_goal = FollowJointTrajectory.Goal()
             # trajectory_goal.goal_time_tolerance = rclpy.time.Time()
@@ -406,10 +409,8 @@ class KeyboardTeleopNode(hm.HelloNode):
         self.subscription
 
         self.keys.print_commands()
-        while rclpy.ok():
-            rclpy.spin_once(self)
-            command = self.keys.get_command(self)
-            self.send_command(command)
+        rclpy.spin(self)
+        self.keys.kb.set_normal_term()
         self.destroy_node()
         rclpy.shutdown()
 
