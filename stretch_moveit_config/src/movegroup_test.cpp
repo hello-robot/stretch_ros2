@@ -129,14 +129,15 @@ int main(int argc, char** argv)
   joint_group_positions[0] = 0.2;
   move_group.setJointValueTarget(joint_group_positions);
 
-  // We lower the allowed maximum velocity and acceleration to 5% of their maximum.
+  // We lower the allowed maximum velocity and acceleration to 50% of their maximum.
   // The default values are 10% (0.1).
   // Set your preferred defaults in the joint_limits.yaml file of your robot's moveit_config
   // or set explicit factors in your code if you need your robot to move faster.
-  move_group.setMaxVelocityScalingFactor(0.05);
-  move_group.setMaxAccelerationScalingFactor(0.05);
+  move_group.setMaxVelocityScalingFactor(0.5);
+  move_group.setMaxAccelerationScalingFactor(0.5);
 
   success = (move_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  move_group.move();
   RCLCPP_INFO(LOGGER, "Visualizing plan 2 (joint space goal) %s", success ? "" : "FAILED");
 
   // Visualize the plan in RViz:
