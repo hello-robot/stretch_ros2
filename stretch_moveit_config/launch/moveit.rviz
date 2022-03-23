@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /MotionPlanning1
         - /MotionPlanning1/Planned Path1
+        - /MarkerArray1
       Splitter Ratio: 0.7425600290298462
     Tree Height: 300
   - Class: rviz_common/Help
@@ -730,6 +731,18 @@ Visualization Manager:
       State Display Time: 3x
       Trail Step Size: 1
       Trajectory Topic: /display_planned_path
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: MarkerArray
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: move_group_visualization
       Value: true
   Enabled: true
   Global Options:
