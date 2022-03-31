@@ -1,4 +1,4 @@
-// This is a test script to try the move group API for MoveIt 2 with the Stretch RE1 robot
+// This is a test script to demonstrate the move group API for MoveIt 2 with the Stretch RE1 robot
 // It is based on the MoveGroup C++ tutorial for MoveIt 2
 
 #include <moveit/move_group_interface/move_group_interface.h>
@@ -99,6 +99,9 @@ int main(int argc, char** argv)
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
   // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  joint_group_positions[0] = -0.5;
+  joint_group_positions[1] = 0;
+  joint_group_positions[2] = 0;
   joint_group_positions[3] = 0.2;
   joint_group_positions[4] = 0;
   joint_group_positions[5] = 0;
