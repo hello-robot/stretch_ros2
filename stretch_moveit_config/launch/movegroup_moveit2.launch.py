@@ -10,10 +10,13 @@ from launch.substitutions import LaunchConfiguration
 
 from launch_ros.actions import Node
 
+# from hybrid_planning_common import (generate_common_hybrid_launch_description, load_yaml)
+
 
 def generate_launch_description():
     moveit_config_path = get_package_share_path('stretch_moveit_config')
     stretch_core_path = get_package_share_path('stretch_core')
+    moveit_hybrid_planning_path = get_package_share_path('moveit_hybrid_planning')
 
     ld = LaunchDescription()
     ld.add_action(DeclareLaunchArgument('pipeline', default_value='ompl', description='specify the planning pipeline'))
@@ -57,25 +60,49 @@ def generate_launch_description():
                                                  launch_arguments=move_group_launch_args.items())
     ld.add_action(move_group_launch)
 
-    movegroup_test_py = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/movegroup_test.launch.py'))
-    movegroup_test = IncludeLaunchDescription(movegroup_test_py,
-                                                 launch_arguments=move_group_launch_args.items())
-    ld.add_action(movegroup_test)
+    ################################################################################################################
+    # Uncomment to run the movegroup demo with Stretch
+    # movegroup_test_py = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/movegroup_test.launch.py'))
+    # movegroup_test = IncludeLaunchDescription(movegroup_test_py,
+    #                                              launch_arguments=move_group_launch_args.items())
+    # ld.add_action(movegroup_test)
 
     # Run Rviz and load the default config to see the state of the move_group node
-    moveit_rviz_launch_py = PythonLaunchDescriptionSource(
-        str(moveit_config_path / 'launch/moveit_rviz.launch.py')
-    )
-    moveit_rviz_args = {
-        'rviz_config': str(moveit_config_path / 'launch/moveit.rviz'),
-        'debug': LaunchConfiguration('debug'),
-        'robot_description': robot_description_content,
-        'semantic_config': semantic_content,
-    }
-    moveit_rviz_launch = IncludeLaunchDescription(moveit_rviz_launch_py, launch_arguments=moveit_rviz_args.items(),
-                                                  condition=IfCondition(LaunchConfiguration('use_rviz')))
-    ld.add_action(moveit_rviz_launch)
+    # moveit_rviz_launch_py = PythonLaunchDescriptionSource(
+    #     str(moveit_config_path / 'launch/moveit_rviz.launch.py')
+    # )
+    # moveit_rviz_args = {
+    #     'rviz_config': str(moveit_config_path / 'launch/moveit.rviz'),
+    #     'debug': LaunchConfiguration('debug'),
+    #     'robot_description': robot_description_content,
+    #     'semantic_config': semantic_content,
+    # }
+    # moveit_rviz_launch = IncludeLaunchDescription(moveit_rviz_launch_py, launch_arguments=moveit_rviz_args.items(),
+    #                                               condition=IfCondition(LaunchConfiguration('use_rviz')))
+    # ld.add_action(moveit_rviz_launch)
 
+    ################################################################################################################
+    # Uncomment to run the Hybrid planning demo with Stretch
+    hybrid_planning_launch_py = PythonLaunchDescriptionSource(
+        str(moveit_config_path / 'launch/hybrid_planning_demo.launch.py')
+    )
+    hybrid_planning_launch = IncludeLaunchDescription(hybrid_planning_launch_py, launch_arguments=move_group_launch_args.items())
+    ld.add_action(hybrid_planning_launch)
+
+    # # Run Rviz and load the default config to see the state of the move_group node
+    # moveit_rviz_launch_py = PythonLaunchDescriptionSource(
+    #     str(moveit_config_path / 'launch/moveit_rviz.launch.py')
+    # )
+    # moveit_rviz_args = {
+    #     'rviz_config': str(moveit_hybrid_planning_path / 'config/hybrid_planning_demo.rviz'),
+    #     'debug': LaunchConfiguration('debug'),
+    #     'robot_description': robot_description_content,
+    #     'semantic_config': semantic_content,
+    # }
+    # moveit_rviz_launch = IncludeLaunchDescription(moveit_rviz_launch_py, launch_arguments=moveit_rviz_args.items(),
+    #                                               condition=IfCondition(LaunchConfiguration('use_rviz')))
+    # ld.add_action(moveit_rviz_launch)
+    ################################################################################################################
     # If database loading was enabled, start mongodb as well
     warehouse_launch_py = PythonLaunchDescriptionSource(
         str(moveit_config_path / 'launch/warehouse_db.launch.py')

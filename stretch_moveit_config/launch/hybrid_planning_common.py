@@ -22,8 +22,17 @@ def load_file(package_name, file_path):
         return None
 
 
-def load_yaml(package_name, file_path):
+def load_yaml1(package_name, file_path):
     package_path = get_package_share_directory(package_name)
+    print(package_path)
+    absolute_file_path = os.path.join(package_path, file_path)
+
+    return absolute_file_path
+
+
+def load_yaml2(package_name, file_path):
+    package_path = get_package_share_directory(package_name)
+    print(package_path)
     absolute_file_path = os.path.join(package_path, file_path)
 
     try:
@@ -36,9 +45,9 @@ def load_yaml(package_name, file_path):
 def get_robot_description():
     robot_description_config = xacro.process_file(
         os.path.join(
-            get_package_share_directory("moveit_resources_panda_moveit_config"),
-            "config",
-            "panda.urdf.xacro",
+            get_package_share_directory("stretch_description"),
+            "urdf",
+            "stretch.urdf",
         )
     )
     robot_description = {"robot_description": robot_description_config.toxml()}
@@ -47,7 +56,7 @@ def get_robot_description():
 
 def get_robot_description_semantic():
     robot_description_semantic_config = load_file(
-        "moveit_resources_panda_moveit_config", "config/panda.srdf"
+        "stretch_moveit_config", "config/stretch_description.srdf"
     )
     robot_description_semantic = {
         "robot_description_semantic": robot_description_semantic_config
@@ -60,8 +69,8 @@ def generate_common_hybrid_launch_description():
 
     robot_description_semantic = get_robot_description_semantic()
 
-    kinematics_yaml = load_yaml(
-        "moveit_resources_panda_moveit_config", "config/kinematics.yaml"
+    kinematics_yaml = load_yaml1(
+        "stretch_moveit_config", "config/kinematics.yaml"
     )
 
     # The global planner uses the typical OMPL parameters
@@ -72,30 +81,30 @@ def generate_common_hybrid_launch_description():
             "start_state_max_bounds_error": 0.1,
         }
     }
-    ompl_planning_yaml = load_yaml(
-        "moveit_resources_panda_moveit_config", "config/ompl_planning.yaml"
+    ompl_planning_yaml = load_yaml2(
+        "stretch_moveit_config", "config/ompl_planning.yaml"
     )
     planning_pipelines_config["ompl"].update(ompl_planning_yaml)
 
-    moveit_simple_controllers_yaml = load_yaml(
-        "moveit_resources_panda_moveit_config", "config/panda_controllers.yaml"
+    stretch_simple_controllers_yaml = load_yaml1(
+        "stretch_moveit_config", "config/ros_controllers.yaml"
     )
-    moveit_controllers = {
-        "moveit_simple_controller_manager": moveit_simple_controllers_yaml,
-        "moveit_controller_manager": "moveit_simple_controller_manager/MoveItSimpleControllerManager",
+    stretch_controllers = {
+        "moveit_simple_controller_manager": stretch_simple_controllers_yaml,
+        "moveit_controller_manager": "stretch_simple_controller_manager/MoveItSimpleControllerManager",
     }
 
     # Any parameters that are unique to your plugins go here
-    common_hybrid_planning_param = load_yaml(
+    common_hybrid_planning_param = load_yaml1(
         "moveit_hybrid_planning", "config/common_hybrid_planning_params.yaml"
     )
-    global_planner_param = load_yaml(
+    global_planner_param = load_yaml1(
         "moveit_hybrid_planning", "config/global_planner.yaml"
     )
-    local_planner_param = load_yaml(
+    local_planner_param = load_yaml1(
         "moveit_hybrid_planning", "config/local_planner.yaml"
     )
-    hybrid_planning_manager_param = load_yaml(
+    hybrid_planning_manager_param = load_yaml1(
         "moveit_hybrid_planning", "config/hybrid_planning_manager.yaml"
     )
 
@@ -111,13 +120,12 @@ def generate_common_hybrid_launch_description():
                 plugin="moveit::hybrid_planning::GlobalPlannerComponent",
                 name="global_planner",
                 parameters=[
-                    common_hybrid_planning_param,
                     global_planner_param,
                     robot_description,
                     robot_description_semantic,
                     kinematics_yaml,
                     planning_pipelines_config,
-                    moveit_controllers,
+                    stretch_controllers,
                 ],
             ),
             ComposableNode(
@@ -125,7 +133,6 @@ def generate_common_hybrid_launch_description():
                 plugin="moveit::hybrid_planning::LocalPlannerComponent",
                 name="local_planner",
                 parameters=[
-                    common_hybrid_planning_param,
                     local_planner_param,
                     robot_description,
                     robot_description_semantic,
@@ -137,7 +144,6 @@ def generate_common_hybrid_launch_description():
                 plugin="moveit::hybrid_planning::HybridPlanningManager",
                 name="hybrid_planning_manager",
                 parameters=[
-                    common_hybrid_planning_param,
                     hybrid_planning_manager_param,
                 ],
             ),
@@ -147,8 +153,8 @@ def generate_common_hybrid_launch_description():
 
     # RViz
     rviz_config_file = (
-        get_package_share_directory("moveit_hybrid_planning")
-        + "/config/hybrid_planning_demo.rviz"
+        get_package_share_directory("stretch_moveit_config")
+        + "/launch/hybrid_planning_demo.rviz"
     )
     rviz_node = Node(
         package="rviz2",
@@ -165,7 +171,7 @@ def generate_common_hybrid_launch_description():
         executable="static_transform_publisher",
         name="static_transform_publisher",
         output="log",
-        arguments=["0.0", "0.0", "0.0", "0.0", "0.0", "0.0", "world", "panda_link0"],
+        arguments=["0.0", "0.0", "0.0", "0.0", "0.0", "0.0", "odom", "base_link"],
     )
 
     # Publish TF
@@ -177,42 +183,49 @@ def generate_common_hybrid_launch_description():
         parameters=[robot_description],
     )
 
-    # ros2_control using FakeSystem as hardware
-    ros2_controllers_path = os.path.join(
-        get_package_share_directory("moveit_hybrid_planning"),
-        "config",
-        "demo_controller.yaml",
-    )
-    ros2_control_node = Node(
-        package="controller_manager",
-        executable="ros2_control_node",
-        parameters=[robot_description, ros2_controllers_path],
-        output={
-            "stdout": "screen",
-            "stderr": "screen",
-        },
-    )
+    # # ros2_control using FakeSystem as hardware
+    # ros2_controllers_path = os.path.join(
+    #     get_package_share_directory("stretch_moveit_config"),
+    #     "config",
+    #     "ros_controllers.yaml",
+    # )
+    # ros2_control_node = Node(
+    #     package="controller_manager",
+    #     executable="ros2_control_node",
+    #     parameters=[robot_description, ros2_controllers_path],
+    #     output={
+    #         "stdout": "screen",
+    #         "stderr": "screen",
+    #     },
+    # )
 
-    # Load controllers
-    load_controllers = []
-    for controller in [
-        "joint_state_broadcaster",
-        "panda_joint_group_position_controller",
-    ]:
-        load_controllers += [
-            ExecuteProcess(
-                cmd=["ros2 run controller_manager spawner {}".format(controller)],
-                shell=True,
-                output="screen",
-            )
-        ]
+    # # Load controllers
+    # load_controllers = []
+    # for controller in [
+    #     "stretch_controller",
+    #     "joint_state_broadcaster",
+    # ]:
+    #     load_controllers += [
+    #         ExecuteProcess(
+    #             cmd=["ros2 run controller_manager spawner {}".format(controller)],
+    #             shell=True,
+    #             output="screen",
+    #         )
+    #     ]
+
+    # launched_nodes = [
+    #     container,
+    #     # static_tf,
+    #     rviz_node,
+    #     robot_state_publisher,
+    #     ros2_control_node,
+    # ] + load_controllers
 
     launched_nodes = [
         container,
         static_tf,
         rviz_node,
         robot_state_publisher,
-        ros2_control_node,
-    ] + load_controllers
+    ]
 
     return launched_nodes
