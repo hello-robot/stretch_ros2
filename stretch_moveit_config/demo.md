@@ -13,9 +13,9 @@ Stretch has a kinematically simple 3 DoF arm (+2 with DexWrist) that is suitable
 ### Installing ROS 2
 By default, Stretch RE1 ships with Ubuntu 18.04, ROS Melodic, and Python2 packages. These steps will install a second operating system with Ubuntu 20.04, ROS Noetic, ROS 2 Galactic (where MoveIt 2 is supported), and Python3 packages.
 
-1. A new firmware called protocol 1 (p1) for Stretch adds support for spline trajectories, a feature used by MoveIt2. Use the firmware update guide to install the new firmware.
+1. A new firmware called protocol 1 (p1) for Stretch adds support for spline trajectories, a feature used by MoveIt2. Use the [firmware update guide](https://github.com/hello-robot/stretch_firmware/blob/master/tutorials/docs/updating_firmware.md) to install the new firmware.
 
-2. Use the Noetic installation instructions. Following the guide will create the second Ubuntu 20.04 partition, and create a ROS2 Galactic workspace with MoveIt 2 installed.
+2. Use the [Noetic installation instructions](https://github.com/hello-robot/stretch_ros/blob/dev/noetic/install_noetic.md) to create the second Ubuntu 20.04 partition, and create a ROS2 Galactic workspace with MoveIt 2 installed.
 
 3. Boot into the new Ubuntu 20.04 partition, and edit the last few lines of the ~/.bashrc file to comment out sourcing of Noetic workspaces. When both versions of ROS are sourced, package conflicts arise. The result should look like:
 
@@ -28,7 +28,7 @@ source ~/ament_ws/install/setup.bash
 
 ### Installing MoveIt 2 and Its Dependencies
 
-5. Clone the stretch_ros2 repository in your workspace and switch to the “feature/hybrid_planning” branch within stretch_ros2 using the following command.
+4. Clone the [stretch_ros2 repository](https://github.com/hello-robot/stretch_ros2) in your workspace and switch to the “feature/hybrid_planning” branch within stretch_ros2 using the following command.
 
 ```
 cd ~/ament_ws/src/
@@ -36,7 +36,7 @@ git clone https://github.com/hello-robot/stretch_ros2.git
 git checkout feature/hybrid_planning
 ```
 
-5. In a new terminal, collect all of the packages to build from source. Use the command below to automate collection of these packages. Download the stretch_moveit2.repos file or copy and paste the contents of the file from here.
+5. In a new terminal, collect all of the packages to build from source. Use the command below to automate collection of these packages. Download the stretch_moveit2.repos file or copy and paste the contents of the file from [here](https://github.com/hello-robot/stretch_ros2/blob/feature/hybrid_planning/stretch_moveit_config/stretch_moveit2.repos).
 
 ```
 cd ~/ament_ws/src/
@@ -66,7 +66,7 @@ stretch_robot_home.py
 ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
 ```
 
-8. Follow instructions in this tutorial to plan and execute trajectories using the interactive markers in RViz.
+8. Follow instructions in this [tutorial](https://moveit.picknik.ai/galactic/doc/tutorials/quickstart_in_rviz/quickstart_in_rviz_tutorial.html) to plan and execute trajectories using the interactive markers in RViz.
 
 Use the interactive markers to drag joints to desired positions or go to the manipulation tab in the Motion Planning pane to fine-tune joint values using the sliders. Next, click the 'Plan' button to plan the trajectory. If the plan is valid, you should be able to execute the trajectory by clicking the 'Execute' button. Below we see Stretch raising its arm without any obstacle in the way.
 
