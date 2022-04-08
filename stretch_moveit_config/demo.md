@@ -1,0 +1,85 @@
+![](../images/banner.png)
+
+## Overview
+
+MoveIt 2 is a whole-body motion planning framework for mobile manipulators that allows planning pose and joint goals in environments with and without obstacles. Stretch being a mobile manipulator is uniquely well-suited to utilize the planning capabilities of MoveIt 2 in different scenarios.
+
+## Motivation
+
+Stretch has a kinematically simple 3 DoF arm (+2 with DexWrist) that is suitable for pick and place tasks of varied objects. Its mobile base provides it with 2 additional degrees of freedom that afford it more manipulability and also the ability to move around freely in its environment. To fully utilize these capabilities, we need a planner that can plan for both the arm and the mobile base at the same time. With MoveIt 2 and ROS 2, it is now possible to achieve this, empowering users to plan more complicated robot trajectories in difficult and uncertain environments.
+
+## Demo with Stretch Robot
+
+### Installing ROS 2
+By default, Stretch RE1 ships with Ubuntu 18.04, ROS Melodic, and Python2 packages. These steps will install a second operating system with Ubuntu 20.04, ROS Noetic, ROS 2 Galactic (where MoveIt 2 is supported), and Python3 packages.
+
+1. A new firmware called protocol 1 (p1) for Stretch adds support for spline trajectories, a feature used by MoveIt2. Use the firmware update guide to install the new firmware.
+
+2. Use the Noetic installation instructions. Following the guide will create the second Ubuntu 20.04 partition, and create a ROS2 Galactic workspace with MoveIt 2 installed.
+
+3. Boot into the new Ubuntu 20.04 partition, and edit the last few lines of the ~/.bashrc file to comment out sourcing of Noetic workspaces. When both versions of ROS are sourced, package conflicts arise. The result should look like:
+
+```
+#source /opt/ros/noetic/setup.bash
+source /opt/ros/galactic/setup.bash
+#source ~/catkin_ws/devel/setup.bash
+source ~/ament_ws/install/setup.bash
+```
+
+### Installing MoveIt 2 and Its Dependencies
+
+5. Clone the stretch_ros2 repository in your workspace and switch to the “feature/hybrid_planning” branch within stretch_ros2 using the following command.
+
+```
+cd ~/ament_ws/src/
+git clone https://github.com/hello-robot/stretch_ros2.git
+git checkout feature/hybrid_planning
+```
+
+5. In a new terminal, collect all of the packages to build from source. Use the command below to automate collection of these packages. Download the stretch_moveit2.repos file or copy and paste the contents of the file from here.
+
+```
+cd ~/ament_ws/src/
+vcs import < stretch_moveit2.repos
+```
+
+6. Download additional dependencies and build the workspace using these commands. This should install MoveIt 2 and everything else you need to run the tutorials!
+
+```
+cd ~/ament_ws/src
+rosdep install --from-paths src --ignore-src -r --rosdistro galactic -y
+cd ~/ament_ws
+colcon build
+source ~/ament_ws/install/setup.bash
+```
+
+### Planning with MoveIt 2 Using RViz
+Before we proceed, it's always a good idea to home the robot first by running the following script so that we have the correct joint positions being published on the /joint_states topic. This is necessary for planning trajectories on Stretch with MoveIt.
+
+```
+stretch_robot_home.py
+```
+
+7. The easiest way to run MoveIt 2 on your robot is through RViz. With RViz you can plan, visualize, and also execute trajectories for various planning groups on your robot. To launch RViz with MoveIt 2, run the following command. (Press Ctrl+C in the terminal to terminate)
+
+```
+ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
+```
+
+8. Follow instructions in this tutorial to plan and execute trajectories using the interactive markers in RViz.
+
+Insert planning without obstacles GIF here
+Insert planning with obstacles GIF here
+
+### Planning with MoveIt 2 Using the MoveGroup C++ API
+
+9. If you want to integrate MoveIt 2 into your planning pipeline and want greater control over its various functionalities, using the MoveGroup API is the way to go. Execute the launch file again and go through the comments in the node to understand what's going on. (Press Ctrl+C in the terminal to terminate)
+
+```
+ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
+```
+9. Press the next button in the bottom left pane of the RViz window to begin the demo and plan the stow pose. Now press it again to visualize and execute the planned trajectory defined in the node.
+
+Insert MoveGroup C++ API GIF here
+
+### Code Breakdown
