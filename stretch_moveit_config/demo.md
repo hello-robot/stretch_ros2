@@ -68,8 +68,14 @@ ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
 
 8. Follow instructions in this tutorial to plan and execute trajectories using the interactive markers in RViz.
 
-Insert planning without obstacles GIF here
-Insert planning with obstacles GIF here
+Use the interactive markers to drag joints to desired positions or go to the manipulation tab in the Motion Planning pane to fine-tune joint values using the sliders. Next, click the 'Plan' button to plan the trajectory. If the plan is valid, you should be able to execute the trajectory by clicking the 'Execute' button. Below we see Stretch raising its arm without any obstacle in the way.
+
+![WithoutObstacle](https://user-images.githubusercontent.com/97639181/162533340-dec4232b-617c-4b90-b4e1-a24fd3027baa.gif)
+
+To plan with obstacles, you can insert objects like a box, cyclinder or sphere, in the planning scene to plan trajectories around the object. This can be done by adding an object using the Scene Objects tab in the Motion Planning pane. Below we see Stretch raising its arm with a flat cuboid obstacle in the way. The mobile base allows Stretch to move forward and then back again while raising the arm to avoid the obstacle.
+
+![WithObstacle](https://user-images.githubusercontent.com/97639181/162533356-15955809-f21d-4181-a012-6bca3f48dfc4.gif)
+
 
 ### Planning with MoveIt 2 Using the MoveGroup C++ API
 
