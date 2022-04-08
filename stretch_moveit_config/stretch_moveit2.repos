@@ -1,0 +1,33 @@
+repositories:
+  rviz_visual_tools:
+    type: git
+    url: https://github.com/PickNikRobotics/rviz_visual_tools
+    version: ros2
+  moveit_task_constructor:
+    type: git
+    url: https://github.com/JafarAbdi/moveit_task_constructor
+    version: ros2
+  ros2_control:
+    type: git
+    url: https://github.com/ros-controls/ros2_control
+    version: galactic
+  ros2_controllers:
+    type: git
+    url: https://github.com/ros-controls/ros2_controllers
+    version: master
+  rosparam_shortcuts:
+    type: git
+    url: https://github.com/PickNikRobotics/rosparam_shortcuts
+    version: ros2
+  stretch_moveit_plugins:
+    type: git
+    url: https://github.com/PickNikRobotics/stretch_moveit_plugins
+    version: main
+  moveit_visual_tools:
+    type: git
+    url: https://github.com/ros-planning/moveit_visual_tools
+    version: 4.0.0
+  launch_param_builder:
+    type: git
+    url: https://github.com/PickNikRobotics/launch_param_builder
+    version: main
