@@ -1,0 +1,19 @@
+controller_names:
+  - stretch_controller
+
+stretch_controller:
+  action_ns: follow_joint_trajectory
+  type: FollowJointTrajectory
+  default: true
+  joints:
+    - joint_lift
+    - joint_arm_l3
+    - joint_arm_l2
+    - joint_arm_l1
+    - joint_arm_l0
+    - joint_wrist_yaw
+    - joint_head_pan
+    - joint_head_tilt
+    - joint_gripper_finger_left
+    - joint_gripper_finger_right
+    - position
