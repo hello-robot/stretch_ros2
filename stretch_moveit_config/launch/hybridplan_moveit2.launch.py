@@ -60,17 +60,18 @@ def generate_launch_description():
                                                  launch_arguments=move_group_launch_args.items())
     ld.add_action(move_group_launch)
 
-    movegroup_test_py = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/movegroup_test.launch.py'))
-    movegroup_test = IncludeLaunchDescription(movegroup_test_py,
-                                                 launch_arguments=move_group_launch_args.items())
-    ld.add_action(movegroup_test)
+    hybrid_planning_launch_py = PythonLaunchDescriptionSource(
+        str(moveit_config_path / 'launch/hybrid_planning_demo.launch.py')
+    )
+    hybrid_planning_launch = IncludeLaunchDescription(hybrid_planning_launch_py, launch_arguments=move_group_launch_args.items())
+    ld.add_action(hybrid_planning_launch)
 
     # Run Rviz and load the default config to see the state of the move_group node
     moveit_rviz_launch_py = PythonLaunchDescriptionSource(
         str(moveit_config_path / 'launch/moveit_rviz.launch.py')
     )
     moveit_rviz_args = {
-        'rviz_config': str(moveit_config_path / 'launch/moveit.rviz'),
+        'rviz_config': str(moveit_config_path / 'launch/hybrid_planning_demo.rviz'),
         'debug': LaunchConfiguration('debug'),
         'robot_description': robot_description_content,
         'semantic_config': semantic_content,

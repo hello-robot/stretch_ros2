@@ -22,15 +22,7 @@ def load_file(package_name, file_path):
         return None
 
 
-def load_yaml1(package_name, file_path):
-    package_path = get_package_share_directory(package_name)
-    print(package_path)
-    absolute_file_path = os.path.join(package_path, file_path)
-
-    return absolute_file_path
-
-
-def load_yaml2(package_name, file_path):
+def load_yaml(package_name, file_path):
     package_path = get_package_share_directory(package_name)
     print(package_path)
     absolute_file_path = os.path.join(package_path, file_path)
@@ -69,7 +61,7 @@ def generate_common_hybrid_launch_description():
 
     robot_description_semantic = get_robot_description_semantic()
 
-    kinematics_yaml = load_yaml1(
+    kinematics_yaml = load_yaml(
         "stretch_moveit_config", "config/kinematics.yaml"
     )
 
@@ -81,13 +73,13 @@ def generate_common_hybrid_launch_description():
             "start_state_max_bounds_error": 0.1,
         }
     }
-    ompl_planning_yaml = load_yaml2(
+    ompl_planning_yaml = load_yaml(
         "stretch_moveit_config", "config/ompl_planning.yaml"
     )
     planning_pipelines_config["ompl"].update(ompl_planning_yaml)
 
-    stretch_simple_controllers_yaml = load_yaml1(
-        "stretch_moveit_config", "config/ros_controllers.yaml"
+    stretch_simple_controllers_yaml = load_yaml(
+        "stretch_moveit_config", "config/stretch_controllers.yaml"
     )
     stretch_controllers = {
         "moveit_simple_controller_manager": stretch_simple_controllers_yaml,
@@ -95,16 +87,16 @@ def generate_common_hybrid_launch_description():
     }
 
     # Any parameters that are unique to your plugins go here
-    common_hybrid_planning_param = load_yaml1(
+    common_hybrid_planning_param = load_yaml(
         "moveit_hybrid_planning", "config/common_hybrid_planning_params.yaml"
     )
-    global_planner_param = load_yaml1(
+    global_planner_param = load_yaml(
         "moveit_hybrid_planning", "config/global_planner.yaml"
     )
-    local_planner_param = load_yaml1(
-        "moveit_hybrid_planning", "config/local_planner.yaml"
+    local_planner_param = load_yaml(
+        "stretch_moveit_config", "config/local_planner.yaml"
     )
-    hybrid_planning_manager_param = load_yaml1(
+    hybrid_planning_manager_param = load_yaml(
         "moveit_hybrid_planning", "config/hybrid_planning_manager.yaml"
     )
 
@@ -152,18 +144,18 @@ def generate_common_hybrid_launch_description():
     )
 
     # RViz
-    rviz_config_file = (
-        get_package_share_directory("stretch_moveit_config")
-        + "/launch/hybrid_planning_demo.rviz"
-    )
-    rviz_node = Node(
-        package="rviz2",
-        executable="rviz2",
-        name="rviz2",
-        output="log",
-        arguments=["-d", rviz_config_file],
-        parameters=[robot_description, robot_description_semantic],
-    )
+    # rviz_config_file = (
+    #     get_package_share_directory("stretch_moveit_config")
+    #     + "/launch/hybrid_planning_demo.rviz"
+    # )
+    # rviz_node = Node(
+    #     package="rviz2",
+    #     executable="rviz2",
+    #     name="rviz2",
+    #     output="log",
+    #     arguments=["-d", rviz_config_file],
+    #     parameters=[robot_description, robot_description_semantic],
+    # )
 
     # Static TF
     static_tf = Node(
@@ -215,17 +207,18 @@ def generate_common_hybrid_launch_description():
 
     # launched_nodes = [
     #     container,
-    #     # static_tf,
+    #     static_tf,
     #     rviz_node,
     #     robot_state_publisher,
     #     ros2_control_node,
     # ] + load_controllers
-
+    
     launched_nodes = [
         container,
         static_tf,
-        rviz_node,
+        # rviz_node,
         robot_state_publisher,
+        # ros2_control_node,
     ]
 
     return launched_nodes

@@ -13,9 +13,6 @@ from launch_ros.actions import Node
 sys.path.append(os.path.dirname(__file__))
 from hybrid_planning_common import (
     generate_common_hybrid_launch_description,
-    get_robot_description,
-    get_robot_description_semantic,
-    load_file,
     # load_yaml,
 )
 
@@ -35,10 +32,11 @@ def load_joint_limits_from_config(moveit_config_path, mode='default'):
 
 def generate_launch_description():
     # generate_common_hybrid_launch_description() returns a list of nodes to launch
+    ld = LaunchDescription()
+
     common_launch = generate_common_hybrid_launch_description()
     moveit_config_path = get_package_share_path('stretch_moveit_config')
 
-    ld = LaunchDescription()
     ld.add_action(DeclareLaunchArgument('robot_description'))
     ld.add_action(DeclareLaunchArgument('semantic_config'))
 
@@ -93,13 +91,8 @@ def generate_launch_description():
         executable="hybrid_planning_demo_node",
         name="hybrid_planning_demo_node",
         output="screen",
-        parameters=move_group_params+[
-            # get_robot_description(),
-            # get_robot_description_semantic(),
-            {"global_planning_action_name": "/test/hybrid_planning/global_planning_action",
-            "local_planning_action_name": "/test/hybrid_planning/local_planning_action",
-            "hybrid_planning_action_name": "/test/hybrid_planning/run_hybrid_planning"},
-        ],
+        parameters=move_group_params,
     )
+    ld.add_action(demo_node)
 
-    return launch.LaunchDescription(common_launch + [demo_node])
+    return launch.LaunchDescription(common_launch + [ld])
