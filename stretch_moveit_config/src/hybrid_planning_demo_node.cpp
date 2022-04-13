@@ -30,26 +30,16 @@ public:
   {
     node_ = node;
 
-    std::string hybrid_planning_action_name = "";
-    if (node_->has_parameter("hybrid_planning_action_name"))
-    {
-      node_->get_parameter<std::string>("hybrid_planning_action_name", hybrid_planning_action_name);
-    }
-    else
-    {
-      RCLCPP_ERROR(LOGGER, "hybrid_planning_action_name parameter was not defined");
-      std::exit(EXIT_FAILURE);
-    }
-    hp_action_client_ =
-        rclcpp_action::create_client<moveit_msgs::action::HybridPlanner>(node_, hybrid_planning_action_name);
+    hp_action_client_ = rclcpp_action::create_client<moveit_msgs::action::HybridPlanner>(node_, "run_hybrid_planning");
+    robot_state_publisher_ = node_->create_publisher<moveit_msgs::msg::DisplayRobotState>("display_robot_state", 1);
 
-    collision_object_1_.header.frame_id = "base_link"; // originally "panda_link0"
+    collision_object_1_.header.frame_id = "odom"; // originally "panda_link0"
     collision_object_1_.id = "box1";
 
-    collision_object_2_.header.frame_id = "base_link";
+    collision_object_2_.header.frame_id = "odom";
     collision_object_2_.id = "box2";
 
-    collision_object_3_.header.frame_id = "base_link";
+    collision_object_3_.header.frame_id = "odom";
     collision_object_3_.id = "box3";
 
     box_1_.type = box_1_.BOX;
@@ -129,9 +119,9 @@ public:
     }
 
     geometry_msgs::msg::Pose box_pose;
-    box_pose.position.x = 0.4;
-    box_pose.position.y = 0.0;
-    box_pose.position.z = 0.85;
+    box_pose.position.x = 0.0; // originally 0.4
+    box_pose.position.y = -0.5; // originally 0.0
+    box_pose.position.z = 1.0; // originally 0.85
 
     collision_object_1_.primitives.push_back(box_1_);
     collision_object_1_.primitive_poses.push_back(box_pose);
@@ -143,11 +133,12 @@ public:
       scene->processCollisionObjectMsg(collision_object_1_);
     }  // Unlock PlanningScene
 
-    RCLCPP_INFO(LOGGER, "Wait 2s for the collision object");
-    rclcpp::sleep_for(2s);
+    RCLCPP_INFO(LOGGER, "Wait 5s for the collision object");
+    rclcpp::sleep_for(5s);
 
     // Setup motion planning goal taken from motion_planning_api tutorial
-    const std::string planning_group = "mobile_base_arm"; // originally "panda_arm"
+    const std::string planning_group = "stretch_arm"; // uncomment to use just the arm
+    // const std::string planning_group = "mobile_base_arm"; // uncomment to use the mobile base with arm
     robot_model_loader::RobotModelLoader robot_model_loader(node_, "robot_description");
     const moveit::core::RobotModelPtr& robot_model = robot_model_loader.getModel();
 
@@ -156,13 +147,7 @@ public:
     const moveit::core::JointModelGroup* joint_model_group = robot_state->getJointModelGroup(planning_group);
 
     // Configure a valid robot state
-    robot_state->setToDefaultValues(joint_model_group, "ready");
-    robot_state->update();
-    // Lock the planning scene as briefly as possible
-    {
-      planning_scene_monitor::LockedPlanningSceneRW locked_planning_scene(planning_scene_monitor_);
-      locked_planning_scene->setCurrentState(*robot_state);
-    }
+    robot_state->setToDefaultValues(joint_model_group, "stow");
 
     // Create desired motion goal
     moveit_msgs::msg::MotionPlanRequest goal_motion_request;
@@ -170,14 +155,15 @@ public:
     moveit::core::robotStateToRobotStateMsg(*robot_state, goal_motion_request.start_state);
     goal_motion_request.group_name = planning_group;
     goal_motion_request.num_planning_attempts = 10;
-    goal_motion_request.max_velocity_scaling_factor = 0.1;
-    goal_motion_request.max_acceleration_scaling_factor = 0.1;
-    goal_motion_request.allowed_planning_time = 2.0;
+    goal_motion_request.max_velocity_scaling_factor = 0.8; // originally 0.1
+    goal_motion_request.max_acceleration_scaling_factor = 0.8; // originally 0.1
+    goal_motion_request.allowed_planning_time = 5.0; // originally 2.0
     goal_motion_request.planner_id = "ompl";
     goal_motion_request.pipeline_id = "ompl";
 
     moveit::core::RobotState goal_state(robot_model);
-    std::vector<double> joint_values = { 0.0, 0.0, 0.0, 0.0, 0.0, 1.571, 0.785, 0.0, 0.0, 0.0 };
+    std::vector<double> joint_values = { 1.0, 0.0, 0.0, 0.0, 0.0, 0.0 }; // uncomment to use with stretch_arm group
+    // std::vector<double> joint_values = { 0.0, 0.0, 0.0, 1.0, 0.025, 0.025, 0.025, 0.025, 0.0 }; // uncomment to use with mobile_base_arm group
     goal_state.setJointGroupPositions(joint_model_group, joint_values);
 
     goal_motion_request.goal_constraints.resize(1);
@@ -230,6 +216,7 @@ public:
 private:
   rclcpp::Node::SharedPtr node_;
   rclcpp_action::Client<moveit_msgs::action::HybridPlanner>::SharedPtr hp_action_client_;
+  rclcpp::Publisher<moveit_msgs::msg::DisplayRobotState>::SharedPtr robot_state_publisher_;
   rclcpp::Subscription<moveit_msgs::msg::MotionPlanResponse>::SharedPtr global_solution_subscriber_;
   planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor_;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -255,7 +242,7 @@ int main(int argc, char** argv)
   HybridPlanningDemo demo(node);
   std::thread run_demo([&demo]() {
     // This sleep isn't necessary but it gives humans time to process what's going on
-    rclcpp::sleep_for(5s);
+    rclcpp::sleep_for(10s);
     demo.run();
   });
 
