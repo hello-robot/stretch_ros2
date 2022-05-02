@@ -49,6 +49,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
 
 add_executable(movegroup_test src/movegroup_test.cpp)
 add_executable(hybrid_planning_demo_node src/hybrid_planning_demo_node.cpp)
+add_executable(replanning_demo src/replanning.cpp)
 
 ament_target_dependencies(movegroup_test
   ament_cmake
@@ -89,9 +90,29 @@ ament_target_dependencies(hybrid_planning_demo_node
   control_msgs
 )
 
+ament_target_dependencies(replanning_demo
+  ament_cmake
+  rclcpp
+  rclcpp_action
+  tf2_geometry_msgs
+  tf2_ros
+  moveit_core
+  rviz_visual_tools
+  moveit_visual_tools
+  moveit_ros_planning_interface
+  interactive_markers
+  tf2_geometry_msgs
+  moveit_ros_planning
+  pluginlib
+  Eigen3
+  Boost
+  control_msgs
+)
+
 install(TARGETS
   movegroup_test
   hybrid_planning_demo_node
+  replanning_demo
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}
