@@ -84,8 +84,8 @@ To plan with obstacles, you can insert objects like a box, cyclinder or sphere, 
 ```
 ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
 ```
-9. Press the next button in the bottom left pane of the RViz window to begin the demo and plan the stow pose. Now press it again to visualize and execute the planned trajectory defined in the node.
+10. Press the next button in the bottom left pane of the RViz window to begin the demo and plan the stow pose. Now press it again to visualize and execute the planned trajectory defined in the node. (This step executes base movement. Ensure you have enough room around the robot before running the script)
 
-Insert MoveGroup C++ API GIF here
+![StowEdited](https://user-images.githubusercontent.com/97639181/166838248-cbfd537b-973e-4fb4-b60c-b5b3c111e02d.gif)
 
-### Code Breakdown
+Read the comments for a breakdown of the code
