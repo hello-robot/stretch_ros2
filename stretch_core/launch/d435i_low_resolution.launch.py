@@ -5,8 +5,8 @@ from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, LogI
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.conditions import LaunchConfigurationEquals
 
-configurable_parameters = [{'name': 'depth_module.profile',         'default': '424x240x15.0', 'description': 'depth module profile'},                           
-                           {'name': 'rgb_camera.profile',           'default': '424x240x15.0', 'description': 'color image width'},
+configurable_parameters = [{'name': 'depth_module.profile',         'default': '424x240x15', 'description': 'depth module profile'},                           
+                           {'name': 'rgb_camera.profile',           'default': '424x240x15', 'description': 'color image width'},
                            ]
                            
 def declare_configurable_parameters(parameters):
