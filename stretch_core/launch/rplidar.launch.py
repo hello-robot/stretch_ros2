@@ -2,10 +2,10 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.actions import LogInfo
+from launch.actions import DeclareLaunchArgument, LogInfo, ExecuteProcess, RegisterEventHandler
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch.event_handlers import OnShutdown
 
 configurable_parameters = [{'name': 'serial_port',      'default': '/dev/hello-lrf',   'description':"'Specifying usb port to connected lidar'"},
                            {'name': 'serial_baudrate',  'default': '115200',           'description':"'Specifying usb port baudrate to connected lidar'"},
@@ -35,19 +35,40 @@ def generate_launch_description():
     
     lidar_node = Node(
             package='sllidar_ros2',
-            node_executable='sllidar_node',
-            node_name='sllidar_node',
+            executable='sllidar_node',
+            name='sllidar_node',
             parameters=[set_configurable_parameters(configurable_parameters)],
             output='screen')
 
     laser_filters = Node(
             package='laser_filters',
-            node_executable='scan_to_scan_filter_chain',
-            node_name='laser_filter',
+            executable='scan_to_scan_filter_chain',
+            name='laser_filter',
             parameters=[laser_filter_config]
             )
+
+    # shut_laser = ExecuteProcess(
+    #     cmd=[[
+    #         'hello_robot_lrf_off.py'
+    #     ]],
+    #     shell=True
+    # )
+
+    # laser_shutdown = RegisterEventHandler(
+    # OnShutdown(
+    #     on_shutdown=[
+    #             LogInfo(msg='Lidar was asked to shutdown'),
+    #             ExecuteProcess(
+    #                 cmd=[[
+    #                     'hello_robot_lrf_off.py'
+    #                 ]]
+    #             )
+    #         ]
+    #     )
+    # )   
 
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
         lidar_node,
         laser_filters,
+        # laser_shutdown,
     ])
