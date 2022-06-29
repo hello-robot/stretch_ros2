@@ -32,7 +32,7 @@ def generate_launch_description():
         'config',
         'laser_filter_params.yaml'
         )
-    
+
     lidar_node = Node(
             package='sllidar_ros2',
             executable='sllidar_node',
@@ -47,28 +47,7 @@ def generate_launch_description():
             parameters=[laser_filter_config]
             )
 
-    # shut_laser = ExecuteProcess(
-    #     cmd=[[
-    #         'hello_robot_lrf_off.py'
-    #     ]],
-    #     shell=True
-    # )
-
-    # laser_shutdown = RegisterEventHandler(
-    # OnShutdown(
-    #     on_shutdown=[
-    #             LogInfo(msg='Lidar was asked to shutdown'),
-    #             ExecuteProcess(
-    #                 cmd=[[
-    #                     'hello_robot_lrf_off.py'
-    #                 ]]
-    #             )
-    #         ]
-    #     )
-    # )   
-
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
         lidar_node,
         laser_filters,
-        # laser_shutdown,
     ])
