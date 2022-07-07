@@ -23,6 +23,7 @@ setup(
     entry_points={
         'console_scripts': [
             'stretch_driver = stretch_core.stretch_driver:main',
+            'detect_aruco_markers = stretch_core.detect_aruco_markers:main',
         ],
     },
 )
