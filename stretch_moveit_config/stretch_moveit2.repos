@@ -3,14 +3,6 @@ repositories:
     type: git
     url: https://github.com/PickNikRobotics/rviz_visual_tools
     version: ros2
-  ros2_control:
-    type: git
-    url: https://github.com/ros-controls/ros2_control
-    version: galactic
-  ros2_controllers:
-    type: git
-    url: https://github.com/ros-controls/ros2_controllers
-    version: galactic
   rosparam_shortcuts:
     type: git
     url: https://github.com/PickNikRobotics/rosparam_shortcuts
