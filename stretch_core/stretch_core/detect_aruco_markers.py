@@ -15,7 +15,7 @@ import message_filters
 from std_msgs.msg import Header
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
-# from sensor_msgs import point_cloud2
+# from sensor_msgs_py import point_cloud2
 from sensor_msgs.msg import PointCloud2, PointField
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
@@ -610,7 +610,7 @@ class DetectArucoNode(Node):
         self.show_debug_images = False
         self.publish_marker_point_clouds = False
 
-        self.marker_info = self.declare_parameter('aruco_marker_info')
+        self.marker_info = self.declare_parameter('aruco_marker_info', None)
 
         self.aruco_marker_collection = ArucoMarkerCollection(self.marker_info, self.show_debug_images)
 
