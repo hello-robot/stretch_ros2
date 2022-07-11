@@ -31,7 +31,7 @@ source ~/ament_ws/install/setup.bash
 4. Clone the [stretch_ros2 repository](https://github.com/hello-robot/stretch_ros2) in your workspace and switch to the “feature/hybrid_planning” branch within stretch_ros2 using the following command.
 
 ```
-cd ~/ament_ws/src/
+cd ~/ament_ws/src
 git clone https://github.com/hello-robot/stretch_ros2.git
 git checkout feature/hybrid_planning
 ```
@@ -39,14 +39,14 @@ git checkout feature/hybrid_planning
 5. In a new terminal, collect all of the packages to build from source. Use the command below to automate collection of these packages. Download the stretch_moveit2.repos file or copy and paste the contents of the file from [here](https://github.com/hello-robot/stretch_ros2/blob/feature/hybrid_planning/stretch_moveit_config/stretch_moveit2.repos).
 
 ```
-cd ~/ament_ws/src/
+cd ~/ament_ws/src
 vcs import < stretch_moveit2.repos
 ```
 
 6. Download additional dependencies and build the workspace using these commands. This should install MoveIt 2 and everything else you need to run the tutorials!
 
 ```
-cd ~/ament_ws/src
+cd ~/ament_ws
 rosdep install --from-paths src --ignore-src -r --rosdistro galactic -y
 cd ~/ament_ws
 colcon build
