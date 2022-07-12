@@ -1,7 +1,7 @@
 # examples of command line use
-# ros2 param load ./stretch_marker_dict.yaml
+# ros2 param load detect_aruco_node ./stretch_marker_dict.yaml
 # ros2 param list
-# ros2 param get /aruco_markers/
+# ros2 param get detect_aruco_node aruco_marker_info.130.length_mm
 
 # Be careful with length_mm values. Stickers and printouts can vary
 # significantly from your expectations. You should measure them
