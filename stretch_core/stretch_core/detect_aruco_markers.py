@@ -596,7 +596,9 @@ class ArucoMarkerCollection:
     
 class DetectArucoNode(Node):
     def __init__(self):
-        super().__init__('detect_aruco_node')
+        super().__init__('detect_aruco_node',
+                        allow_undeclared_parameters=True,
+                        automatically_declare_parameters_from_overrides=True)
         node_name = self.get_name()
         self.get_logger().info("{0} started".format(node_name))
 
@@ -610,7 +612,15 @@ class DetectArucoNode(Node):
         self.show_debug_images = False
         self.publish_marker_point_clouds = False
 
-        self.marker_info = self.declare_parameter('aruco_marker_info', None)
+        param_list = [130, 131, 132, 133, 134, 246, 247, 248, 249, 10, 21, 'default']
+        key_list = ['length_mm', 'use_rgb_only', 'name', 'link']
+        dict = {}
+        self.marker_info = {}
+        for aruco_id in param_list:
+            for key in key_list:
+                dict[key] = self.get_parameter_or('{0}.{1}'.format(aruco_id, key))
+            self.marker_info[aruco_id] = dict
+            dict = {}
 
         self.aruco_marker_collection = ArucoMarkerCollection(self.marker_info, self.show_debug_images)
 
