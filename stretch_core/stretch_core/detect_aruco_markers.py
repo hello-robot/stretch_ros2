@@ -612,7 +612,9 @@ class DetectArucoNode(Node):
         self.show_debug_images = False
         self.publish_marker_point_clouds = False
 
-        param_list = [130, 131, 132, 133, 134, 246, 247, 248, 249, 10, 21, 'default']
+        # Reading parameters from the stretch_marker_dict.yaml file and storing values
+        # in a dictionary called marker_info
+        param_list = ['130', '131', '132', '133', '134', '246', '247', '248', '249', '10', '21', 'default']
         key_list = ['length_mm', 'use_rgb_only', 'name', 'link']
         dict = {}
         self.marker_info = {}
