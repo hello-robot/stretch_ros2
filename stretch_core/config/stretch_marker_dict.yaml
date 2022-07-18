@@ -10,7 +10,7 @@
 # error in the depths for the marker pose estimates when only using
 # RGB images.
 
-/detect_aruco_node:
+/**:
   ros__parameters:
     aruco_marker_info:
       '130':
