@@ -620,7 +620,7 @@ class DetectArucoNode(Node):
         self.marker_info = {}
         for aruco_id in param_list:
             for key in key_list:
-                dict[key] = self.get_parameter_or('{0}.{1}'.format(aruco_id, key))
+                dict[key] = self.get_parameter_or('aruco_marker_info.{0}.{1}'.format(aruco_id, key)).value
             self.marker_info[aruco_id] = dict
             dict = {}
 
