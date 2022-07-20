@@ -15,6 +15,7 @@ import message_filters
 from std_msgs.msg import Header
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
+from geometry_msgs.msg import TransformStamped
 # from sensor_msgs_py import point_cloud2
 from sensor_msgs.msg import PointCloud2, PointField
 from visualization_msgs.msg import Marker
@@ -381,8 +382,19 @@ class ArucoMarker:
     def broadcast_tf(self, tf_broadcaster, force_redundant=False):
         # Create TF frame for the marker. By default, only broadcast a
         # single time after an update.
+        transform_stamped = TransformStamped()
+        transform_stamped.header.stamp = self.timestamp
+        transform_stamped.header.frame_id = self.frame_id
+        transform_stamped.child_frame_id = self.marker.text
+        transform_stamped.transform.translation.x = self.marker_position[0]
+        transform_stamped.transform.translation.y = self.marker_position[1]
+        transform_stamped.transform.translation.z = self.marker_position[2]
+        transform_stamped.transform.rotation.x = self.marker_quaternion[0]
+        transform_stamped.transform.rotation.y = self.marker_quaternion[1]
+        transform_stamped.transform.rotation.z = self.marker_quaternion[2]
+        transform_stamped.transform.rotation.w = self.marker_quaternion[3]
         if (not self.broadcasted) or force_redundant: 
-            tf_broadcaster.sendTransform(self.marker_position, self.marker_quaternion, self.timestamp, self.marker.text, self.frame_id)
+            tf_broadcaster.sendTransform(transform_stamped)
             self.broadcasted = True
         
     def get_ros_marker(self):
