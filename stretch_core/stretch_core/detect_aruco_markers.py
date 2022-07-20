@@ -124,7 +124,7 @@ class ArucoMarker:
         coord_crop = np.mgrid[top : bottom : 1, left : right : 1]
 
         # Decompose the camera matrix.
-        camera_matrix = np.reshape(self.camera_info.K, (3,3))
+        camera_matrix = np.reshape(self.camera_info.k, (3,3))
         f_x = camera_matrix[0,0]
         c_x = camera_matrix[0,2]
         f_y = camera_matrix[1,1]
@@ -193,8 +193,8 @@ class ArucoMarker:
         self.frame_number = frame_number
         self.camera_info = camera_info
         self.depth_image = depth_image
-        self.camera_matrix = np.reshape(self.camera_info.K, (3,3))
-        self.distortion_coefficients = np.array(self.camera_info.D)
+        self.camera_matrix = np.reshape(self.camera_info.k, (3,3))
+        self.distortion_coefficients = np.array(self.camera_info.d)
         rvecs, tvecs, unknown_variable = aruco.estimatePoseSingleMarkers([self.corners],
                                                                          self.length_of_marker_mm,
                                                                          self.camera_matrix,
