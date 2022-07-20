@@ -9,16 +9,16 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
 def generate_launch_description():
-    stretch_marker_dict = Command(['ros2 param load ',
-                                         str(get_package_share_directory('stretch_core') / 'config' / 'stretch_marker_dict.yaml')])
+
+    dict_file_path = os.path.join(get_package_share_directory('stretch_core'), 'config', 'stretch_marker_dict.yaml')
 
     detect_aruco_markers = Node(
         package='stretch_core',
         executable='detect_aruco_markers',
         output='screen',
+        parameters=[dict_file_path],
         )
 
     return LaunchDescription([
-        stretch_marker_dict,
         detect_aruco_markers,
         ])
