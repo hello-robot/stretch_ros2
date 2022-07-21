@@ -75,6 +75,7 @@ class TestAction(unittest.TestCase):
 
     def marker_cb(self, msg):
         markers = msg
+        # self.marker_flag = False
         if(markers is not None):
             self.marker_flag = True
 
@@ -93,11 +94,14 @@ class TestAction(unittest.TestCase):
 
     def test_aruco_detection(self, proc_output):
         aruco_marker_subscriber = self.node.create_subscription(MarkerArray, '/aruco/marker_array', self.marker_cb, 1)
-        
+
         ts = time.time()
-        while rclpy.ok() and time.time() - ts < 3.0:
+        count = 0
+        while rclpy.ok() and time.time() - ts < 1.0:
             rclpy.spin_once(self.node, timeout_sec=0.1)
+            if(self.marker_flag == True):
+                count += 1
         
-        count = None
+        print('Detection frequency is: {0}Hz'.format(count))
         self.assertTrue(self.marker_flag)
-        # self.assertGreaterEqual(count, 10)
+        self.assertGreaterEqual(count, 10)
