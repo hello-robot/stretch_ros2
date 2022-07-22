@@ -618,8 +618,7 @@ class CollectHeadCalibrationDataNode(Node):
             if m['link'] == 'link_aruco_shoulder':
                 self.shoulder_marker_id = int(k)
 
-        # TODO: check significance of ~
-        filename = self.get_parameter('~controller_calibration_file')
+        filename = self.get_parameter_or('~controller_calibration_file').value
 
         self.get_logger().info('Loading factory default tilt backlash transition angle from the YAML file named {0}'.format(filename))
         fid = open(filename, 'r')
@@ -629,8 +628,7 @@ class CollectHeadCalibrationDataNode(Node):
         deg_per_rad = 180.0/math.pi
         self.get_logger().info('self.tilt_angle_backlash_transition_rad in degrees = {0}'.format(self.tilt_angle_backlash_transition_rad * deg_per_rad))
 
-        # TODO: check significance of ~
-        self.calibration_directory = self.get_parameter('~calibration_directory')
+        self.calibration_directory = self.get_parameter_or('~calibration_directory').value
         self.get_logger().info('Using the following directory for calibration files: {0}'.format(self.calibration_directory))
 
         # Setup time synchronization for calibration data. 
@@ -647,12 +645,13 @@ class CollectHeadCalibrationDataNode(Node):
             self.get_logger().error('Unable to connect to arm action server. Timeout exceeded.')
             sys.exit()
         self.trajectory_goal = FollowJointTrajectory.Goal()
-        # TODO: Check for a way to set this attribute
-        # self.trajectory_goal.goal_time_tolerance = rospy.Time(1.0)
+
+        goal_time_tolerance = Duration(seconds=1.0)
+        self.trajectory_goal.goal_time_tolerance = goal_time_tolerance.to_msg()
         
         self.point = JointTrajectoryPoint()
-        duration = Duration(seconds=0.0)
-        self.point.time_from_start = duration.to_msg()
+        time_from_start = Duration(seconds=0.0)
+        self.point.time_from_start = time_from_start.to_msg()
         
         self.move_to_initial_configuration()
 
