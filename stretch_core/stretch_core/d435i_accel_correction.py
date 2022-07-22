@@ -27,6 +27,7 @@ class D435iAccelCorrectionNode(Node):
             self.corrected_accel_pub.publish(self.accel)
         
     def main(self):
+        rclpy.init()
         super().__init__('D435iAccelCorrectionNode')
         self.node_name = self.get_name()
         self.get_logger().info("{0} started".format(self.node_name))

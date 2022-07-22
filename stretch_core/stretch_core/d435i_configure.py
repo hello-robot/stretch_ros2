@@ -3,7 +3,7 @@
 import rclpy
 import time
 import dynamic_reconfigure.client
-from std_srvs.srv import Trigger, TriggerResponse
+from std_srvs.srv import Trigger, Trigger_Response
 import threading
 
 class D435iConfigureNode:
@@ -28,20 +28,21 @@ class D435iConfigureNode:
         
     def default_mode_service_callback(self, request):
         self.turn_on_default_mode()
-        return TriggerResponse(
+        return Trigger_Response(
             success=True,
             message='Default mode enabled.'
             )
 
     def high_accuracy_mode_service_callback(self, request):
         self.turn_on_high_accuracy_mode()
-        return TriggerResponse(
+        return Trigger_Response(
             success=True,
             message='High Accuracy mode enabled.'
             )
 
     def main(self):
         time.sleep(3) # sleep for 3 seconds to wait for D435i to be ready
+        rclpy.init()
         self.node = rclpy.create_node('configure_d435i', 
                                        allow_undeclared_parameters=True,
                                        automatically_declare_parameters_from_overrides=True)
@@ -50,11 +51,11 @@ class D435iConfigureNode:
 
         self.parameter_client = dynamic_reconfigure.client.Client('/camera/stereo_module/')
 
-        self.switch_to_manipulation_mode_service = self.node.create_service(Trigger,
+        self.switch_to_default_mode_service = self.node.create_service(Trigger,
                                                                 '/camera/switch_to_default_mode',
                                                                  self.default_mode_service_callback)
 
-        self.switch_to_navigation_mode_service = self.node.create_service(Trigger,
+        self.switch_to_high_accuracy_mode_service = self.node.create_service(Trigger,
                                                                 '/camera/switch_to_high_accuracy_mode',
                                                                 self.high_accuracy_mode_service_callback)
 
