@@ -38,13 +38,11 @@ ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
 
 ![edited_plan_execute](https://user-images.githubusercontent.com/97639181/181605939-12160e3a-15c7-40c8-99db-71ef643ff7a6.gif)
 
-6. Now, let’s move Stretch’s mobile base! Select the mobile_base_arm move_group from the drop down menu. You should see the base interactive marker appear in RViz. Use the arrow to drag the base forward or backward for about 1m. Click Plan and Execute when you are done. Voila!
+6. Now, let’s move Stretch’s mobile base! Select the mobile_base_arm planning_group from the drop down menu. You should see the base interactive marker appear in RViz. Use the arrow to drag the base forward or backward for about 1m. Click Plan and Execute when you are done. Voila!
 
 ![edited_move_forward](https://user-images.githubusercontent.com/97639181/181606040-c3496c59-6c6c-483d-9b9b-7538c1f8093a.gif)
 
-The mobile_base_arm move group also allows you to execute a coordinated base and arm motion plan. Go ahead and move the markers around to plan some fun trajectories, maybe make Stretch do a Pirouette!
-
-Similarly, the stretch_gripper and stretch_head planning groups allow opening/closing the gripper and panning/tilting the camera.
+The mobile_base_arm planning group also allows you to execute a coordinated base and arm motion plan. Go ahead and move the markers around to plan some fun trajectories, maybe make Stretch do a Pirouette! Similarly, the stretch_gripper and stretch_head planning groups allow opening/closing the gripper and panning/tilting the camera.
 
 7. The interactive markers are just one way to control the joints. If you want a finer control, you can switch to the Joints tab of the plugin and use the sliders to adjust the desired end state of the joints.
 
