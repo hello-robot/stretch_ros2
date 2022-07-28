@@ -30,11 +30,11 @@ ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
 
 ![edited_int_markers](https://user-images.githubusercontent.com/97639181/181605790-623fef72-ba0b-4448-9240-f9ac0cb7e671.gif)
 
-4. Now click on the plan button to see the simulated motion of the robot in RViz
+4. Now click on the Plan button to see the simulated motion of the robot in RViz
 
 ![edited_robot_stow](https://user-images.githubusercontent.com/97639181/181605820-9a5390e6-4a5b-49e6-8eae-b4aaa8e070ed.gif)
 
-5. Click the execute button to execute the plan on the actual robot. Congratulations, you just stowed the robot arm using MoveIt! (Alternatively, if you do not want to review the simulated plan, you can click ‘Plan and Execute’ to execute the planned trajectory directly)
+5. Before proceeding, ensure that the robot is in an open space without obstalces. Click the Execute button to execute the plan on the actual robot. Congratulations, you just stowed the robot arm using MoveIt! (Alternatively, if you do not want to review the simulated plan, you can click ‘Plan and Execute’ to execute the planned trajectory directly)
 
 ![edited_plan_execute](https://user-images.githubusercontent.com/97639181/181605939-12160e3a-15c7-40c8-99db-71ef643ff7a6.gif)
 
@@ -52,10 +52,10 @@ The mobile_base_arm planning group also allows you to execute a coordinated base
 
 ![edited_add_obj](https://user-images.githubusercontent.com/97639181/181606170-2aea3b25-6a95-4cfc-bbf3-064f8de50811.gif)
 
-9. Now return back to the Planning tab and define an end state such that the Box is in between the robot start and end states. Plan and Execute!
+9. Now return back to the Planning tab and define an end state such that the Box is in between the robot start and end states. Again, ensure that the robot has enough space around it. Plan and Execute!
 
 ![edited_avoid_obs](https://user-images.githubusercontent.com/97639181/181606192-e42128dc-e8a6-4fb2-b27f-869a99fc414d.gif)
 
-With a sophisticated and fully functional perception pipeline, the planning scene can represent Stretch’s surroundings accurately and allow Stretch to manipulate and navigate in a cluttered environmen
+With a fully functional perception pipeline, the planning scene can represent Stretch’s surroundings accurately and allow Stretch to manipulate and navigate in a cluttered environment
 
 10. Feel free to explore more sophisticated planners shipped along with MoveIt 2 in the Context tab. End!
