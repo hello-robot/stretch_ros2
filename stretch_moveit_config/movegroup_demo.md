@@ -12,15 +12,16 @@ Stretch has a kinematically simple 3 DoF arm (+2 with DexWrist) that is suitable
 
 If you want to integrate MoveIt 2 into your planning pipeline and want greater control over its various functionalities, using the MoveGroup API is the way to go. For this tutorial we are going to use the RViz Visual Tools plugin to execute the C++ source code part by part to explore more sophisticated functionalities.
 
-Execute the launch file again to begin the tutorial. You can follow along in the C++ script to inspect finer details. (Press Ctrl+C in the terminal to terminate)
+Execute the launch file again to begin the tutorial. You can follow along in the C++ script to inspect finer details. (Press Ctrl+C in the terminal to terminate) (Ensure you have enough room around the robot before running the script)
 
 ```
 ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
 ```
 
-To execute the script and interact with the robot, all you need to do is press the Next button in the RViz Visual Tools windown at the bottom left.
+To execute the script and interact with the robot, all you need to do is press the Next button in the RViz Visual Tools windown at the bottom left. Follow the prompts on the terminal to run through the tutorial. While executing the script, it's also a good idea to study and understand the script that is being executed. Find it [here](https://github.com/hello-robot/stretch_ros2/blob/feature/hybrid_planning/stretch_moveit_config/src/movegroup_test.cpp).
 
-****** Add Image of arrow on next button in RVT ******
+![RVizVisualTools](https://user-images.githubusercontent.com/97639181/181854836-6f9b43cd-edf9-46e8-8ca1-1ac782d5b70b.png)
+
 
 1. Let's begin by joggin the camera pan and tilt joints. For having a complete 3D representation of its environment, Stretch needs to point its head in all directions, up, down, left, right, you name it! Luckily, we have a planning group that allows you to do just that - the stretch_head planning group. Go ahead and press the Next button to jog the camera.
 
@@ -30,14 +31,13 @@ To execute the script and interact with the robot, all you need to do is press t
 
 4. Stretch doesn't like sitting in a corner fretting about the future. It is the future. Stretch wants to explore and in style. What  better way to do it than by rolling around? Press Next and you'll see. That's the mobile_base planning group.
 
-5. All that exploring does get tiring and sometimes Stretch just wants to relax and dream about its next adventure. Stretch prefers to relax with its arm down, lest someone trips over it and breaks its peaceful slumber. Press Next to see the mobile_base_arm planning group.
+5. All that exploring does get tiring and sometimes Stretch just wants to relax and dream about its next adventure. Stretch prefers to relax with its arm down, lest someone trips over it and disturb Stretch's peaceful slumber. Press Next to see the mobile_base_arm planning group.
 
 6. Did someone say adventure? How about dodging some pesky obstacles? They're everywhere, but they don't bother Stretch a lot. It can go around them. Nothing stops Stretch! You know what to do.
 
 7. Stretch is smart, you don't need to tell it which joint goes where. Just say what you want done and it does it. How about planning a pose goal to see it in action? Press Next.
 
 8. To wrap it up, the final act! This one is a surprise that's only a click away. Go on, do it!
-Press the next button in the bottom left pane of the RViz window to begin the demo and plan the stow pose. Now press it again to visualize and execute the planned trajectory defined in the node. (This step executes base movement. (Ensure you have enough room around the robot before running the script)
 
 ![StowEdited](https://user-images.githubusercontent.com/97639181/166838248-cbfd537b-973e-4fb4-b60c-b5b3c111e02d.gif)
 
