@@ -14,7 +14,7 @@ Before we proceed, it's always a good idea to home the robot first by running th
 stretch_robot_home.py
 ```
 
-### Planning with MoveIt 2 Using RViz
+## Planning with MoveIt 2 Using RViz
 
 1. The easiest way to run MoveIt 2 on your robot is through the RViz plugin. With RViz you can plan, visualize, and also execute trajectories for various planning groups on your robot. To get started using MoveIt 2 with RViz, execute the following command in a terminal. (Press Ctrl+C in the terminal to terminate)
 
