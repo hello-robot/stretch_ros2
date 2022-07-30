@@ -70,7 +70,7 @@ stretch_robot_home.py
 ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
 ```
 
-8. Follow instructions in this [tutorial](https://moveit.picknik.ai/galactic/doc/tutorials/quickstart_in_rviz/quickstart_in_rviz_tutorial.html) to plan and execute trajectories using the interactive markers in RViz.
+8. Follow instructions in this [tutorial](https://github.com/hello-robot/stretch_ros2/blob/feature/hybrid_planning/stretch_moveit_config/rviz_demo.md) to plan and execute trajectories using the interactive markers in RViz.
 
 Use the interactive markers to drag joints to desired positions or go to the manipulation tab in the Motion Planning pane to fine-tune joint values using the sliders. Next, click the 'Plan' button to plan the trajectory. If the plan is valid, you should be able to execute the trajectory by clicking the 'Execute' button. Below we see Stretch raising its arm without any obstacle in the way.
 
@@ -88,7 +88,7 @@ To plan with obstacles, you can insert objects like a box, cyclinder or sphere, 
 ```
 ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
 ```
-10. Press the next button in the bottom left pane of the RViz window to begin the demo and plan the stow pose. Now press it again to visualize and execute the planned trajectory defined in the node. (This step executes base movement. Ensure you have enough room around the robot before running the script)
+10. Follow instructions in this [tutorial](https://github.com/hello-robot/stretch_ros2/blob/feature/hybrid_planning/stretch_moveit_config/movegroup_demo.md))) to plan and execute trajectories using the MoveGroup C++ API.
 
 ![StowEdited](https://user-images.githubusercontent.com/97639181/166838248-cbfd537b-973e-4fb4-b60c-b5b3c111e02d.gif)
 
