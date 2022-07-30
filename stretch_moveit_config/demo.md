@@ -36,6 +36,10 @@ git clone https://github.com/hello-robot/stretch_ros2.git
 git checkout feature/hybrid_planning
 ```
 
+4. a. In the absence of support for stretch_calibration in ROS 2 (porting in progress which will make this step redundant), we need to manually move the calibrated urdf file named stretch.urdf from the stretch_description/urdf directory in stretch_ros (in ROS Melodic) to its counterpart in stretch_ros2 (in ROS 2 Galactic).
+
+4. b. We also need to move the controller_calibration_head.yaml file from the stretch_core/config directory in stretch_ros to its counterpart in stretch_ros2.
+ 
 5. In a new terminal, collect all of the packages to build from source. Use the command below to automate collection of these packages. Download the stretch_moveit2.repos file or copy and paste the contents of the file from [here](https://github.com/hello-robot/stretch_ros2/blob/feature/hybrid_planning/stretch_moveit_config/stretch_moveit2.repos).
 
 ```
