@@ -88,7 +88,7 @@ To plan with obstacles, you can insert objects like a box, cyclinder or sphere, 
 ```
 ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
 ```
-10. Follow instructions in this [tutorial](https://github.com/hello-robot/stretch_ros2/blob/feature/hybrid_planning/stretch_moveit_config/movegroup_demo.md))) to plan and execute trajectories using the MoveGroup C++ API.
+10. Follow instructions in this [tutorial](https://github.com/hello-robot/stretch_ros2/blob/feature/hybrid_planning/stretch_moveit_config/movegroup_demo.md) to plan and execute trajectories using the MoveGroup C++ API.
 
 ![StowEdited](https://user-images.githubusercontent.com/97639181/166838248-cbfd537b-973e-4fb4-b60c-b5b3c111e02d.gif)
 
