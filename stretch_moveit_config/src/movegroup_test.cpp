@@ -23,19 +23,48 @@ int main(int argc, char** argv)
   auto move_group_node = rclcpp::Node::make_shared("movegroup_test", node_options);
 
   // We spin up a SingleThreadedExecutor for the current state monitor to get information
-  // about the robot's state.
+  // about the robot's state
   rclcpp::executors::SingleThreadedExecutor executor;
   executor.add_node(move_group_node);
   std::thread([&executor]() { executor.spin(); }).detach();
 
-  // ########################### Step 1 ##########################
-  // Setting up the stretch_head move group to move the camera joints
+  // ########################### Setup ##########################
+  // Setup
+  // MoveIt operates on sets of joints called "planning groups" and stores them in an object called
+  // the ``JointModelGroup``. Throughout MoveIt, the terms "planning group" and "joint model group"
+  // are used interchangeably
   static const std::string PLANNING_GROUP_HEAD = "stretch_head";
-  moveit::planning_interface::MoveGroupInterface move_group_head(move_group_node, PLANNING_GROUP_HEAD);
+  static const std::string PLANNING_GROUP_GRIPPER = "stretch_gripper";
+  static const std::string PLANNING_GROUP_ARM = "stretch_arm";
+  static const std::string PLANNING_GROUP_BASE = "mobile_base_arm";
+  static const std::string PLANNING_GROUP_BASE_ARM = "mobile_base_arm";
   
+  // The
+  // :moveit_codedir:`MoveGroupInterface<moveit_ros/planning_interface/move_group_interface/include/moveit/move_group_interface/move_group_interface.h>`
+  // class can be easily set up using just the name of the planning group you would like to control and plan for
+  moveit::planning_interface::MoveGroupInterface move_group_head(move_group_node, PLANNING_GROUP_HEAD);
+  moveit::planning_interface::MoveGroupInterface move_group_gripper(move_group_node, PLANNING_GROUP_GRIPPER);
+  moveit::planning_interface::MoveGroupInterface move_group_arm(move_group_node, PLANNING_GROUP_ARM);
+  moveit::planning_interface::MoveGroupInterface move_group_base(move_group_node, PLANNING_GROUP_BASE);
+  moveit::planning_interface::MoveGroupInterface move_group_base_arm(move_group_node, PLANNING_GROUP_BASE_ARM);
+  
+  // We lower the allowed maximum velocity and acceleration to 80% of their maximum.
+  // The default values are 10% (0.1).
+  // Set your preferred defaults in the joint_limits.yaml file of your robot's moveit_config
+  // or set explicit factors in your code if you need your robot to move faster.
+  move_group_head.setMaxVelocityScalingFactor(1.0);
+  move_group_head.setMaxAccelerationScalingFactor(1.0);
+  move_group_gripper.setMaxVelocityScalingFactor(1.0);
+  move_group_gripper.setMaxAccelerationScalingFactor(1.0);
+  move_group_arm.setMaxVelocityScalingFactor(1.0);
+  move_group_arm.setMaxAccelerationScalingFactor(1.0);
+  move_group_base.setMaxVelocityScalingFactor(1.0);
+  move_group_base.setMaxAccelerationScalingFactor(1.0);
+  move_group_base_arm.setMaxVelocityScalingFactor(1.0);
+  move_group_base_arm.setMaxAccelerationScalingFactor(1.0);
+
   // Raw pointers are frequently used to refer to the planning group for improved performance.
-  const moveit::core::JointModelGroup* joint_model_group =
-      move_group_head.getCurrentState()->getJointModelGroup(PLANNING_GROUP_HEAD);
+  const moveit::core::JointModelGroup* joint_model_group;
   const moveit::core::LinkModel* ee_parent_link = 
       move_group_head.getCurrentState()->getLinkModel("link_grasp_center"); // the link name can be changed here to visualize the trajectory of the corresponding link
 
@@ -63,18 +92,27 @@ int main(int argc, char** argv)
 
   // Getting Basic Information
   // We can print the name of the reference frame for this robot.
-  RCLCPP_INFO(LOGGER, "Planning frame: %s", move_group_head.getPlanningFrame().c_str());
+  RCLCPP_INFO(LOGGER, "Planning frame: %s", move_group_arm.getPlanningFrame().c_str());
 
   // We can also print the name of the end-effector link for this group.
-  RCLCPP_INFO(LOGGER, "End effector link: %s", move_group_head.getEndEffectorLink().c_str());
+  RCLCPP_INFO(LOGGER, "End effector link: %s", move_group_arm.getEndEffectorLink().c_str());
 
   // We can get a list of all the groups in the robot:
   RCLCPP_INFO(LOGGER, "Available Planning Groups:");
-  std::copy(move_group_head.getJointModelGroupNames().begin(), move_group_head.getJointModelGroupNames().end(),
+  std::copy(move_group_head.getJointModelGroupNames().begin(), move_group_arm.getJointModelGroupNames().end(),
             std::ostream_iterator<std::string>(std::cout, ", "));
 
   // Now, we call the planner to compute the plan and visualize it.
   moveit::planning_interface::MoveGroupInterface::Plan my_plan;
+
+  bool success;
+  std::vector<double> joint_group_positions;
+
+  moveit::core::RobotStatePtr current_state;
+
+  // ########################### Test ##########################
+
+  // ########################### Step 1 ##########################
 
   // Planning to a joint-space goal
   // Let's set a joint space goal and move towards it.  This will replace the
@@ -82,7 +120,7 @@ int main(int argc, char** argv)
   //
   // To start, we'll create an pointer that references the current robot's state.
   // RobotState is the object that contains all the current position/velocity/acceleration data.
-  moveit::core::RobotStatePtr current_state = move_group_head.getCurrentState(10);
+  current_state = move_group_head.getCurrentState(10);
 
   // We lower the allowed maximum velocity and acceleration to 100% of their maximum.
   // The default values are 10% (0.1).
@@ -91,16 +129,27 @@ int main(int argc, char** argv)
   move_group_head.setMaxVelocityScalingFactor(1.0);
   move_group_head.setMaxAccelerationScalingFactor(1.0);
 
+  joint_model_group =
+      move_group_head.getCurrentState()->getJointModelGroup(PLANNING_GROUP_HEAD);
+
   // Next get the current set of joint values for the group.
-  std::vector<double> joint_group_positions;
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
+
+  visual_tools.deleteAllMarkers();
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to start the demo");
+  visual_tools.trigger();
+
+  text_pose = Eigen::Isometry3d::Identity();
+  text_pose.translation().z() = 1.0;
+  visual_tools.publishText(text_pose, "Head_Group", rvt::WHITE, rvt::XLARGE);
+  visual_tools.trigger();
 
   // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
   joint_group_positions[0] = 80; // joint_head_pan, -220 to 80 faces all the way to the left and right
   joint_group_positions[1] = 0; // joint_head_tilt, -45 faces downwards
   move_group_head.setJointValueTarget(joint_group_positions);
 
-  bool success = (move_group_head.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  success = (move_group_head.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
   RCLCPP_INFO(LOGGER, "Visualizing plan (joint space goal) %s", success ? "" : "FAILED");
 
   move_group_head.move();
@@ -143,9 +192,6 @@ int main(int argc, char** argv)
   move_group_head.move();
   
   // ########################### Step 2 ##########################
-  static const std::string PLANNING_GROUP_GRIPPER = "stretch_gripper";
-  moveit::planning_interface::MoveGroupInterface move_group_gripper(move_group_node, PLANNING_GROUP_GRIPPER);
-
   joint_model_group = move_group_gripper.getCurrentState()->getJointModelGroup(PLANNING_GROUP_GRIPPER);
   
   move_group_gripper.setMaxVelocityScalingFactor(1.0);
@@ -189,9 +235,6 @@ int main(int argc, char** argv)
   move_group_gripper.move();
   
   // ########################### Step 3 ##########################
-  static const std::string PLANNING_GROUP_ARM = "stretch_arm";
-  moveit::planning_interface::MoveGroupInterface move_group_arm(move_group_node, PLANNING_GROUP_ARM);
-
   joint_model_group = move_group_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_ARM);
   
   move_group_arm.setMaxVelocityScalingFactor(1.0);
@@ -243,10 +286,7 @@ int main(int argc, char** argv)
   move_group_arm.move();
 
   // ########################### Step 4 ##########################
-  static const std::string PLANNING_GROUP_MOBILE_BASE = "mobile_base_arm";
-  moveit::planning_interface::MoveGroupInterface move_group_base(move_group_node, PLANNING_GROUP_MOBILE_BASE);
-
-  joint_model_group = move_group_base.getCurrentState()->getJointModelGroup(PLANNING_GROUP_MOBILE_BASE);
+  joint_model_group = move_group_base.getCurrentState()->getJointModelGroup(PLANNING_GROUP_BASE);
   
   move_group_base.setMaxVelocityScalingFactor(1.0);
   move_group_base.setMaxAccelerationScalingFactor(1.0);
@@ -291,10 +331,7 @@ int main(int argc, char** argv)
   move_group_base.move();
 
   // ########################### Step 5 ##########################
-  static const std::string PLANNING_GROUP_MOBILE_BASE_ARM = "mobile_base_arm";
-  moveit::planning_interface::MoveGroupInterface move_group_base_arm(move_group_node, PLANNING_GROUP_MOBILE_BASE_ARM);
-
-  joint_model_group = move_group_base_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_MOBILE_BASE_ARM);
+  joint_model_group = move_group_base_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_BASE_ARM);
   
   move_group_base_arm.setMaxVelocityScalingFactor(1.0);
   move_group_base_arm.setMaxAccelerationScalingFactor(1.0);
@@ -439,46 +476,55 @@ int main(int argc, char** argv)
 
   // ########################### Step 7 ##########################
 
+  joint_model_group = move_group_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_ARM);
+
+  move_group_arm.setMaxVelocityScalingFactor(1.0);
+  move_group_arm.setMaxAccelerationScalingFactor(1.0);
+
+  // move_group_arm.setPlanningTime(5.0);
+
+  // Getting Basic Information
+  // We can print the name of the reference frame for this robot.
+  RCLCPP_INFO(LOGGER, "Planning frame: %s", move_group_arm.getPlanningFrame().c_str());
+
+  // We can also print the name of the end-effector link for this group.
+  RCLCPP_INFO(LOGGER, "End effector link: %s", move_group_arm.getEndEffectorLink().c_str());
+
   visual_tools.deleteAllMarkers();
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to start the demo");
+  visual_tools.trigger();
+
+  text_pose = Eigen::Isometry3d::Identity();
+  text_pose.translation().z() = 1.0;
   visual_tools.publishText(text_pose, "Pose_Goal", rvt::WHITE, rvt::XLARGE);
   visual_tools.trigger();
 
-  // .. _move_group_interface-planning-to-pose-goal:
-  //
-  // Planning to a Pose goal
-  // ^^^^^^^^^^^^^^^^^^^^^^^
-  // We can plan a motion for this group to a desired pose for the
-  // end-effector.
-  move_group_base_arm.setStartStateToCurrentState();
+  geometry_msgs::msg::PoseStamped currentPose;
+  currentPose = move_group_arm.getCurrentPose();
+
+  move_group_arm.setStartStateToCurrentState();
 
   geometry_msgs::msg::Pose target_pose1;
-  target_pose1.orientation.w = 1.0;
-  target_pose1.position.x = 0;
-  target_pose1.position.y = -0.5;
-  target_pose1.position.z = 0;
-  move_group_base_arm.setPoseTarget(target_pose1);
+  target_pose1.orientation.x = currentPose.pose.orientation.x;
+  target_pose1.orientation.y = currentPose.pose.orientation.y;
+  target_pose1.orientation.z = currentPose.pose.orientation.z;
+  target_pose1.orientation.w = currentPose.pose.orientation.w;
+  target_pose1.position.x = currentPose.pose.position.x;
+  target_pose1.position.y = currentPose.pose.position.y;
+  target_pose1.position.z = 1.25;
+  move_group_arm.setApproximateJointValueTarget(target_pose1, "link_wrist_yaw");
 
-  success = (move_group_base_arm.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  success = (move_group_arm.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
 
   RCLCPP_INFO(LOGGER, "Visualizing plan 1 (pose goal) %s", success ? "" : "FAILED");
 
-  move_group_base_arm.move();
+  move_group_arm.move();
 
   // ########################### Step 8 ##########################
-  // Setup
-  // MoveIt operates on sets of joints called "planning groups" and stores them in an object called
-  // the ``JointModelGroup``. Throughout MoveIt, the terms "planning group" and "joint model group"
-  // are used interchangeably.
-  static const std::string PLANNING_GROUP_BASE_ARM = "mobile_base_arm";
-
-  // The
-  // :moveit_codedir:`MoveGroupInterface<moveit_ros/planning_interface/move_group_interface/include/moveit/move_group_interface/move_group_interface.h>`
-  // class can be easily set up using just the name of the planning group you would like to control and plan for.
-  moveit::planning_interface::MoveGroupInterface move_group_mba(move_group_node, PLANNING_GROUP_BASE_ARM);
-
+  
   // Raw pointers are frequently used to refer to the planning group for improved performance.
-  joint_model_group = move_group_mba.getCurrentState()->getJointModelGroup(PLANNING_GROUP_BASE_ARM);
-  ee_parent_link = move_group_mba.getCurrentState()->getLinkModel("link_grasp_center"); // the link name can be changed here to visualize the trajectory of the corresponding link
+  joint_model_group = move_group_base_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_BASE_ARM);
+  ee_parent_link = move_group_base_arm.getCurrentState()->getLinkModel("link_grasp_center"); // the link name can be changed here to visualize the trajectory of the corresponding link
 
   // Visualization
   visual_tools.deleteAllMarkers();
@@ -497,14 +543,14 @@ int main(int argc, char** argv)
 
   // Getting Basic Information
   // We can print the name of the reference frame for this robot.
-  RCLCPP_INFO(LOGGER, "Planning frame: %s", move_group_mba.getPlanningFrame().c_str());
+  RCLCPP_INFO(LOGGER, "Planning frame: %s", move_group_base_arm.getPlanningFrame().c_str());
 
   // We can also print the name of the end-effector link for this group.
-  RCLCPP_INFO(LOGGER, "End effector link: %s", move_group_mba.getEndEffectorLink().c_str());
+  RCLCPP_INFO(LOGGER, "End effector link: %s", move_group_base_arm.getEndEffectorLink().c_str());
 
   // We can get a list of all the groups in the robot:
   RCLCPP_INFO(LOGGER, "Available Planning Groups:");
-  std::copy(move_group_mba.getJointModelGroupNames().begin(), move_group_mba.getJointModelGroupNames().end(),
+  std::copy(move_group_base_arm.getJointModelGroupNames().begin(), move_group_base_arm.getJointModelGroupNames().end(),
             std::ostream_iterator<std::string>(std::cout, ", "));
 
   // Now, we call the planner to compute the plan and visualize it.
@@ -516,7 +562,7 @@ int main(int argc, char** argv)
   //
   // To start, we'll create an pointer that references the current robot's state.
   // RobotState is the object that contains all the current position/velocity/acceleration data.
-  current_state = move_group_mba.getCurrentState(10);
+  current_state = move_group_base_arm.getCurrentState(10);
   //
   // Next get the current set of joint values for the group.
   joint_group_positions;
@@ -532,16 +578,9 @@ int main(int argc, char** argv)
   joint_group_positions[6] = 0;
   joint_group_positions[7] = 0;
   joint_group_positions[8] = 229;
-  move_group_mba.setJointValueTarget(joint_group_positions);
+  move_group_base_arm.setJointValueTarget(joint_group_positions);
 
-  // We lower the allowed maximum velocity and acceleration to 80% of their maximum.
-  // The default values are 10% (0.1).
-  // Set your preferred defaults in the joint_limits.yaml file of your robot's moveit_config
-  // or set explicit factors in your code if you need your robot to move faster.
-  move_group_mba.setMaxVelocityScalingFactor(0.8);
-  move_group_mba.setMaxAccelerationScalingFactor(0.8);
-
-  success = (move_group_mba.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  success = (move_group_base_arm.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
   RCLCPP_INFO(LOGGER, "Visualizing plan (joint space goal) %s", success ? "" : "FAILED");
 
   // Visualize the plan in RViz:
@@ -551,7 +590,7 @@ int main(int argc, char** argv)
   visual_tools.trigger();
   visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
 
-  move_group_mba.move();
+  move_group_base_arm.move();
   // END_TUTORIAL
   visual_tools.deleteAllMarkers();
   visual_tools.trigger();
