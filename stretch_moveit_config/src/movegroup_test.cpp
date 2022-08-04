@@ -49,9 +49,9 @@ int main(int argc, char** argv)
   moveit::planning_interface::MoveGroupInterface move_group_base_arm(move_group_node, PLANNING_GROUP_BASE_ARM);
   
   // We lower the allowed maximum velocity and acceleration to 80% of their maximum.
-  // The default values are 10% (0.1).
+  // The default values are 10% (0.1)
   // Set your preferred defaults in the joint_limits.yaml file of your robot's moveit_config
-  // or set explicit factors in your code if you need your robot to move faster.
+  // or set explicit factors in your code if you need your robot to move faster
   move_group_head.setMaxVelocityScalingFactor(1.0);
   move_group_head.setMaxAccelerationScalingFactor(1.0);
   move_group_gripper.setMaxVelocityScalingFactor(1.0);
@@ -63,7 +63,7 @@ int main(int argc, char** argv)
   move_group_base_arm.setMaxVelocityScalingFactor(1.0);
   move_group_base_arm.setMaxAccelerationScalingFactor(1.0);
 
-  // Raw pointers are frequently used to refer to the planning group for improved performance.
+  // Raw pointers are frequently used to refer to the planning group for improved performance
   const moveit::core::JointModelGroup* joint_model_group;
   const moveit::core::LinkModel* ee_parent_link = 
       move_group_head.getCurrentState()->getLinkModel("link_grasp_center"); // the link name can be changed here to visualize the trajectory of the corresponding link
@@ -91,10 +91,10 @@ int main(int argc, char** argv)
   visual_tools.trigger();
 
   // Getting Basic Information
-  // We can print the name of the reference frame for this robot.
+  // We can print the name of the reference frame for this robot
   RCLCPP_INFO(LOGGER, "Planning frame: %s", move_group_arm.getPlanningFrame().c_str());
 
-  // We can also print the name of the end-effector link for this group.
+  // We can also print the name of the end-effector link for this group
   RCLCPP_INFO(LOGGER, "End effector link: %s", move_group_arm.getEndEffectorLink().c_str());
 
   // We can get a list of all the groups in the robot:
@@ -102,12 +102,14 @@ int main(int argc, char** argv)
   std::copy(move_group_head.getJointModelGroupNames().begin(), move_group_arm.getJointModelGroupNames().end(),
             std::ostream_iterator<std::string>(std::cout, ", "));
 
-  // Now, we call the planner to compute the plan and visualize it.
+  // Now, we call the planner to compute the plan and visualize it
   moveit::planning_interface::MoveGroupInterface::Plan my_plan;
 
   bool success;
   std::vector<double> joint_group_positions;
 
+  // We'll create an pointer that references the current robot's state
+  // RobotState is the object that contains all the current position/velocity/acceleration data
   moveit::core::RobotStatePtr current_state;
 
   // ########################### Test ##########################
@@ -115,19 +117,9 @@ int main(int argc, char** argv)
   // ########################### Step 1 ##########################
 
   // Planning to a joint-space goal
-  // Let's set a joint space goal and move towards it.  This will replace the
-  // pose target we set above.
-  //
-  // To start, we'll create an pointer that references the current robot's state.
-  // RobotState is the object that contains all the current position/velocity/acceleration data.
+  // Let's set a joint space goal and move towards it.
+  // We'll create an pointer that references the current robot's state.
   current_state = move_group_head.getCurrentState(10);
-
-  // We lower the allowed maximum velocity and acceleration to 100% of their maximum.
-  // The default values are 10% (0.1).
-  // Set your preferred defaults in the joint_limits.yaml file of your robot's moveit_config
-  // or set explicit factors in your code if you need your robot to move faster.
-  move_group_head.setMaxVelocityScalingFactor(1.0);
-  move_group_head.setMaxAccelerationScalingFactor(1.0);
 
   joint_model_group =
       move_group_head.getCurrentState()->getJointModelGroup(PLANNING_GROUP_HEAD);
@@ -144,7 +136,7 @@ int main(int argc, char** argv)
   visual_tools.publishText(text_pose, "Head_Group", rvt::WHITE, rvt::XLARGE);
   visual_tools.trigger();
 
-  // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify the joints to turn the head camera, plan to the new joint space goal, and visualize the plan
   joint_group_positions[0] = 80; // joint_head_pan, -220 to 80 faces all the way to the left and right
   joint_group_positions[1] = 0; // joint_head_tilt, -45 faces downwards
   move_group_head.setJointValueTarget(joint_group_positions);
@@ -156,7 +148,7 @@ int main(int argc, char** argv)
 
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
-  // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify the joints to turn the camera the other way, plan to the new joint space goal, and visualize the plan
   joint_group_positions[0] = -220; // joint_head_pan, -220 to 80 faces all the way to the left and right
   joint_group_positions[1] = 0; // joint_head_tilt, -45 faces downwards
   move_group_head.setJointValueTarget(joint_group_positions);
@@ -169,7 +161,7 @@ int main(int argc, char** argv)
   // Next get the current set of joint values for the group.
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
-  // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify the joints to face the camera downwards, plan to the new joint space goal, and visualize the plan
   joint_group_positions[0] = -220; // joint_head_pan, -220 to 80 faces all the way to the left and right
   joint_group_positions[1] = -45; // joint_head_tilt, -45 faces downwards
   move_group_head.setJointValueTarget(joint_group_positions);
@@ -182,6 +174,7 @@ int main(int argc, char** argv)
   // Next get the current set of joint values for the group.
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
+  // Now, let's modify the joints to return the camera to its default position, plan to the new joint space goal, and visualize the plan
   joint_group_positions[0] = 0; // joint_head_pan, -220 to 80 faces all the way to the left and right
   joint_group_positions[1] = 0; // joint_head_tilt, -45 faces downwards
   move_group_head.setJointValueTarget(joint_group_positions);
@@ -193,9 +186,6 @@ int main(int argc, char** argv)
   
   // ########################### Step 2 ##########################
   joint_model_group = move_group_gripper.getCurrentState()->getJointModelGroup(PLANNING_GROUP_GRIPPER);
-  
-  move_group_gripper.setMaxVelocityScalingFactor(1.0);
-  move_group_gripper.setMaxAccelerationScalingFactor(1.0);
 
   visual_tools.deleteAllMarkers();
   visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to start the demo");
@@ -211,7 +201,7 @@ int main(int argc, char** argv)
   current_state = move_group_gripper.getCurrentState(10);
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
-  // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify the joints to close the gripper, plan to the new joint space goal, and visualize the plan.
   joint_group_positions[0] = 34; // joint_gripper_finger_left
   joint_group_positions[1] = 34; // joint_gripper_finger_right
   move_group_gripper.setJointValueTarget(joint_group_positions);
@@ -224,7 +214,7 @@ int main(int argc, char** argv)
   current_state = move_group_gripper.getCurrentState(10);
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
-  // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify the joints to open the gripper, plan to the new joint space goal, and visualize the plan.
   joint_group_positions[0] = 0;
   joint_group_positions[1] = 0;
   move_group_gripper.setJointValueTarget(joint_group_positions);
@@ -236,9 +226,6 @@ int main(int argc, char** argv)
   
   // ########################### Step 3 ##########################
   joint_model_group = move_group_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_ARM);
-  
-  move_group_arm.setMaxVelocityScalingFactor(1.0);
-  move_group_arm.setMaxAccelerationScalingFactor(1.0);
 
   visual_tools.deleteAllMarkers();
   visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to start the demo");
@@ -254,7 +241,7 @@ int main(int argc, char** argv)
   current_state = move_group_arm.getCurrentState(10);
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
-  // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify the joints to raise and stretch the arm, plan to the new joint space goal, and visualize the plan
   joint_group_positions[0] = 1.1;   // 0 to 1.1, joint_lift
   joint_group_positions[1] = 0.130; // 0 to 0.130, joint_arm_l3
   joint_group_positions[2] = 0.130; // 0 to 0.130, joint_arm_l2
@@ -271,7 +258,7 @@ int main(int argc, char** argv)
   current_state = move_group_arm.getCurrentState(10);
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
-  // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify the joints to lower the arm, plan to the new joint space goal, and visualize the plan
   joint_group_positions[0] = 0.595;
   joint_group_positions[1] = 0;
   joint_group_positions[2] = 0;
@@ -288,9 +275,6 @@ int main(int argc, char** argv)
   // ########################### Step 4 ##########################
   joint_model_group = move_group_base.getCurrentState()->getJointModelGroup(PLANNING_GROUP_BASE);
   
-  move_group_base.setMaxVelocityScalingFactor(1.0);
-  move_group_base.setMaxAccelerationScalingFactor(1.0);
-
   visual_tools.deleteAllMarkers();
   visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to start the demo");
   visual_tools.trigger();
@@ -305,7 +289,7 @@ int main(int argc, char** argv)
   current_state = move_group_base.getCurrentState(10);
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
-  // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify the joints to move the base to the right and forward, plan to the new joint space goal, and visualize the plan
   joint_group_positions[0] = -0.5;   // 0 to inf, position/x
   joint_group_positions[1] = 0.5;    // 0 to inf, position/y
   joint_group_positions[2] = 0;  // 0 to 3.14, position/theta
@@ -319,7 +303,7 @@ int main(int argc, char** argv)
   current_state = move_group_base.getCurrentState(10);
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
-  // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify the joints to move the base to the initial position, plan to the new joint space goal, and visualize the plan.
   joint_group_positions[0] = 0;
   joint_group_positions[1] = 0;
   joint_group_positions[2] = 0;
@@ -333,9 +317,6 @@ int main(int argc, char** argv)
   // ########################### Step 5 ##########################
   joint_model_group = move_group_base_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_BASE_ARM);
   
-  move_group_base_arm.setMaxVelocityScalingFactor(1.0);
-  move_group_base_arm.setMaxAccelerationScalingFactor(1.0);
-
   visual_tools.deleteAllMarkers();
   visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to start the demo");
   visual_tools.trigger();
@@ -350,7 +331,7 @@ int main(int argc, char** argv)
   current_state = move_group_base_arm.getCurrentState(10);
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
-  // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify the joints to stow the arm and move forward, plan to the new joint space goal, and visualize the plan
   joint_group_positions[0] = -0.5;   // 0 to inf, position/x
   joint_group_positions[1] = 0;      // 0 to inf, position/y
   joint_group_positions[2] = 0;      // -2 to 4, position/theta
@@ -370,7 +351,7 @@ int main(int argc, char** argv)
   current_state = move_group_base_arm.getCurrentState(10);
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
-  // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify the joints to return to the initial position, plan to the new joint space goal, and visualize the plan
   joint_group_positions[0] = 0;
   joint_group_positions[1] = 0;
   joint_group_positions[2] = 0;
@@ -396,11 +377,11 @@ int main(int argc, char** argv)
   visual_tools.publishText(text_pose, "Add_Object", rvt::WHITE, rvt::XLARGE);
   visual_tools.trigger();
 
-  // Now, let's define a collision object ROS message for the robot to avoid.
+  // Now, let's define a collision object ROS message for the robot to avoid
   moveit_msgs::msg::CollisionObject collision_object;
   collision_object.header.frame_id = move_group_base_arm.getPlanningFrame();
 
-  // The id of the object is used to identify it.
+  // The id of the object is used to identify it
   collision_object.id = "box1";
 
   // Define a box to add to the world.
@@ -411,7 +392,7 @@ int main(int argc, char** argv)
   primitive.dimensions[primitive.BOX_Y] = 0.2;
   primitive.dimensions[primitive.BOX_Z] = 0.2;
 
-  // Define a pose for the box (specified relative to frame_id).
+  // Define a pose for the box (specified relative to frame_id)
   geometry_msgs::msg::Pose box_pose;
   box_pose.orientation.w = 1.0;
   box_pose.position.x = -0.4;
@@ -438,7 +419,7 @@ int main(int argc, char** argv)
   current_state = move_group_base_arm.getCurrentState(10);
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
-  // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify the joints to move the base back, plan to the new joint space goal, and visualize the plan.
   joint_group_positions[0] = -0.8;   // 0 to inf, position/x
   joint_group_positions[1] = 0;      // 0 to inf, position/y
   joint_group_positions[2] = 0;      // -2 to 4, position/theta
@@ -463,7 +444,7 @@ int main(int argc, char** argv)
   current_state = move_group_base_arm.getCurrentState(10);
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
-  // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
+  // Now, let's modify the joints to return the base to initial position, plan to the new joint space goal, and visualize the plan.
   joint_group_positions[0] = 0;      // 0 to inf, position/x
   joint_group_positions[1] = 0;      // 0 to inf, position/y
   joint_group_positions[2] = 0;      // -2 to 4, position/theta
@@ -478,16 +459,11 @@ int main(int argc, char** argv)
 
   joint_model_group = move_group_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_ARM);
 
-  move_group_arm.setMaxVelocityScalingFactor(1.0);
-  move_group_arm.setMaxAccelerationScalingFactor(1.0);
-
-  // move_group_arm.setPlanningTime(5.0);
-
   // Getting Basic Information
-  // We can print the name of the reference frame for this robot.
+  // We can print the name of the reference frame for this robot
   RCLCPP_INFO(LOGGER, "Planning frame: %s", move_group_arm.getPlanningFrame().c_str());
 
-  // We can also print the name of the end-effector link for this group.
+  // We can also print the name of the end-effector link for this group
   RCLCPP_INFO(LOGGER, "End effector link: %s", move_group_arm.getEndEffectorLink().c_str());
 
   visual_tools.deleteAllMarkers();
@@ -499,11 +475,14 @@ int main(int argc, char** argv)
   visual_tools.publishText(text_pose, "Pose_Goal", rvt::WHITE, rvt::XLARGE);
   visual_tools.trigger();
 
+  // We'll save the current pose to use it as a reference point so that we don't have to
+  // enter the pose values that must remain constant manually
   geometry_msgs::msg::PoseStamped currentPose;
   currentPose = move_group_arm.getCurrentPose();
 
   move_group_arm.setStartStateToCurrentState();
 
+  // We create the pose goal
   geometry_msgs::msg::Pose target_pose1;
   target_pose1.orientation.x = currentPose.pose.orientation.x;
   target_pose1.orientation.y = currentPose.pose.orientation.y;
@@ -512,6 +491,8 @@ int main(int argc, char** argv)
   target_pose1.position.x = currentPose.pose.position.x;
   target_pose1.position.y = currentPose.pose.position.y;
   target_pose1.position.z = 1.25;
+  
+  // We use the approximate IK solver to get the joint positions
   move_group_arm.setApproximateJointValueTarget(target_pose1, "link_wrist_yaw");
 
   success = (move_group_arm.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
@@ -522,49 +503,20 @@ int main(int argc, char** argv)
 
   // ########################### Step 8 ##########################
   
-  // Raw pointers are frequently used to refer to the planning group for improved performance.
   joint_model_group = move_group_base_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_BASE_ARM);
   ee_parent_link = move_group_base_arm.getCurrentState()->getLinkModel("link_grasp_center"); // the link name can be changed here to visualize the trajectory of the corresponding link
 
-  // Visualization
   visual_tools.deleteAllMarkers();
-  
-  // Start the demo
   visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to start the demo");
-  
-  // Batch publishing is used to reduce the number of messages being sent to RViz for large visualizations
   visual_tools.trigger();
 
-  // RViz provides many types of markers, in this demo we will use text, cylinders, and spheres
   text_pose = Eigen::Isometry3d::Identity();
   text_pose.translation().z() = 1.0;
-  visual_tools.publishText(text_pose, "MoveGroupInterface_Demo", rvt::WHITE, rvt::XLARGE);
+  visual_tools.publishText(text_pose, "Visualize_Trajectory", rvt::WHITE, rvt::XLARGE);
   visual_tools.trigger();
 
-  // Getting Basic Information
-  // We can print the name of the reference frame for this robot.
-  RCLCPP_INFO(LOGGER, "Planning frame: %s", move_group_base_arm.getPlanningFrame().c_str());
-
-  // We can also print the name of the end-effector link for this group.
-  RCLCPP_INFO(LOGGER, "End effector link: %s", move_group_base_arm.getEndEffectorLink().c_str());
-
-  // We can get a list of all the groups in the robot:
-  RCLCPP_INFO(LOGGER, "Available Planning Groups:");
-  std::copy(move_group_base_arm.getJointModelGroupNames().begin(), move_group_base_arm.getJointModelGroupNames().end(),
-            std::ostream_iterator<std::string>(std::cout, ", "));
-
-  // Now, we call the planner to compute the plan and visualize it.
-  // moveit::planning_interface::MoveGroupInterface::Plan my_plan;
-
-  // Planning to a joint-space goal
-  // Let's set a joint space goal and move towards it.  This will replace the
-  // pose target we set above.
-  //
-  // To start, we'll create an pointer that references the current robot's state.
-  // RobotState is the object that contains all the current position/velocity/acceleration data.
   current_state = move_group_base_arm.getCurrentState(10);
-  //
-  // Next get the current set of joint values for the group.
+  
   joint_group_positions;
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
@@ -591,6 +543,7 @@ int main(int argc, char** argv)
   visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
 
   move_group_base_arm.move();
+  
   // END_TUTORIAL
   visual_tools.deleteAllMarkers();
   visual_tools.trigger();
