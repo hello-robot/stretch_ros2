@@ -212,7 +212,7 @@
             - SPARS
             - SPARStwo
         mobile_base_arm:
-          default_planner_config: TRRT
+          default_planner_config: RRTConnect
           planner_configs:
             - AnytimePathShortening
             - SBL
