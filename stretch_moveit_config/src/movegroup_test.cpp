@@ -290,8 +290,8 @@ int main(int argc, char** argv)
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
   // Now, let's modify the joints to move the base to the right and forward, plan to the new joint space goal, and visualize the plan
-  joint_group_positions[0] = -0.5;   // 0 to inf, position/x
-  joint_group_positions[1] = 0.5;    // 0 to inf, position/y
+  joint_group_positions[0] = 0.5;   // 0 to inf, position/x
+  joint_group_positions[1] = -0.5;    // 0 to inf, position/y
   joint_group_positions[2] = 0;  // 0 to 3.14, position/theta
   move_group_base.setJointValueTarget(joint_group_positions);
 
@@ -332,7 +332,7 @@ int main(int argc, char** argv)
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
   // Now, let's modify the joints to stow the arm and move forward, plan to the new joint space goal, and visualize the plan
-  joint_group_positions[0] = -0.5;   // 0 to inf, position/x
+  joint_group_positions[0] = 0.5;   // 0 to inf, position/x
   joint_group_positions[1] = 0;      // 0 to inf, position/y
   joint_group_positions[2] = 0;      // -2 to 4, position/theta
   joint_group_positions[3] = 0.2;    // 0 to 1.1, joint_lift
@@ -395,7 +395,7 @@ int main(int argc, char** argv)
   // Define a pose for the box (specified relative to frame_id)
   geometry_msgs::msg::Pose box_pose;
   box_pose.orientation.w = 1.0;
-  box_pose.position.x = -0.4;
+  box_pose.position.x = 0.4;
   box_pose.position.y = 0.2;
   box_pose.position.z = 0.5;
 
@@ -420,7 +420,7 @@ int main(int argc, char** argv)
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
   // Now, let's modify the joints to move the base back, plan to the new joint space goal, and visualize the plan.
-  joint_group_positions[0] = -0.8;   // 0 to inf, position/x
+  joint_group_positions[0] = 0.8;   // 0 to inf, position/x
   joint_group_positions[1] = 0;      // 0 to inf, position/y
   joint_group_positions[2] = 0;      // -2 to 4, position/theta
   move_group_base_arm.setJointValueTarget(joint_group_positions);
@@ -521,7 +521,7 @@ int main(int argc, char** argv)
   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
   // Now, let's modify the joints to stow the arm, plan to the new joint space goal, and visualize the plan.
-  joint_group_positions[0] = -0.5;
+  joint_group_positions[0] = 0.5;
   joint_group_positions[1] = 0;
   joint_group_positions[2] = 0;
   joint_group_positions[3] = 0.2;
