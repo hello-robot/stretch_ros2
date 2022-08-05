@@ -25,20 +25,34 @@ To execute the script and interact with the robot, all you need to do is press t
 
 1. Let's begin by joggin the camera pan and tilt joints. For having a complete 3D representation of its environment, Stretch needs to point its head in all directions, up, down, left, right, you name it! Luckily, we have a planning group that allows you to do just that - the stretch_head planning group. Go ahead and press the Next button to jog the camera.
 
+![Head_Group](https://user-images.githubusercontent.com/97639181/182997546-1273dcc8-e036-4eb9-93b1-5b40233501a1.gif)
+
 2. What good is a robot that can't hold your hand on your worst days. We gave Stretch a gripper to do just that and more! Let's exercise it using the stretch_gripper planning group. All you have to do is press Next.
+
+![Gripper_Group](https://user-images.githubusercontent.com/97639181/182997590-ad3d46df-1add-4cbc-9c5f-13a50baedc87.gif)
 
 3. What about the good days you ask? Stretch always wants to reach out to you, no matter what. Speaking of reaching out, let's make Stretch exercise its arm for the next time you need it. Press Next.
 
+![Arm_Group](https://user-images.githubusercontent.com/97639181/182997609-ca44b478-c645-4841-bb68-9413da208b3a.gif)
+
 4. Stretch doesn't like sitting in a corner fretting about the future. It is the future. Stretch wants to explore and in style. What  better way to do it than by rolling around? Press Next and you'll see. That's the mobile_base planning group.
+
+![Base_Group](https://user-images.githubusercontent.com/97639181/182997648-434c9b0f-be09-4950-bbd3-918b78ed4315.gif)
 
 5. All that exploring does get tiring and sometimes Stretch just wants to relax and dream about its next adventure. Stretch prefers to relax with its arm down, lest someone trips over it and disturb Stretch's peaceful slumber. Press Next to see the mobile_base_arm planning group.
 
+![Base_Arm_Group](https://user-images.githubusercontent.com/97639181/182997677-cd5de49f-aba3-4c2c-9828-a3e517b74a1e.gif)
+
 6. Did someone say adventure? How about dodging some pesky obstacles? They're everywhere, but they don't bother Stretch a lot. It can go around them. Nothing stops Stretch! You know what to do.
+
+![Add_Object](https://user-images.githubusercontent.com/97639181/182997701-ca93bbb0-e270-4784-b87a-741712ca2449.gif)
 
 7. Stretch is smart, you don't need to tell it which joint goes where. Just say what you want done and it does it. How about planning a pose goal to see it in action? Press Next.
 
+![Pose_Goal](https://user-images.githubusercontent.com/97639181/182997727-9a42f12e-9476-4cc5-a74b-71ccdecc637f.gif)
+
 8. To wrap it up, the final act! This one is a surprise that's only a click away. Go on, do it!
 
-![StowEdited](https://user-images.githubusercontent.com/97639181/166838248-cbfd537b-973e-4fb4-b60c-b5b3c111e02d.gif)
+![Stow](https://user-images.githubusercontent.com/97639181/182997818-7a9a104b-41a9-4cf6-8901-1a7d5ee73017.gif)
 
 Read the comments for a breakdown of the code
