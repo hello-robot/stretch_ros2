@@ -22,8 +22,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            # 'collect_head_calibration_data = stretch_calibration.collect_head_calibration_data:main',
-            # 'process_head_calibration_data = stretch_calibration.process_head_calibration_data:main',
+            'collect_head_calibration_data = stretch_calibration.collect_head_calibration_data:main',
+            'process_head_calibration_data = stretch_calibration.process_head_calibration_data:main',
         ],
     },
 )
