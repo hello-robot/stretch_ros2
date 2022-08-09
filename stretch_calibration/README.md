@@ -21,7 +21,7 @@ In addition, after changing a tool, this code can be used to generate a new cali
 
 1. Collect new observations
 
-   `ros2 launch stretch_calibration collect_check_head_calibration_data.launch`
+   `ros2 launch stretch_calibration collect_check_head_calibration_data.launch.py`
 
 1. Test how well the current calibrated model fits the new observations
 
@@ -44,7 +44,7 @@ A good calibration should result in a close correspondence between the robot's 3
 
 1. Test the current head calibration
 
-   `ros2 launch stretch_calibration simple_test_head_calibration.launch`
+   `ros2 launch stretch_calibration simple_test_head_calibration.launch.py`
 
 ### Examples of Good and Bad Visual Fit
 
@@ -67,7 +67,7 @@ In the images below, examples of good and bad fit between the point cloud and th
 1. Collect head calibration data
    - Put the robot on a flat surface. Give it room to move its arm and good lighting. Then, have the robot collect data using the command below. While the robot is collecting data, do not block its view of its markers. 
 
-      `ros2 launch stretch_calibration collect_head_calibration_data.launch`
+      `ros2 launch stretch_calibration collect_head_calibration_data.launch.py`
       
 1. Process head calibration data
 
@@ -91,11 +91,11 @@ In the images below, examples of good and bad fit between the point cloud and th
    
      - Without visualization (faster)  
      
-       `ros2 launch stretch_calibration process_head_calibration_data.launch`
+       `ros2 launch stretch_calibration process_head_calibration_data.launch.py`
      
      - With visualization (slower)
       
-       `ros2 launch stretch_calibration process_head_calibration_data_with_visualization.launch`
+       `ros2 launch stretch_calibration process_head_calibration_data_with_visualization.launch.py`
       
 1. Inspect the fit of the most recent head calibration
 
@@ -107,7 +107,7 @@ In the images below, examples of good and bad fit between the point cloud and th
    
 1. Test the current head calibration
 
-   `ros2 launch stretch_calibration simple_test_head_calibration.launch`
+   `ros2 launch stretch_calibration simple_test_head_calibration.launch.py`
    
    Use RViz to visually inspect the calibrated model. The robot's 3D body model should look similar to the structure of your robot. You may refer to the section above to see examples of good and bad fit.
 
