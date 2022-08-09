@@ -586,7 +586,7 @@ class CollectHeadCalibrationDataNode(Node):
    
     def main(self, collect_check_data):
         rclpy.init()
-        super.__init__('collect_head_calibration_data',
+        super().__init__('collect_head_calibration_data',
                         allow_undeclared_parameters=True,
                         automatically_declare_parameters_from_overrides=True)
         self.node_name = self.get_name()        
@@ -618,17 +618,17 @@ class CollectHeadCalibrationDataNode(Node):
             if m['link'] == 'link_aruco_shoulder':
                 self.shoulder_marker_id = int(k)
 
-        filename = self.get_parameter_or('~controller_calibration_file').value
+        filename = self.get_parameter_or('controller_calibration_file').value
 
         self.get_logger().info('Loading factory default tilt backlash transition angle from the YAML file named {0}'.format(filename))
         fid = open(filename, 'r')
-        controller_parameters = yaml.load(fid)
+        controller_parameters = yaml.load(fid, Loader=yaml.SafeLoader)
         fid.close()
         self.tilt_angle_backlash_transition_rad = controller_parameters['tilt_angle_backlash_transition']
         deg_per_rad = 180.0/math.pi
         self.get_logger().info('self.tilt_angle_backlash_transition_rad in degrees = {0}'.format(self.tilt_angle_backlash_transition_rad * deg_per_rad))
 
-        self.calibration_directory = self.get_parameter_or('~calibration_directory').value
+        self.calibration_directory = self.get_parameter_or('calibration_directory').value
         self.get_logger().info('Using the following directory for calibration files: {0}'.format(self.calibration_directory))
 
         # Setup time synchronization for calibration data. 
@@ -665,12 +665,15 @@ def main():
     args, unknown = parser.parse_known_args()
     collect_check_data = args.check
      
-    try:
-        node = CollectHeadCalibrationDataNode()
-        node.main(collect_check_data)
+    node = CollectHeadCalibrationDataNode()
+    node.main(collect_check_data)
+    
     # TODO: check for a way to deal with ROSInterruptException
-    except rclpy.ROSInterruptException:
-        pass
+    # try:
+    #     node = CollectHeadCalibrationDataNode()
+    #     node.main(collect_check_data)
+    # except rclpy.ROSInterruptException:
+    #     pass
 
 
 if __name__ == '__main__':    
