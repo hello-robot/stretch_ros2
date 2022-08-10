@@ -43,6 +43,7 @@ class CollectHeadCalibrationDataNode(Node):
         self.rate = 10.0
 
         self.joint_state = None
+        self.joint_states = JointState()
         self.acceleration = None        
 
         self.data_time = None
@@ -90,16 +91,35 @@ class CollectHeadCalibrationDataNode(Node):
                 if marker.id == self.shoulder_marker_id:
                     self.shoulder_marker_pose = marker.pose
 
+    def joint_states_callback(self, joint_state):
+        self.joint_states = joint_state
+    
     def move_to_pose(self, pose):
         # Prepare and send a goal pose to which the robot should move.
+        rclpy.spin_once(self)
+        
+        joint_state = self.joint_states
+        point = JointTrajectoryPoint()
+        
+        duration1 = Duration(seconds=0.0)
+        duration2 = Duration(seconds=4.0)
+        point.time_from_start = duration1.to_msg()
+        self.point.time_from_start = duration2.to_msg()
+        
         joint_names = [key for key in pose]
         self.trajectory_goal.trajectory.joint_names = joint_names
+        
+        joint_indices = [joint_state.name.index(key) for key in pose]
+        point.positions = [joint_state.position[index] for index in joint_indices]
+
         joint_positions = [pose[key] for key in joint_names]
         self.point.positions = joint_positions
-        self.trajectory_goal.trajectory.points = [self.point]
+
+        self.trajectory_goal.trajectory.points = [point, self.point]
         self.trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
-        self.trajectory_client.send_goal(self.trajectory_goal)
-        self.trajectory_client.wait_for_result()
+        self.trajectory_client.send_goal_async(self.trajectory_goal)
+        time.sleep(5)
+        # self.trajectory_client.wait_for_result()
         
     def get_samples(self, pan_angle_center, tilt_angle_center, wrist_extension_center, number_of_samples, first_move=False):
         # Collect N observations (samples) centered around the
@@ -577,7 +597,7 @@ class CollectHeadCalibrationDataNode(Node):
         initial_pose = {'joint_wrist_yaw': 0.0,
                         'wrist_extension': 0.0,
                         'joint_lift': 0.3,
-                        'gripper_aperture': 0.0,
+                        # 'gripper_aperture': 0.0, // TODO: check what parameter this is 
                         'joint_head_pan': -1.6947147036864942,
                         'joint_head_tilt': -0.4}
 
@@ -648,6 +668,13 @@ class CollectHeadCalibrationDataNode(Node):
 
         goal_time_tolerance = Duration(seconds=1.0)
         self.trajectory_goal.goal_time_tolerance = goal_time_tolerance.to_msg()
+
+        self.subscription = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10)
+        self.subscription
+
+        # Spin a few times to get current joint states
+        for i in range(10):
+            rclpy.spin_once(self)
         
         self.point = JointTrajectoryPoint()
         time_from_start = Duration(seconds=0.0)
