@@ -43,7 +43,7 @@ class CollectHeadCalibrationDataNode(Node):
         self.rate = 10.0
 
         self.joint_state = None
-        self.joint_states = JointState()
+        self.joint_states = None
         self.acceleration = None        
 
         self.data_time = None
@@ -243,8 +243,12 @@ class CollectHeadCalibrationDataNode(Node):
                     if not data_ready:
                         #rospy.sleep(0.2) #0.1
                         time.sleep(1.0)
+                    
                     # TODO: If this results in error, access secs and nanosecs to calculate difference manually
-                    timeout = (self.get_clock().now().to_msg() - start_wait) > timeout_duration
+                    # timeout = (self.get_clock().now().to_msg() - start_wait) > timeout_duration
+                    current_time = self.get_clock().now().to_msg()
+                    time_duration = current_time.sec - start_wait.sec
+                    timeout = time_duration > timeout_duration.sec
 
                 if timeout:
                     self.get_logger().error('collect_head_calibration_data get_samples: timeout while waiting for sample.')
@@ -605,6 +609,7 @@ class CollectHeadCalibrationDataNode(Node):
         self.move_to_pose(initial_pose)
    
     def main(self, collect_check_data):
+        time.sleep(20) # Allows time for realsense camera to boot up before this node becomes active
         rclpy.init()
         super().__init__('collect_head_calibration_data',
                         allow_undeclared_parameters=True,
