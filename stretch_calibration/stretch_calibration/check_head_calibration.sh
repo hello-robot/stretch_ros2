@@ -41,4 +41,4 @@ echo "-----------------------------------------------------------"
 echo "Launch the visualization using these three files."
 echo "ros2 launch stretch_calibration visualize_head_calibration.launch optimization_result_yaml_file:=$MOSTRECENT_OPTIMIZATION_FILE calibrated_controller_yaml_file:=$MOSTRECENT_CONTROLLER_FILE calibrated_urdf_file:=$MOSTRECENT_URDF" 
 
-ros2 launch stretch_calibration check_head_calibration.launch optimization_result_yaml_file:=$MOSTRECENT_OPTIMIZATION_FILE calibrated_controller_yaml_file:=$MOSTRECENT_CONTROLLER_FILE calibrated_urdf_file:=$MOSTRECENT_URDF
+ros2 launch stretch_calibration check_head_calibration.launch.py optimization_result_yaml_file:=$MOSTRECENT_OPTIMIZATION_FILE calibrated_controller_yaml_file:=$MOSTRECENT_CONTROLLER_FILE calibrated_urdf_file:=$MOSTRECENT_URDF

@@ -6,11 +6,12 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch.substitutions import Command
 
 
 uncalibrated_urdf_path = os.path.join(get_package_share_directory('stretch_description'), 'urdf', 'stretch_uncalibrated.urdf')
 uncalibrated_controller_yaml_path = os.path.join(get_package_share_directory('stretch_core'), 'config', 'controller_calibration_head_factory_default.yaml')
-calibration_directory_path = "$(env HELLO_FLEET_PATH)/$(env HELLO_FLEET_ID)/calibration_ros/"
+calibration_directory_path = "{0}/{1}/calibration_ros/".format(os.getenv('HELLO_FLEET_PATH'), os.getenv('HELLO_FLEET_ID'))
 
 configurable_parameters = [{'name': 'uncalibrated_urdf_file',                          'default': uncalibrated_urdf_path, 'description': 'directory path of the uncalibrated urdf file'},
                            {'name': 'uncalibrated_controller_yaml_file',               'default': uncalibrated_controller_yaml_path, 'description': 'directory path of the uncalibrated controller yaml file'},
@@ -43,18 +44,23 @@ def generate_launch_description():
                                  parameters=[{'source_list': ['/stretch/joint_states']},
                                              {'rate': 15}])
 
+    stretch_description_path = get_package_share_directory('stretch_description')
+    robot_description_content = Command(
+        ['xacro ', os.path.join(stretch_description_path, 'urdf', 'stretch_uncalibrated.urdf')]
+    )
+
     robot_state_publisher = Node(package='robot_state_publisher',
                                  executable='robot_state_publisher',
                                  output='both',
-                                 parameters=[{'robot_description': LaunchConfiguration('uncalibrated_urdf_path')},
-                                             {'publish_frequency': 15.0}])
+                                 parameters=[{'robot_description': robot_description_content,
+                                            #   'robot_description': LaunchConfiguration('uncalibrated_urdf_file'), // Raises empty file error with URDF parser
+                                              'publish_frequency': 15.0}])
 
     stretch_driver_params = [
         {'rate': 25.0,
          'timeout': 0.5,
-         'controller_calibration_file': LaunchConfiguration('calibrated_controller_yaml_file'),
-         'broadcast_odom_tf': 'false',
-         'fail_out_of_range_goal': 'false'
+         'controller_calibration_file': LaunchConfiguration('uncalibrated_controller_yaml_file'),
+         'fail_out_of_range_goal': 'False'
          }
     ]
 
@@ -85,7 +91,7 @@ def generate_launch_description():
 
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
         d435i_high_res_launch,
-        d435i_configure,
+        # d435i_configure, // Uncomment when node is merged
         joint_state_publisher,
         robot_state_publisher,
         stretch_driver,
