@@ -23,6 +23,7 @@ setup(
     entry_points={
         'console_scripts': [
             'stretch_driver = stretch_core.stretch_driver:main',
+            'd435i_accel_correction = stretch_core.d435i_accel_correction:main',
         ],
     },
 )
