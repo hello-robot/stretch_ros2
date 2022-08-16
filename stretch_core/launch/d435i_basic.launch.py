@@ -52,5 +52,5 @@ def generate_launch_description():
 
      return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
           realsense_launch,
-          # d435i_accel_correction,
+          d435i_accel_correction,
           ])
