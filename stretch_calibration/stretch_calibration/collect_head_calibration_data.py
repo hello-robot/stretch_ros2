@@ -43,8 +43,7 @@ class CollectHeadCalibrationDataNode(Node):
         self.rate = 10.0
 
         self.joint_state = None
-        self.joint_states = None
-        self.acceleration = None        
+        self.acceleration = None
 
         self.data_time = None
         self.marker_time = None
@@ -73,7 +72,8 @@ class CollectHeadCalibrationDataNode(Node):
                 # set marker_time to the earliest marker time
                 if self.marker_time is None:
                     self.marker_time = marker.header.stamp
-                elif marker.header.stamp < self.marker_time:
+                # TODO: Look for a better way to handle time comparisons
+                elif (marker.header.stamp.sec + marker.header.stamp.nanosec*pow(10, -9)) < (self.marker_time.sec + self.marker_time.nanosec*pow(10, -9)):
                     self.marker_time = marker.header.stamp
                 
                 if marker.id == self.wrist_inside_marker_id:
@@ -91,14 +91,11 @@ class CollectHeadCalibrationDataNode(Node):
                 if marker.id == self.shoulder_marker_id:
                     self.shoulder_marker_pose = marker.pose
 
-    def joint_states_callback(self, joint_state):
-        self.joint_states = joint_state
-    
     def move_to_pose(self, pose):
         # Prepare and send a goal pose to which the robot should move.
         rclpy.spin_once(self)
         
-        joint_state = self.joint_states
+        joint_state = self.joint_state
         point = JointTrajectoryPoint()
         
         duration1 = Duration(seconds=0.0)
@@ -191,6 +188,9 @@ class CollectHeadCalibrationDataNode(Node):
             # wait for the joints and sensors to settle
             time.sleep(head_motion_settle_time)
             settled_time = self.get_clock().now().to_msg()
+            
+            for i in range(5):
+                rclpy.spin_once(self)
 
             # The first move to a pose is typically larger and can
             # benefit from more settling time due to induced
@@ -224,17 +224,25 @@ class CollectHeadCalibrationDataNode(Node):
                 start_wait = self.get_clock().now().to_msg()
                 timeout = False
                 data_ready = False
+                
+                for i in range(50):
+                    rclpy.spin_once(self)
+
                 while (not data_ready) and (not timeout):
                     # check the timing of the current sample
+
+                    for i in range(50):
+                        rclpy.spin_once(self)
+
                     with self.data_lock:
-                        if (self.data_time is not None) and (self.data_time > settled_time):
+                        if (self.data_time is not None) and ((self.data_time.sec + self.data_time.nanosec*pow(10,-9)) > (settled_time.sec + settled_time.nanosec*pow(10,-9))):
                             if (self.marker_time is None):
                                 # joint_states and acceleration
                                 # were taken after the robot
                                 # settled and there are no aruco
                                 # marker poses
                                 data_ready = True
-                            elif (self.marker_time > settled_time):
+                            elif (self.marker_time.sec + self.marker_time.nanosec*pow(10,-9)) > (settled_time.sec + settled_time.nanosec*pow(10,-9)):
                                 # joint_states, acceleration,
                                 # and aruco marker poses were
                                 # taken after the robot
@@ -247,7 +255,7 @@ class CollectHeadCalibrationDataNode(Node):
                     # TODO: If this results in error, access secs and nanosecs to calculate difference manually
                     # timeout = (self.get_clock().now().to_msg() - start_wait) > timeout_duration
                     current_time = self.get_clock().now().to_msg()
-                    time_duration = current_time.sec - start_wait.sec
+                    time_duration = (current_time.sec + current_time.nanosec*pow(10,-9)) - (start_wait.sec + start_wait.nanosec*pow(10,-9))
                     timeout = time_duration > timeout_duration.sec
 
                 if timeout:
@@ -674,10 +682,7 @@ class CollectHeadCalibrationDataNode(Node):
         goal_time_tolerance = Duration(seconds=1.0)
         self.trajectory_goal.goal_time_tolerance = goal_time_tolerance.to_msg()
 
-        self.subscription = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10)
-        self.subscription
-
-        # Spin a few times to get current joint states
+        # Spin a few times to get current joint states, accel, marker_array
         for i in range(10):
             rclpy.spin_once(self)
         
