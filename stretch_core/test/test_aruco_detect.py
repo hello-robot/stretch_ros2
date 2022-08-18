@@ -74,9 +74,9 @@ class TestAction(unittest.TestCase):
             self.info_flag = True
 
     def marker_cb(self, msg):
-        markers = msg
-        # self.marker_flag = False
-        if(markers is not None):
+        marker_array = msg
+        self.marker_flag = False
+        if(len(marker_array.markers)):
             self.marker_flag = True
 
     def test_camera_feed(self, proc_output):
