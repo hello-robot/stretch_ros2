@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import calibration as ca
+from . import calibration as ca
 
 import rclpy
 from rclpy.node import Node

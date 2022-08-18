@@ -20,13 +20,17 @@ def declare_configurable_parameters(parameters):
 
 
 def generate_launch_description():
-    head_calibration_options = Command(['ros2 param load ',
-                                         str(get_package_share_directory('stretch_calibration') / 'config' / 'head_calibration_options.yaml')])
+    
+    head_calibration_options = os.path.join(get_package_share_directory('stretch_calibration'), 'config', 'head_calibration_options.yaml')
+    
+    # head_calibration_options = Command(['ros2 param load ',
+    #                                      str(get_package_share_directory('stretch_calibration') / 'config' / 'head_calibration_options.yaml')])
 
     process_calibration_data = Node(
         package='stretch_calibration',
         executable='process_head_calibration_data',
         parameters=[
+            head_calibration_options,
             {
                 'calibration_directory': LaunchConfiguration('calibration_directory'),
                 'uncalibrated_controller_calibration_filename': LaunchConfiguration('uncalibrated_controller_calibration_filename'),
@@ -37,6 +41,5 @@ def generate_launch_description():
         )
 
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
-        head_calibration_options,
         process_calibration_data,
         ])
