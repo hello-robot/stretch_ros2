@@ -43,7 +43,7 @@ class CollectHeadCalibrationDataNode(Node):
         self.rate = 10.0
 
         self.joint_state = None
-        self.acceleration = None        
+        self.acceleration = None
 
         self.data_time = None
         self.marker_time = None
@@ -72,7 +72,8 @@ class CollectHeadCalibrationDataNode(Node):
                 # set marker_time to the earliest marker time
                 if self.marker_time is None:
                     self.marker_time = marker.header.stamp
-                elif marker.header.stamp < self.marker_time:
+                # TODO: Look for a better way to handle time comparisons
+                elif (marker.header.stamp.sec + marker.header.stamp.nanosec*pow(10, -9)) < (self.marker_time.sec + self.marker_time.nanosec*pow(10, -9)):
                     self.marker_time = marker.header.stamp
                 
                 if marker.id == self.wrist_inside_marker_id:
@@ -92,14 +93,30 @@ class CollectHeadCalibrationDataNode(Node):
 
     def move_to_pose(self, pose):
         # Prepare and send a goal pose to which the robot should move.
+        rclpy.spin_once(self)
+        
+        joint_state = self.joint_state
+        point = JointTrajectoryPoint()
+        
+        duration1 = Duration(seconds=0.0)
+        duration2 = Duration(seconds=4.0)
+        point.time_from_start = duration1.to_msg()
+        self.point.time_from_start = duration2.to_msg()
+        
         joint_names = [key for key in pose]
         self.trajectory_goal.trajectory.joint_names = joint_names
+        
+        joint_indices = [joint_state.name.index(key) for key in pose]
+        point.positions = [joint_state.position[index] for index in joint_indices]
+
         joint_positions = [pose[key] for key in joint_names]
         self.point.positions = joint_positions
-        self.trajectory_goal.trajectory.points = [self.point]
+
+        self.trajectory_goal.trajectory.points = [point, self.point]
         self.trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
-        self.trajectory_client.send_goal(self.trajectory_goal)
-        self.trajectory_client.wait_for_result()
+        self.trajectory_client.send_goal_async(self.trajectory_goal)
+        time.sleep(5)
+        # self.trajectory_client.wait_for_result()
         
     def get_samples(self, pan_angle_center, tilt_angle_center, wrist_extension_center, number_of_samples, first_move=False):
         # Collect N observations (samples) centered around the
@@ -171,6 +188,9 @@ class CollectHeadCalibrationDataNode(Node):
             # wait for the joints and sensors to settle
             time.sleep(head_motion_settle_time)
             settled_time = self.get_clock().now().to_msg()
+            
+            for i in range(5):
+                rclpy.spin_once(self)
 
             # The first move to a pose is typically larger and can
             # benefit from more settling time due to induced
@@ -204,17 +224,25 @@ class CollectHeadCalibrationDataNode(Node):
                 start_wait = self.get_clock().now().to_msg()
                 timeout = False
                 data_ready = False
+                
+                for i in range(50):
+                    rclpy.spin_once(self)
+
                 while (not data_ready) and (not timeout):
                     # check the timing of the current sample
+
+                    for i in range(50):
+                        rclpy.spin_once(self)
+
                     with self.data_lock:
-                        if (self.data_time is not None) and (self.data_time > settled_time):
+                        if (self.data_time is not None) and ((self.data_time.sec + self.data_time.nanosec*pow(10,-9)) > (settled_time.sec + settled_time.nanosec*pow(10,-9))):
                             if (self.marker_time is None):
                                 # joint_states and acceleration
                                 # were taken after the robot
                                 # settled and there are no aruco
                                 # marker poses
                                 data_ready = True
-                            elif (self.marker_time > settled_time):
+                            elif (self.marker_time.sec + self.marker_time.nanosec*pow(10,-9)) > (settled_time.sec + settled_time.nanosec*pow(10,-9)):
                                 # joint_states, acceleration,
                                 # and aruco marker poses were
                                 # taken after the robot
@@ -223,8 +251,12 @@ class CollectHeadCalibrationDataNode(Node):
                     if not data_ready:
                         #rospy.sleep(0.2) #0.1
                         time.sleep(1.0)
+                    
                     # TODO: If this results in error, access secs and nanosecs to calculate difference manually
-                    timeout = (self.get_clock().now().to_msg() - start_wait) > timeout_duration
+                    # timeout = (self.get_clock().now().to_msg() - start_wait) > timeout_duration
+                    current_time = self.get_clock().now().to_msg()
+                    time_duration = (current_time.sec + current_time.nanosec*pow(10,-9)) - (start_wait.sec + start_wait.nanosec*pow(10,-9))
+                    timeout = time_duration > timeout_duration.sec
 
                 if timeout:
                     self.get_logger().error('collect_head_calibration_data get_samples: timeout while waiting for sample.')
@@ -577,7 +609,7 @@ class CollectHeadCalibrationDataNode(Node):
         initial_pose = {'joint_wrist_yaw': 0.0,
                         'wrist_extension': 0.0,
                         'joint_lift': 0.3,
-                        'gripper_aperture': 0.0,
+                        # 'gripper_aperture': 0.0, // TODO: check what parameter this is 
                         'joint_head_pan': -1.6947147036864942,
                         'joint_head_tilt': -0.4}
 
@@ -585,8 +617,9 @@ class CollectHeadCalibrationDataNode(Node):
         self.move_to_pose(initial_pose)
    
     def main(self, collect_check_data):
+        time.sleep(20) # Allows time for realsense camera to boot up before this node becomes active
         rclpy.init()
-        super.__init__('collect_head_calibration_data',
+        super().__init__('collect_head_calibration_data',
                         allow_undeclared_parameters=True,
                         automatically_declare_parameters_from_overrides=True)
         self.node_name = self.get_name()        
@@ -595,16 +628,16 @@ class CollectHeadCalibrationDataNode(Node):
         # Obtain the ArUco marker ID numbers.
         # Reading parameters from the stretch_marker_dict.yaml file and storing values
         # in a dictionary called marker_info
-        # TODO: make the yaml parameters accessible to every node
         param_list = ['130', '131', '132', '133', '134', '246', '247', '248', '249', '10', '21', 'default']
         key_list = ['length_mm', 'use_rgb_only', 'name', 'link']
         dict = {}
         self.marker_info = {}
         for aruco_id in param_list:
             for key in key_list:
-                dict[key] = self.get_parameter_or('{0}.{1}'.format(aruco_id, key))
+                dict[key] = self.get_parameter_or('aruco_marker_info.{0}.{1}'.format(aruco_id, key)).value
             self.marker_info[aruco_id] = dict
             dict = {}
+
         for k in self.marker_info.keys():
             m = self.marker_info[k]
             if m['link'] == 'link_aruco_left_base':
@@ -618,19 +651,17 @@ class CollectHeadCalibrationDataNode(Node):
             if m['link'] == 'link_aruco_shoulder':
                 self.shoulder_marker_id = int(k)
 
-        # TODO: check significance of ~
-        filename = self.get_parameter('~controller_calibration_file')
+        filename = self.get_parameter_or('controller_calibration_file').value
 
         self.get_logger().info('Loading factory default tilt backlash transition angle from the YAML file named {0}'.format(filename))
         fid = open(filename, 'r')
-        controller_parameters = yaml.load(fid)
+        controller_parameters = yaml.load(fid, Loader=yaml.SafeLoader)
         fid.close()
         self.tilt_angle_backlash_transition_rad = controller_parameters['tilt_angle_backlash_transition']
         deg_per_rad = 180.0/math.pi
         self.get_logger().info('self.tilt_angle_backlash_transition_rad in degrees = {0}'.format(self.tilt_angle_backlash_transition_rad * deg_per_rad))
 
-        # TODO: check significance of ~
-        self.calibration_directory = self.get_parameter('~calibration_directory')
+        self.calibration_directory = self.get_parameter_or('calibration_directory').value
         self.get_logger().info('Using the following directory for calibration files: {0}'.format(self.calibration_directory))
 
         # Setup time synchronization for calibration data. 
@@ -647,12 +678,17 @@ class CollectHeadCalibrationDataNode(Node):
             self.get_logger().error('Unable to connect to arm action server. Timeout exceeded.')
             sys.exit()
         self.trajectory_goal = FollowJointTrajectory.Goal()
-        # TODO: Check for a way to set this attribute
-        # self.trajectory_goal.goal_time_tolerance = rospy.Time(1.0)
+
+        goal_time_tolerance = Duration(seconds=1.0)
+        self.trajectory_goal.goal_time_tolerance = goal_time_tolerance.to_msg()
+
+        # Spin a few times to get current joint states, accel, marker_array
+        for i in range(10):
+            rclpy.spin_once(self)
         
         self.point = JointTrajectoryPoint()
-        duration = Duration(seconds=0.0)
-        self.point.time_from_start = duration.to_msg()
+        time_from_start = Duration(seconds=0.0)
+        self.point.time_from_start = time_from_start.to_msg()
         
         self.move_to_initial_configuration()
 
@@ -666,12 +702,15 @@ def main():
     args, unknown = parser.parse_known_args()
     collect_check_data = args.check
      
-    try:
-        node = CollectHeadCalibrationDataNode()
-        node.main(collect_check_data)
+    node = CollectHeadCalibrationDataNode()
+    node.main(collect_check_data)
+    
     # TODO: check for a way to deal with ROSInterruptException
-    except rclpy.ROSInterruptException:
-        pass
+    # try:
+    #     node = CollectHeadCalibrationDataNode()
+    #     node.main(collect_check_data)
+    # except rclpy.ROSInterruptException:
+    #     pass
 
 
 if __name__ == '__main__':    

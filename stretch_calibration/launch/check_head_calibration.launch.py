@@ -21,7 +21,6 @@ configurable_parameters = [{'name': 'optimization_result_yaml_file', 'default': 
 def declare_configurable_parameters(parameters):
     return [DeclareLaunchArgument(param['name'], default_value=param['default'], description=param['description']) for param in parameters]
 
-
 def generate_launch_description():
     head_calibration_options = Command(['ros2 param load ',
                                          str(get_package_share_directory('stretch_calibration') / 'config' / 'head_calibration_options.yaml')])
@@ -59,7 +58,6 @@ def generate_launch_description():
         {'rate': 25.0,
          'timeout': 0.5,
          'controller_calibration_file': LaunchConfiguration('calibrated_controller_yaml_file'),
-         'broadcast_odom_tf': 'false',
          'fail_out_of_range_goal': 'false'
          }
     ]

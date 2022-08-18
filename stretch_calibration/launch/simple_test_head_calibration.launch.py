@@ -26,7 +26,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory('stretch_core'), 'launch'),
             '/stretch_driver.launch.py']),
-        launch_arguments={'broadcast_odom_tf': 'true'}.items()
+        launch_arguments={'broadcast_odom_tf': 'True'}.items()
         )
     
     aruco_marker_detector = IncludeLaunchDescription(
@@ -52,9 +52,9 @@ def generate_launch_description():
 
     return LaunchDescription([
         d435i_high_res_launch,
-        d435i_configure,
+        # d435i_configure, // Uncomment when this node is merged
         stretch_driver,
         aruco_marker_detector,
-        keyboar_teleop,
+        # keyboar_teleop, // Uncomment when teleop node merged
         rviz_node,
         ])
