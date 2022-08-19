@@ -202,7 +202,7 @@ class HeadCalibrator:
         self.head_calibration_data_filename = most_recent_filename
         print('Loading most recent head calibration data from a YAML file named ' + self.head_calibration_data_filename)
         fid = open(self.head_calibration_data_filename, 'r')
-        self.data = yaml.load(fid)
+        self.data = yaml.load(fid, Loader=yaml.SafeLoader)
         fid.close()
 
         # Convert data in yaml file from readable text to full joint
@@ -813,17 +813,20 @@ class ProcessHeadCalibrationDataNode(Node):
     def main(self, use_check_calibration_data):
         
         rclpy.init()
-        node = rclpy.create_node('process_head_calibration_data')
+        node = rclpy.create_node('process_head_calibration_data',
+                                allow_undeclared_parameters=True,
+                                automatically_declare_parameters_from_overrides=True)
         self.node_name = node.get_name()        
         node.get_logger().info("{0} started".format(self.node_name))
 
         # TODO: Check significance of ~
-        self.calibration_directory = node.get_parameter('~calibration_directory')
+        self.calibration_directory = node.get_parameter_or('calibration_directory').value
         node.get_logger().info('Using the following directory for calibration files: {0}'.format(self.calibration_directory))
 
         # load parameters for what data to fit and how well to fit it
         #TODO: Check parameter type
-        head_calibration_options = node.get_parameter('/head_calibration_options')
+        head_calibration_options = {'data_to_use': node.get_parameter_or('head_calibration_options.data_to_use').value,
+                                    'fit_quality': node.get_parameter_or('head_calibration_options.fit_quality').value}
         self.data_to_use = head_calibration_options['data_to_use']
         self.fit_quality = head_calibration_options['fit_quality']
         if self.data_to_use not in self.data_to_use_dict.keys():
@@ -838,17 +841,17 @@ class ProcessHeadCalibrationDataNode(Node):
         
         # load default tilt backlash transition angle
         # TODO: Check significance of ~
-        self.uncalibrated_controller_calibration_filename = node.get_parameter('~uncalibrated_controller_calibration_filename')
+        self.uncalibrated_controller_calibration_filename = node.get_parameter('uncalibrated_controller_calibration_filename').value
         node.get_logger().info('Loading factory default tilt backlash transition angle from the YAML file named {0}'.format(self.uncalibrated_controller_calibration_filename))
         fid = open(self.uncalibrated_controller_calibration_filename, 'r')
-        default_controller_parameters = yaml.load(fid)
+        default_controller_parameters = yaml.load(fid, Loader=yaml.SafeLoader)
         fid.close()
         tilt_angle_backlash_transition_rad = default_controller_parameters['tilt_angle_backlash_transition']
         deg_per_rad = 180.0/math.pi
         node.get_logger().info('self.tilt_angle_backlash_transition_rad in degrees = {0}'.format(tilt_angle_backlash_transition_rad * deg_per_rad))
 
         # TODO: Check significance of ~
-        self.uncalibrated_urdf_filename = node.get_parameter('~uncalibrated_urdf_filename')
+        self.uncalibrated_urdf_filename = node.get_parameter('uncalibrated_urdf_filename').value
         node.get_logger().info('The uncalibrated URDF filename: {0}'.format(self.uncalibrated_urdf_filename))
         
         if self.load_most_recent_opt_results or (self.opt_results_file_to_load is not None): 
@@ -861,7 +864,7 @@ class ProcessHeadCalibrationDataNode(Node):
                 filename = self.opt_results_file_to_load
                 print('Loading CMA-ES result from a YAML file named ' + filename)
             fid = open(filename, 'r')
-            cma_result = yaml.load(fid)
+            cma_result = yaml.load(fid, Loader=yaml.SafeLoader)
             fid.close()
 
             show_data_used_during_optimization = True
@@ -906,7 +909,7 @@ class ProcessHeadCalibrationDataNode(Node):
                                    'calibrate_tilt_backlash': True,
                                    'calibrate_arm_backlash': True}
 
-            self.calibrator = HeadCalibrator(self.uncalibrated_urdf_filename, self.calibration_directory, self.sample_selector_func, calibration_options, self.visualize, tilt_angle_backlash_transition_rad)
+            self.calibrator = HeadCalibrator(node, self.uncalibrated_urdf_filename, self.calibration_directory, self.sample_selector_func, calibration_options, self.visualize, tilt_angle_backlash_transition_rad)
             parameter_names = self.calibrator.get_names_of_parameters_to_fit()
             
             #"incumbent solution"
