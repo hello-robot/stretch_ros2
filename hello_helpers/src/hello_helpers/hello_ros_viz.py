@@ -15,7 +15,7 @@ def create_line_strip(points, id_num, frame_id, timestamp, rgba=[1.0, 0.0, 0.0, 
     marker.id = id_num
     marker.type = marker.LINE_STRIP
     marker.action = marker.ADD
-    duration = Duration(sec=duration_s)
+    duration = Duration(seconds=duration_s)
     marker.lifetime = duration.to_msg()
 
     # scale of 1,1,1 would result in a 1m x 1m x 1m cube
@@ -45,7 +45,7 @@ def create_sphere_marker(xyz, id_num, frame_id, timestamp, rgba=[1.0, 0.0, 0.0, 
     marker.id = id_num
     marker.type = marker.SPHERE #CUBE
     marker.action = marker.ADD
-    duration = Duration(sec=duration_s)
+    duration = Duration(seconds=duration_s)
     marker.lifetime = duration.to_msg()
     # scale of 1,1,1 would result in a 1m x 1m x 1m cube
     marker.scale.x = diameter_m
@@ -65,7 +65,7 @@ def create_axis_marker(xyz, axis, id_num, frame_id, timestamp, rgba, length=0.02
     marker.id = id_num
     marker.type = marker.ARROW
     marker.action = marker.ADD
-    duration = Duration(sec=duration_s)
+    duration = Duration(seconds=duration_s)
     marker.lifetime = duration.to_msg()
     axis_arrow = {'head_diameter': (arrow_scale * 0.005),
                   'shaft_diameter': (arrow_scale * 0.003),
@@ -85,9 +85,9 @@ def create_axis_marker(xyz, axis, id_num, frame_id, timestamp, rgba, length=0.02
     start_point.y = y
     start_point.z = z
     end_point = Point()
-    end_point.x = x + (axis[0] * length)
-    end_point.y = y + (axis[1] * length)
-    end_point.z = z + (axis[2] * length)
+    end_point.x = x + (axis[0][0] * length)
+    end_point.y = y + (axis[1][0] * length)
+    end_point.z = z + (axis[2][0] * length)
     marker.points = [start_point, end_point]
     return marker
 
@@ -101,7 +101,7 @@ def create_points_marker(points_xyz, id_num, frame_id, timestamp,
     marker.id = id_num
     marker.type = marker.POINTS
     marker.action = marker.ADD
-    duration = Duration(sec=duration_s)
+    duration = Duration(seconds=duration_s)
     marker.lifetime = duration.to_msg()
 
     # ROS documentation: "scale.x is point width, scale.y is point
