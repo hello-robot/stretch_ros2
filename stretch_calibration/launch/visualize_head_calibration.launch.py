@@ -8,7 +8,7 @@ from launch_ros.actions import Node
 
 uncalibrated_urdf_path = os.path.join(get_package_share_directory('stretch_description'), 'urdf', 'stretch_uncalibrated.urdf')
 uncalibrated_controller_yaml_path = os.path.join(get_package_share_directory('stretch_core'), 'config', 'controller_calibration_head_factory_default.yaml')
-calibration_directory_path = "$(env HELLO_FLEET_PATH)/$(env HELLO_FLEET_ID)/calibration_ros/"
+calibration_directory_path = "{0}/{1}/calibration_ros/".format(os.getenv('HELLO_FLEET_PATH'), os.getenv('HELLO_FLEET_ID'))
 
 configurable_parameters = [{'name': 'optimization_result_yaml_file', 'default': '', 'description': ''},
                            {'name': 'calibrated_controller_yaml_file', 'default': '', 'description': ''},
@@ -23,8 +23,7 @@ def declare_configurable_parameters(parameters):
 
 
 def generate_launch_description():
-    head_calibration_options = Command(['ros2 param load ',
-                                         str(get_package_share_directory('stretch_calibration') / 'config' / 'head_calibration_options.yaml')])
+    head_calibration_options = os.path.join(get_package_share_directory('stretch_calibration'), 'config', 'head_calibration_options.yaml')
 
     optimization_result_yaml_file = LaunchConfiguration('optimization_result_yaml_file')
 
@@ -32,12 +31,13 @@ def generate_launch_description():
         package='stretch_calibration',
         executable='process_head_calibration_data',
         parameters=[
+            head_calibration_options,
             {
                 'calibration_directory': LaunchConfiguration('calibration_directory'),
                 'uncalibrated_controller_calibration_filename': LaunchConfiguration('uncalibrated_controller_calibration_filename'),
                 'uncalibrated_urdf_filename': LaunchConfiguration('uncalibrated_urdf_filename')
             }],
-        arguments=['--only_vis --load ', optimization_result_yaml_file],
+        arguments=['--only_vis', '--load', optimization_result_yaml_file],
         output='screen',
         ) 
     
@@ -48,17 +48,19 @@ def generate_launch_description():
                                              {'use_gui': 'false'}
                                              ])
 
+    robot_description_content = Command(
+        ['xacro ', LaunchConfiguration('calibrated_urdf_file')]
+    )
     robot_state_publisher = Node(package='robot_state_publisher',
                                  executable='robot_state_publisher',
                                  output='both',
-                                 parameters=[{'robot_description': LaunchConfiguration('calibrated_urdf_file')},
-                                             {'publish_frequency': 15.0}])
+                                 parameters=[{'robot_description': robot_description_content,
+                                              'publish_frequency': 15.0}])
 
     stretch_driver_params = [
         {'rate': 25.0,
          'timeout': 0.5,
          'controller_calibration_file': LaunchConfiguration('calibrated_controller_yaml_file'),
-         'broadcast_odom_tf': 'false',
          'fail_out_of_range_goal': 'false'
          }
     ]
@@ -81,7 +83,6 @@ def generate_launch_description():
         )
 
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
-        head_calibration_options,
         process_calibration_data,
         joint_state_publisher,
         robot_state_publisher,

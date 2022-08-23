@@ -59,7 +59,7 @@ class HeadCalibrator:
         self.head_calibration_data_filename = None
 
         if self.visualize: 
-            self.visualization_markers_pub = self.node.create_publisher(MarkerArray, '/calibration/marker_array', queue_size=1)
+            self.visualization_markers_pub = self.node.create_publisher(MarkerArray, '/calibration/marker_array', 10)
         else:
             self.visualization_markers_pub = None
 
@@ -1037,7 +1037,7 @@ def main():
     visualize_only = args.only_vis
     turn_on_visualization = not args.no_vis
     use_check_calibration_data = args.check
-    
+
     node = ProcessHeadCalibrationDataNode(opt_results_file_to_load = opt_results_file_to_load, load_most_recent_opt_results = load_most_recent_opt_results, visualize_only = visualize_only, visualize=turn_on_visualization)
     node.main(use_check_calibration_data)
 
