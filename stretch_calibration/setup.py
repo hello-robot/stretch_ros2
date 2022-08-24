@@ -24,6 +24,7 @@ setup(
         'console_scripts': [
             'collect_head_calibration_data = stretch_calibration.collect_head_calibration_data:main',
             'process_head_calibration_data = stretch_calibration.process_head_calibration_data:main',
+            'update_uncalibrated_urdf = stretch_calibration.update_uncalibrated_urdf:main',
         ],
     },
 )
