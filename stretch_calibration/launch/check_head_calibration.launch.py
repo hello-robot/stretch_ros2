@@ -8,7 +8,7 @@ from launch_ros.actions import Node
 
 uncalibrated_urdf_path = os.path.join(get_package_share_directory('stretch_description'), 'urdf', 'stretch_uncalibrated.urdf')
 uncalibrated_controller_yaml_path = os.path.join(get_package_share_directory('stretch_core'), 'config', 'controller_calibration_head_factory_default.yaml')
-calibration_directory_path = "$(env HELLO_FLEET_PATH)/$(env HELLO_FLEET_ID)/calibration_ros/"
+calibration_directory_path = "{0}/{1}/calibration_ros/".format(os.getenv('HELLO_FLEET_PATH'), os.getenv('HELLO_FLEET_ID'))
 
 configurable_parameters = [{'name': 'optimization_result_yaml_file', 'default': '', 'description': ''},
                            {'name': 'calibrated_controller_yaml_file', 'default': '', 'description': ''},
@@ -36,7 +36,7 @@ def generate_launch_description():
                 'uncalibrated_controller_calibration_filename': LaunchConfiguration('uncalibrated_controller_calibration_filename'),
                 'uncalibrated_urdf_filename': LaunchConfiguration('uncalibrated_urdf_filename')
             }],
-        arguments=['--check --no_vis --load ', optimization_result_yaml_file],
+        arguments=['--check', '--no_vis', '--load', optimization_result_yaml_file],
         output='screen',
         )
     
@@ -48,10 +48,13 @@ def generate_launch_description():
                                              {'use_gui': 'false'}
                                              ])
 
+    robot_description_content = Command(
+        ['xacro ', LaunchConfiguration('calibrated_urdf_file')]
+    )
     robot_state_publisher = Node(package='robot_state_publisher',
                                  executable='robot_state_publisher',
                                  output='both',
-                                 parameters=[{'robot_description': LaunchConfiguration('calibrated_urdf_file')},
+                                 parameters=[{'robot_description': robot_description_content},
                                              {'publish_frequency': 15.0}])
 
     stretch_driver_params = [
