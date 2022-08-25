@@ -41,9 +41,9 @@ def main():
     # Launch the visualization using these three files
     print("-----------------------------------------------------------")
     print("Launch the visualization using these three files.")
-    print("ros2 launch stretch_calibration check_head_calibration.launch.py optimization_result_yaml_file:={0} calibrated_controller_yaml_file:={1} calibrated_urdf_file:={2}".format(optimization_file, controller_file, urdf_file))
+    print("ros2 launch stretch_calibration visualize_head_calibration.launch.py optimization_result_yaml_file:={0} calibrated_controller_yaml_file:={1} calibrated_urdf_file:={2}".format(optimization_file, controller_file, urdf_file))
 
-    bashCommand = "ros2 launch stretch_calibration check_head_calibration.launch.py optimization_result_yaml_file:={0} calibrated_controller_yaml_file:={1} calibrated_urdf_file:={2}".format(optimization_file, controller_file, urdf_file)
+    bashCommand = "ros2 launch stretch_calibration visualize_head_calibration.launch.py optimization_result_yaml_file:={0} calibrated_controller_yaml_file:={1} calibrated_urdf_file:={2}".format(optimization_file, controller_file, urdf_file)
     with subprocess.Popen(shlex.split(bashCommand), stdout=subprocess.PIPE, bufsize=1, text=True) as p:
         for line in p.stdout:
             print(line, end='') # TODO: Find a way for this script to exit gracefully once Ctrl+C is pressed
