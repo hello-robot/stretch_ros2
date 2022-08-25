@@ -28,6 +28,8 @@ setup(
             'check_head_calibration = stretch_calibration.check_head_calibration:main',
             'visualize_most_recent_head_calibration = stretch_calibration.visualize_most_recent_head_calibration:main',
             'update_with_most_recent_calibration = stretch_calibration.update_with_most_recent_calibration:main',
+            'update_urdf_after_xacro_change = stretch_calibration.update_urdf_after_xacro_change:main',
+            'revert_to_previous_calibration = stretch_calibration.revert_to_previous_calibration:main',
         ],
     },
 )
