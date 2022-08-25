@@ -10,7 +10,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 uncalibrated_urdf_path = os.path.join(get_package_share_directory('stretch_description'), 'urdf', 'stretch_uncalibrated.urdf')
 uncalibrated_controller_yaml_path = os.path.join(get_package_share_directory('stretch_core'), 'config', 'controller_calibration_head_factory_default.yaml')
-calibration_directory_path = "$(env HELLO_FLEET_PATH)/$(env HELLO_FLEET_ID)/calibration_ros/"
+calibration_directory_path = "{0}/{1}/calibration_ros/".format(os.getenv('HELLO_FLEET_PATH'), os.getenv('HELLO_FLEET_ID'))
 
 configurable_parameters = [{'name': 'uncalibrated_urdf_filename',                          'default': uncalibrated_urdf_path, 'description': 'directory path of the uncalibrated urdf file'},
                            {'name': 'uncalibrated_controller_calibration_filename',               'default': uncalibrated_controller_yaml_path, 'description': 'directory path of the uncalibrated controller yaml file'},
@@ -22,13 +22,13 @@ def declare_configurable_parameters(parameters):
 
 
 def generate_launch_description():
-    head_calibration_options = Command(['ros2 param load ',
-                                         str(get_package_share_directory('stretch_calibration') / 'config' / 'head_calibration_options.yaml')])
-
+    head_calibration_options = os.path.join(get_package_share_directory('stretch_calibration'), 'config', 'head_calibration_options.yaml')
+    
     process_calibration_data = Node(
         package='stretch_calibration',
         executable='process_head_calibration_data',
         parameters=[
+            head_calibration_options,
             {
                 'calibration_directory': LaunchConfiguration('calibration_directory'),
                 'uncalibrated_controller_calibration_filename': LaunchConfiguration('uncalibrated_controller_calibration_filename'),
@@ -42,7 +42,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory('stretch_core'), 'launch'),
             '/stretch_driver.launch.py']),
-        launch_arguments={'broadcast_odom_tf': 'false'}.items()
+        launch_arguments={'broadcast_odom_tf': 'False'}.items()
         )
 
     rviz_config_path = os.path.join(get_package_share_directory('stretch_calibration'), 'rviz', 'head_calibration.rviz')
@@ -55,7 +55,6 @@ def generate_launch_description():
         )
 
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
-        head_calibration_options,
         process_calibration_data,
         stretch_driver,
         rviz_node,
