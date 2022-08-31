@@ -34,7 +34,6 @@ def generate_launch_description():
                 'uncalibrated_controller_calibration_filename': LaunchConfiguration('uncalibrated_controller_calibration_filename'),
                 'uncalibrated_urdf_filename': LaunchConfiguration('uncalibrated_urdf_filename')
             }],
-        arguments=['--no_vis'],
         output='screen',
         )
     

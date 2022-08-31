@@ -78,10 +78,12 @@ def generate_launch_description():
             '/stretch_aruco.launch.py']),
         )
 
+    dict_file_path = os.path.join(get_package_share_directory('stretch_core'), 'config', 'stretch_marker_dict.yaml')
     collect_calibration_data = Node(
         package='stretch_calibration',
         executable='collect_head_calibration_data',
         parameters=[
+            dict_file_path,
             {
                 'controller_calibration_file': LaunchConfiguration('uncalibrated_controller_yaml_file'),
                 'calibration_directory': LaunchConfiguration('calibration_directory')

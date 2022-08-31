@@ -9,7 +9,7 @@ def main():
     print("Convert the current xacro file to a fresh uncalibrated URDF file.")
     print("---")
 
-    print("ros2 run xacro xacro `ros2 pkg prefix stretch_description`/urdf/stretch_description.xacro > `ros2 pkg prefix --share stretch_description`/urdf/stretch_uncalibrated.urdf")
+    print("ros2 run xacro xacro `ros2 pkg prefix stretch_description`/urdf/stretch_description.xacro > `ros2 pkg prefix stretch_description`/urdf/stretch_uncalibrated.urdf")
 
     bashCommand = "ros2 pkg prefix stretch_description"
     process = subprocess.run(shlex.split(bashCommand), capture_output=True, text=True)
