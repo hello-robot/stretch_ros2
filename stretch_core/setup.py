@@ -24,6 +24,7 @@ setup(
         'console_scripts': [
             'stretch_driver = stretch_core.stretch_driver:main',
             'd435i_accel_correction = stretch_core.d435i_accel_correction:main',
+            'detect_aruco_markers = stretch_core.detect_aruco_markers:main',
         ],
     },
 )
