@@ -41,7 +41,7 @@ def generate_launch_description():
         output='screen',
         )
 
-    rviz_config_path = os.path.join(get_package_share_directory('stretch_core'), 'rviz', 'stretch_simple_test.rviz')
+    rviz_config_path = os.path.join(get_package_share_directory('stretch_calibration'), 'rviz', 'stretch_simple_test.rviz')
 
     rviz_node = Node(
         package='rviz2',

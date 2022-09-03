@@ -52,9 +52,9 @@ def generate_launch_description():
 
     return LaunchDescription([
         d435i_low_res_launch,
-        d435i_configure,
+        # d435i_configure,
         stretch_driver,
         aruco_marker_detector,
-        keyboar_teleop,
+        # keyboar_teleop,
         rviz_node,
         ])

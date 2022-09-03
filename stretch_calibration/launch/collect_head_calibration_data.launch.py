@@ -79,7 +79,6 @@ def generate_launch_description():
         )
 
     dict_file_path = os.path.join(get_package_share_directory('stretch_core'), 'config', 'stretch_marker_dict.yaml')
-
     collect_calibration_data = Node(
         package='stretch_calibration',
         executable='collect_head_calibration_data',
