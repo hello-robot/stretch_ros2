@@ -1,7 +1,7 @@
 # examples of command line use
-# rosparam load ./stretch_marker_dict.yaml
-# rosparam list
-# rosparam get /aruco_markers/
+# ros2 param load detect_aruco_node ./stretch_marker_dict.yaml
+# ros2 param list
+# ros2 param get detect_aruco_node aruco_marker_info.130.length_mm
 
 # Be careful with length_mm values. Stickers and printouts can vary
 # significantly from your expectations. You should measure them
@@ -10,66 +10,67 @@
 # error in the depths for the marker pose estimates when only using
 # RGB images.
 
-
-'aruco_marker_info': 
-  '130':
-    'length_mm': 47
-    'use_rgb_only': False
-    'name': 'base_left'
-    'link': 'link_aruco_left_base'
-  '131':
-    'length_mm': 47
-    'use_rgb_only': False
-    'name': 'base_right'
-    'link': 'link_aruco_right_base'
-  '132':
-    'length_mm': 23.5
-    'use_rgb_only': False
-    'name': 'wrist_inside'
-    'link': 'link_aruco_inner_wrist'
-  '133':
-    'length_mm': 23.5
-    'use_rgb_only': False
-    'name': 'wrist_top'
-    'link': 'link_aruco_top_wrist'
-  '134':
-    'length_mm': 31.4
-    'use_rgb_only': False
-    'name': 'shoulder_top'
-    'link': 'link_aruco_shoulder'
-  '246':
-    'length_mm': 179.0
-    'use_rgb_only': False
-    'name': 'floor_0'
-    'link': None
-  '247':
-    'length_mm': 179.0
-    'use_rgb_only': False
-    'name': 'floor_1'
-    'link': None
-  '248':
-    'length_mm': 179.0
-    'use_rgb_only': False
-    'name': 'floor_2'
-    'link': None
-  '249':
-    'length_mm': 179.0
-    'use_rgb_only': False
-    'name': 'floor_3'
-    'link': None
-  '10':
-    'length_mm': 24
-    'use_rgb_only': False
-    'name': 'target_object'
-    'link': None
-  '21':
-    'length_mm': 86
-    'use_rgb_only': False
-    'name': 'user_pointer'
-    'link': 'None'
-  'default':
-    'length_mm': 24
-    'use_rgb_only': False
-    'name': 'unknown'
-    'link': None
-    
+/**:
+  ros__parameters:
+    aruco_marker_info:
+      '130':
+        length_mm: 47
+        use_rgb_only: False
+        name: 'base_left'
+        link: 'link_aruco_left_base'
+      '131':
+        length_mm: 47
+        use_rgb_only: False
+        name: 'base_right'
+        link: 'link_aruco_right_base'
+      '132':
+        length_mm: 23.5
+        use_rgb_only: False
+        name: 'wrist_inside'
+        link: 'link_aruco_inner_wrist'
+      '133':
+        length_mm: 23.5
+        use_rgb_only: False
+        name: 'wrist_top'
+        link: 'link_aruco_top_wrist'
+      '134':
+        length_mm: 31.4
+        use_rgb_only: False
+        name: 'shoulder_top'
+        link: 'link_aruco_shoulder'
+      '246':
+        length_mm: 179.0
+        use_rgb_only: False
+        name: 'floor_0'
+        link: None
+      '247':
+        length_mm: 179.0
+        use_rgb_only: False
+        name: 'floor_1'
+        link: None
+      '248':
+        length_mm: 179.0
+        use_rgb_only: False
+        name: 'floor_2'
+        link: None
+      '249':
+        length_mm: 179.0
+        use_rgb_only: False
+        name: 'floor_3'
+        link: None
+      '10':
+        length_mm: 24
+        use_rgb_only: False
+        name: 'target_object'
+        link: None
+      '21':
+        length_mm: 86
+        use_rgb_only: False
+        name: 'user_pointer'
+        link: 'None'
+      'default':
+        length_mm: 24
+        use_rgb_only: False
+        name: 'unknown'
+        link: 'None'
+        

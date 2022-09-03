@@ -26,14 +26,14 @@ from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField
 from std_msgs.msg import Bool, String
 
 from hello_helpers.gripper_conversion import GripperConversion
-# from .joint_trajectory_server import JointTrajectoryAction
+from .joint_trajectory_server import JointTrajectoryAction
 from .stretch_diagnostics import StretchDiagnostics
 
 GRIPPER_DEBUG = False
 BACKLASH_DEBUG = False
 
 
-class StretchBodyNode(Node):
+class StretchDriver(Node):
 
     def __init__(self):
         super().__init__('stretch_driver')
@@ -61,7 +61,6 @@ class StretchBodyNode(Node):
         self.gripper_conversion = GripperConversion()
 
         self.robot_stop_lock = threading.Lock()
-        self.stop_the_robot = False
 
         self.robot_mode_rwlock = RWLock()
         self.robot_mode = None
@@ -234,12 +233,9 @@ class StretchBodyNode(Node):
         battery_state.present = True
         self.power_pub.publish(battery_state)
 
-        calibration_status = Bool()
-        if self.robot.is_calibrated():  # Returns status as integer, need to convert to bool
-            calibration_status.data = True
-        else:
-            calibration_status.data = False
-        self.calibration_pub.publish(calibration_status)
+        homed_status = Bool()
+        homed_status.data = bool(self.robot.is_calibrated())
+        self.homed_pub.publish(homed_status)
 
         mode_msg = String()
         mode_msg.data = self.robot_mode
@@ -357,9 +353,10 @@ class StretchBodyNode(Node):
     def change_mode(self, new_mode, code_to_run):
         self.robot_mode_rwlock.acquire_write()
         self.robot_mode = new_mode
-        code_to_run()
+        success, message = code_to_run()
         self.get_logger().info('{0}: Changed to mode = {1}'.format(self.node_name, self.robot_mode))
         self.robot_mode_rwlock.release_write()
+        return success, message
 
     # TODO : add a freewheel mode or something comparable for the mobile base?
 
@@ -370,7 +367,8 @@ class StretchBodyNode(Node):
         def code_to_run():
             self.linear_velocity_mps = 0.0
             self.angular_velocity_radps = 0.0
-        self.change_mode('navigation', code_to_run)
+            return True, 'Now in navigation mode.'
+        return self.change_mode('navigation', code_to_run)
 
     def turn_on_position_mode(self):
         # Position mode enables mobile base translation and rotation
@@ -381,19 +379,32 @@ class StretchBodyNode(Node):
         # 'base_link' become identical in this mode.
         def code_to_run():
             self.robot.base.enable_pos_incr_mode()
-        self.change_mode('position', code_to_run)
+            return True, 'Now in position mode.'
+        return self.change_mode('position', code_to_run)
 
-    def calibrate(self):
+    def turn_on_manipulation_mode(self):
+        # Manipulation mode is able to execute plans from
+        # high level planners like MoveIt2. These planners
+        # send whole robot waypoint trajectories to the
+        # joint trajectory action server, and the underlying
+        # Python interface to the robot (Stretch Body) executes
+        # the trajectory, respecting each waypoints' time_from_start
+        # attribute of the trajectory_msgs/JointTrajectoryPoint
+        # message. This allows coordinated motion of the base + arm.
         def code_to_run():
-            self.robot.home()
-        self.change_mode('calibration', code_to_run)
+            try:
+                self.robot.stop_trajectory()
+            except NotImplementedError as e:
+                return False, str(e)
+            self.robot.base.first_step = True
+            self.robot.base.pull_status()
+            return True, 'Now in manipulation mode.'
+        return self.change_mode('manipulation', code_to_run)
 
     # SERVICE CALLBACKS ##############
 
     def stop_the_robot_callback(self, request, response):
         with self.robot_stop_lock:
-            self.stop_the_robot = True
-
             self.robot.base.translate_by(0.0)
             self.robot.base.rotate_by(0.0)
             self.robot.arm.move_by(0.0)
@@ -411,31 +422,36 @@ class StretchBodyNode(Node):
         response.message = 'Stopped the robot.'
         return response
 
-    def calibrate_callback(self, request, response):
-        self.get_logger().info('Received calibrate_the_robot service call.')
-        self.calibrate()
+    def home_the_robot_callback(self, request, response):
+        with self.robot_stop_lock:
+            self.robot.home()
 
+        self.get_logger().info('Received home_the_robot service call.')
         response.success = True
-        response.message = 'Calibrated.'
+        response.message = 'Homed.'
         return response
 
     def navigation_mode_service_callback(self, request, response):
-        self.turn_on_navigation_mode()
-        response.success = True
-        response.message = 'Now in navigation mode.'
+        success, message = self.turn_on_navigation_mode()
+        response.success = success
+        response.message = message
         return response
 
     def position_mode_service_callback(self, request, response):
-        self.turn_on_position_mode()
-        response.success = True
-        response.message = 'Now in position mode.'
+        success, message = self.turn_on_position_mode()
+        response.success = success
+        response.message = message
+        return response
+
+    def manipulation_mode_service_callback(self, request, response):
+        success, message = self.turn_on_manipulation_mode()
+        response.success = success
+        response.message = message
         return response
 
     def runstop_service_callback(self, request, response):
         if request.data:
             with self.robot_stop_lock:
-                self.stop_the_robot = True
-
                 self.robot.base.translate_by(0.0)
                 self.robot.base.rotate_by(0.0)
                 self.robot.arm.move_by(0.0)
@@ -465,7 +481,12 @@ class StretchBodyNode(Node):
         self.get_logger().info("{0} started".format(self.node_name))
 
         self.robot = rb.Robot()
-        self.robot.startup()
+        if not self.robot.startup():
+            self.get_logger().fatal('Robot startup failed.')
+            rclpy.shutdown()
+            exit()
+        if not self.robot.is_calibrated():
+            self.get_logger().warn("Robot not homed. Call /home_the_robot service.")
 
         self.declare_parameter('mode', "position")
         mode = self.get_parameter('mode').value
@@ -474,6 +495,8 @@ class StretchBodyNode(Node):
             self.turn_on_position_mode()
         elif mode == "navigation":
             self.turn_on_navigation_mode()
+        elif mode == "manipulation":
+            self.turn_on_manipulation_mode()
 
         self.declare_parameter('broadcast_odom_tf', False)
         self.broadcast_odom_tf = self.get_parameter('broadcast_odom_tf').value
@@ -542,7 +565,7 @@ class StretchBodyNode(Node):
         self.odom_pub = self.create_publisher(Odometry, 'odom', 1)
 
         self.power_pub = self.create_publisher(BatteryState, 'battery', 1)
-        self.calibration_pub = self.create_publisher(Bool, 'is_calibrated', 1)
+        self.homed_pub = self.create_publisher(Bool, 'is_homed', 1)
         self.mode_pub = self.create_publisher(String, 'mode', 1)
 
         self.imu_mobile_base_pub = self.create_publisher(Imu, 'imu_mobile_base', 1)
@@ -551,7 +574,6 @@ class StretchBodyNode(Node):
 
         self.create_subscription(Twist, "cmd_vel", self.set_mobile_base_velocity_callback, 1)
 
-        # ~ symbol gets parameter from private namespace
         self.declare_parameter('rate', 15.0)
         self.joint_state_rate = self.get_parameter('rate').value
         self.declare_parameter('timeout', 1.0)
@@ -574,10 +596,10 @@ class StretchBodyNode(Node):
         self.last_twist_time = self.get_clock().now()
 
         # start action server for joint trajectories
-        self.declare_parameter('fail_out_of_range_goal', True)
-        self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
-        # self.joint_trajectory_action = JointTrajectoryAction(self)
-        # self.joint_trajectory_action.server.start()
+        self.declare_parameter('action_server_rate', 15.0)
+        self.action_server_rate = self.get_parameter('action_server_rate').value
+        self.joint_trajectory_action = JointTrajectoryAction(self, self.action_server_rate)
+
         self.diagnostics = StretchDiagnostics(self, self.robot)
 
         self.switch_to_navigation_mode_service = self.create_service(Trigger,
@@ -588,13 +610,17 @@ class StretchBodyNode(Node):
                                                                    '/switch_to_position_mode',
                                                                    self.position_mode_service_callback)
 
+        self.switch_to_manipulation_mode_service = self.create_service(Trigger,
+                                                                       '/switch_to_manipulation_mode',
+                                                                       self.manipulation_mode_service_callback)
+
         self.stop_the_robot_service = self.create_service(Trigger,
                                                           '/stop_the_robot',
                                                           self.stop_the_robot_callback)
 
-        self.calibrate_the_robot_service = self.create_service(Trigger,
-                                                               '/calibrate_the_robot',
-                                                               self.calibrate_callback)
+        self.home_the_robot_service = self.create_service(Trigger,
+                                                          '/home_the_robot',
+                                                          self.home_the_robot_callback)
 
         self.runstop_service = self.create_service(SetBool,
                                                    '/runstop',
@@ -610,8 +636,9 @@ def main():
     try:
         rclpy.init()
         executor = MultiThreadedExecutor(num_threads=2)
-        node = StretchBodyNode()
+        node = StretchDriver()
         executor.add_node(node)
+        executor.add_node(node.joint_trajectory_action)
         executor.spin()
     except (KeyboardInterrupt, ThreadServiceExit):
         node.robot.stop()

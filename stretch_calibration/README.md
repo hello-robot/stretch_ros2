@@ -17,15 +17,15 @@ In addition, after changing a tool, this code can be used to generate a new cali
 
 1. Make sure the uncalibrated URDF is up to date.
 
-   `rosrun stretch_calibration update_uncalibrated_urdf.sh`
+   `ros2 run stretch_calibration update_uncalibrated_urdf`
 
 1. Collect new observations
 
-   `roslaunch stretch_calibration collect_check_head_calibration_data.launch`
+   `ros2 launch stretch_calibration collect_check_head_calibration_data.launch.py`
 
 1. Test how well the current calibrated model fits the new observations
 
-   `rosrun stretch_calibration check_head_calibration.sh`
+   `ros2 run stretch_calibration check_head_calibration`
    
    - The total_error printed on the command line should be less than 0.05. If it is not, an error will be printed on the command line. 
 
@@ -44,7 +44,7 @@ A good calibration should result in a close correspondence between the robot's 3
 
 1. Test the current head calibration
 
-   `roslaunch stretch_calibration simple_test_head_calibration.launch`
+   `ros2 launch stretch_calibration simple_test_head_calibration.launch.py`
 
 ### Examples of Good and Bad Visual Fit
 
@@ -62,12 +62,12 @@ In the images below, examples of good and bad fit between the point cloud and th
    
 1. Make sure the uncalibrated URDF is up to date.
 
-   `rosrun stretch_calibration update_uncalibrated_urdf.sh`
+   `ros2 run stretch_calibration update_uncalibrated_urdf`
    
 1. Collect head calibration data
    - Put the robot on a flat surface. Give it room to move its arm and good lighting. Then, have the robot collect data using the command below. While the robot is collecting data, do not block its view of its markers. 
 
-      `roslaunch stretch_calibration collect_head_calibration_data.launch`
+      `ros2 launch stretch_calibration collect_head_calibration_data.launch.py`
       
 1. Process head calibration data
 
@@ -91,23 +91,23 @@ In the images below, examples of good and bad fit between the point cloud and th
    
      - Without visualization (faster)  
      
-       `roslaunch stretch_calibration process_head_calibration_data.launch`
+       `ros2 launch stretch_calibration process_head_calibration_data.launch.py`
      
      - With visualization (slower)
       
-       `roslaunch stretch_calibration process_head_calibration_data_with_visualization.launch`
+       `ros2 launch stretch_calibration process_head_calibration_data_with_visualization.launch.py`
       
 1. Inspect the fit of the most recent head calibration
 
-   `rosrun stretch_calibration visualize_most_recent_head_calibration.sh`
+   `ros2 run stretch_calibration visualize_most_recent_head_calibration`
    
 1. Start using the newest head calibration
 
-   `rosrun stretch_calibration update_with_most_recent_calibration.sh`
+   `ros2 run stretch_calibration update_with_most_recent_calibration`
    
 1. Test the current head calibration
 
-   `roslaunch stretch_calibration simple_test_head_calibration.launch`
+   `ros2 launch stretch_calibration simple_test_head_calibration.launch.py`
    
    Use RViz to visually inspect the calibrated model. The robot's 3D body model should look similar to the structure of your robot. You may refer to the section above to see examples of good and bad fit.
 
@@ -117,13 +117,9 @@ If you change the Stretch RE1's tool attached to the wrist and want to generate 
 
 After changing the tool xacro you will need to generate a new URDF and also update this new URDF with the previously optimized calibration parameters. To do so, follow the directions below: 
 
-1. In a terminal start roscore. This will enable the main script to proceed and terminate without pressing Ctrl-C.
+1. In a terminal run
 
-   `roscore`
-
-1. Next, in a different terminal terminal run
-
-   `rosrun stretch_calibration update_urdf_after_xacro_change.sh`
+   `ros2 run stretch_calibration update_urdf_after_xacro_change`
    
 This will update the uncalibrated URDF with the current xacro files and then create a calibrated URDF using the most recent calibration parameters.
 
@@ -133,7 +129,7 @@ When a new calibration is performed, it is timestamped and added to the calibrat
 
 1. Revert to the previous head calibration
 
-   `rosrun stretch_calibration revert_to_previous_calibration.sh`
+   `ros2 run stretch_calibration revert_to_previous_calibration`
 
 ## License
 

@@ -6,19 +6,21 @@ import sys
 import glob
 import math
 
-import rospy
+import rclpy
+from rclpy.node import Node
 import tf2_ros
-import ros_numpy
+# import ros_numpy  TODO(dlu): Fix https://github.com/eric-wieser/ros_numpy/issues/20
 import numpy as np
 import cv2
 
-import actionlib
-from control_msgs.msg import FollowJointTrajectoryAction
-from control_msgs.msg import FollowJointTrajectoryGoal
-from trajectory_msgs.msg import JointTrajectoryPoint
-import tf2_ros
+import pyquaternion
+
+from rclpy.action import ActionClient
+from control_msgs.action import FollowJointTrajectory
+from geometry_msgs.msg import Transform
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from sensor_msgs.msg import PointCloud2
-from std_srvs.srv import Trigger, TriggerRequest
+from std_srvs.srv import Trigger
 
 
 #######################
@@ -64,7 +66,7 @@ def get_left_finger_state(joint_states):
     left_finger_effort = joint_states.effort[i]
     return [left_finger_position, left_finger_velocity, left_finger_effort]
 
-class HelloNode:
+class HelloNode(Node):
     def __init__(self):
         self.joint_state = None
         self.point_cloud = None
@@ -138,34 +140,36 @@ class HelloNode:
 
 
     def main(self, node_name, node_topic_namespace, wait_for_first_pointcloud=True):
-        rospy.init_node(node_name)
-        self.node_name = rospy.get_name()
-        rospy.loginfo("{0} started".format(self.node_name))
+        super().__init__(node_name)
+        self.node_name = node_name
+        self.get_logger().info("{0} started".format(self.node_name))
 
-        self.trajectory_client = actionlib.SimpleActionClient('/stretch_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
-        server_reached = self.trajectory_client.wait_for_server(timeout=rospy.Duration(60.0))
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
+        server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
         if not server_reached:
-            rospy.signal_shutdown('Unable to connect to arm action server. Timeout exceeded.')
+            self.get_logger().error('Unable to connect to arm action server. Timeout exceeded.')
             sys.exit()
         
         self.tf2_buffer = tf2_ros.Buffer()
-        self.tf2_listener = tf2_ros.TransformListener(self.tf2_buffer)
+        self.tf2_listener = tf2_ros.TransformListener(self.tf2_buffer, self)
         
-        self.point_cloud_subscriber = rospy.Subscriber('/camera/depth/color/points', PointCloud2, self.point_cloud_callback)
-        self.point_cloud_pub = rospy.Publisher('/' + node_topic_namespace + '/point_cloud2', PointCloud2, queue_size=1)
+        self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 10)
+        self.point_cloud_pub = self.create_publisher(PointCloud2, '/' + node_topic_namespace + '/point_cloud2', 10)
 
-        rospy.wait_for_service('/stop_the_robot')
-        rospy.loginfo('Node ' + self.node_name + ' connected to /stop_the_robot service.')
-        self.stop_the_robot_service = rospy.ServiceProxy('/stop_the_robot', Trigger)
+        self.stop_the_robot_client = self.create_client(Trigger, '/stop_the_robot')
+        while not self.stop_the_robot_client.wait_for_service(timeout_sec=2.0):
+            self.get_logger().info("Waiting on '/stop_the_robot' service...")
+        self.get_logger().info('Node ' + self.node_name + ' connected to /stop_the_robot service.')
         
         if wait_for_first_pointcloud:
             # Do not start until a point cloud has been received
             point_cloud_msg = self.point_cloud
-            print('Node ' + node_name + ' waiting to receive first point cloud.')
+            self.get_logger().info('Node ' + node_name + ' waiting to receive first point cloud.')
             while point_cloud_msg is None:
-                rospy.sleep(0.1)
+                time.sleep(0.1)
+                rclpy.spin_once(self)
                 point_cloud_msg = self.point_cloud
-            print('Node ' + node_name + ' received first point cloud, so continuing.')
+            self.get_logger().info('Node ' + node_name + ' received first point cloud, so continuing.')
 
 
 def create_time_string():
@@ -245,3 +249,173 @@ def bound_ros_command(bounds, ros_pos, fail_out_of_range_goal, clip_ros_toleranc
             return bounds[1]
 
     return ros_pos
+
+def to_sec(duration):
+    """Given a message of type builtin_interfaces/Duration return the number of seconds as a float."""
+    return duration.sec + duration.nanosec / 1e9
+
+
+def transform_to_triple(transform):
+    """Given a message of type geometry_msgs/Transform, return the equivalent x/y/theta triple."""
+    x = transform.translation.x
+    y = transform.translation.y
+
+    quat = transform.rotation
+    q = pyquaternion.Quaternion(x=quat.x, y=quat.y, z=quat.z, w=quat.w)
+    yaw, pitch, roll = q.yaw_pitch_roll
+    return x, y, yaw
+
+
+def to_transform(d):
+    """Given a dictionary with keys x y and theta, return the equivalent geometry_msgs/Transform."""
+    t = Transform()
+    t.translation.x = d['x']
+    t.translation.y = d['y']
+    quaternion = pyquaternion.Quaternion(axis=[0, 0, 1], angle=d['theta'])
+    t.rotation.w = quaternion.w
+    t.rotation.x = quaternion.x
+    t.rotation.y = quaternion.y
+    t.rotation.z = quaternion.z
+    return t
+
+
+def twist_to_pair(msg):
+    """Given a message of type geometry_msgs/Twist, return the linear and angular components of the velocity."""
+    return msg.linear.x, msg.angular.z
+
+
+# Exceptions for dealing with FollowJointTrajectory
+class FollowJointTrajectoryException(RuntimeError):
+    """Parent class for all FollowJointTrajectory errors.
+    Each subclass should define the CODE based on the constants in FollowJointTrajectory.Result.
+    """
+
+    CODE = -100  # Arbitrary constant for unknown error.
+
+
+class InvalidGoalException(FollowJointTrajectoryException):
+    CODE = FollowJointTrajectory.Result.INVALID_GOAL
+
+
+class InvalidJointException(FollowJointTrajectoryException):
+    CODE = FollowJointTrajectory.Result.INVALID_JOINTS
+
+
+class PathToleranceException(FollowJointTrajectoryException):
+    CODE = FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED
+
+
+class GoalToleranceException(FollowJointTrajectoryException):
+    CODE = FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED
+
+
+def merge_arm_joints(trajectory):
+    new_trajectory = JointTrajectory()
+    arm_indexes = []
+    for index, name in enumerate(trajectory.joint_names):
+        if 'joint_arm_l' in name:
+            arm_indexes.append(index)
+        else:
+            new_trajectory.joint_names.append(name)
+
+    # If individual arm joints are not present, the original trajectory is fine
+    if not arm_indexes:
+        return trajectory
+
+    if 'wrist_extension' in trajectory.joint_names:
+        raise InvalidJointException('Received a command for the wrist_extension joint and one or more '
+                                    'telescoping_joints. These are mutually exclusive options. '
+                                    f'The joint names in the received command = {trajectory.joint_names}')
+
+    if len(arm_indexes) != 4:
+        raise InvalidJointException('Commands with telescoping joints requires all telescoping joints to be present. '
+                                    f'Only received {len(arm_indexes)} of 4 telescoping joints.')
+
+    # Set up points and variables to track arm values
+    total_extension = []
+    arm_velocities = []
+    arm_accelerations = []
+    for point in trajectory.points:
+        new_point = JointTrajectoryPoint()
+        new_point.time_from_start = point.time_from_start
+        new_trajectory.points.append(new_point)
+
+        total_extension.append(0.0)
+        arm_velocities.append([])
+        arm_accelerations.append([])
+
+    for index, name in enumerate(trajectory.joint_names):
+        for point_index, point in enumerate(trajectory.points):
+            x = point.positions[index]
+            v = point.velocities[index] if index < len(point.velocities) else None
+            a = point.accelerations[index] if index < len(point.accelerations) else None
+
+            if index in arm_indexes:
+                total_extension[point_index] += x
+                if v is not None:
+                    arm_velocities[point_index].append(v)
+                if a is not None:
+                    arm_accelerations[point_index].append(a)
+            else:
+                new_point = new_trajectory.points[point_index]
+                new_point.positions.append(x)
+                if v is not None:
+                    new_point.velocities.append(v)
+                if a is not None:
+                    new_point.accelerations.append(a)
+
+    # Now add the arm values
+    new_trajectory.joint_names.append('wrist_extension')
+    for point_index, new_point in enumerate(new_trajectory.points):
+        new_point.positions.append(total_extension[point_index])
+        vels = arm_velocities[point_index]
+        accels = arm_accelerations[point_index]
+
+        if vels:
+            new_point.velocities.append(sum(vels) / len(vels))
+        if accels:
+            new_point.accelerations.append(sum(accels) / len(accels))
+
+    return new_trajectory
+
+
+def preprocess_gripper_trajectory(trajectory):
+    gripper_joint_names = ['joint_gripper_finger_left', 'joint_gripper_finger_right', 'gripper_aperture']
+    present_gripper_joints = list(set(gripper_joint_names) & set(trajectory.joint_names))
+
+    # If no gripper joint names are present, no changes needed
+    if not present_gripper_joints:
+        return trajectory
+    elif 'joint_gripper_finger_left' in present_gripper_joints and 'joint_gripper_finger_right' in present_gripper_joints:
+        if (gripper_joint_names[0] in present_gripper_joints and gripper_joint_names[1] in present_gripper_joints):
+            # Make sure that all the points are the same
+            left_index = trajectory.joint_names.index(gripper_joint_names[0])
+            right_index = trajectory.joint_names.index(gripper_joint_names[1])
+            for pt in trajectory.points:
+                if not np.isclose(pt.positions[left_index], pt.positions[right_index], atol=0.1):
+                    raise InvalidGoalException('Recieved a command that includes both the left and right gripper '
+                                               'joints and their commanded positions are not the same. '
+                                               f'{pt.positions[left_index]} != {pt.positions[right_index]}')
+                # Due dilligence would also check the velocity/acceleration, but leaving for now
+
+            # If all the points are the same, then we can safely eliminate one
+            trajectory.joint_names.pop(right_index)
+            for pt in trajectory.points:
+                pt.positions.pop(right_index)
+                if pt.velocities:
+                    pt.velocities.pop(right_index)
+                if pt.accelerations:
+                    pt.accelerations.pop(right_index)
+            gripper_joint_names = ['joint_gripper_finger_left', 'gripper_aperture']
+        else:
+            raise InvalidJointException('Recieved a command that includes an odd combination of gripper joints: '
+                                        f'{present_gripper_joints}')
+
+    present_gripper_joints = list(set(gripper_joint_names) & set(trajectory.joint_names))
+    if len(present_gripper_joints) != 1:
+        raise InvalidJointException('Recieved a command that includes too many gripper joints: '
+                                    f'{present_gripper_joints}')
+
+    gripper_index = trajectory.joint_names.index(present_gripper_joints[0])
+    trajectory.joint_names[gripper_index] = 'stretch_gripper'
+    return trajectory

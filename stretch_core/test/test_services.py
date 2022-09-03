@@ -55,6 +55,7 @@ class TestServices(unittest.TestCase):
             rclpy.spin_once(self.node, timeout_sec=0.1)
         self.assertTrue(promise.done())
         response = promise.result()
+        self.node.get_logger().info(response.message)
         self.assertTrue(response.success)
 
     def test_switch_to_navigation_mode(self, proc_output):
@@ -67,6 +68,20 @@ class TestServices(unittest.TestCase):
             rclpy.spin_once(self.node, timeout_sec=0.1)
         self.assertTrue(promise.done())
         response = promise.result()
+        self.node.get_logger().info(response.message)
+        self.assertTrue(response.success)
+
+    def test_switch_to_manipulation_mode(self, proc_output):
+        mode_client = self.node.create_client(Trigger, '/switch_to_manipulation_mode')
+        self.assertTrue(mode_client.wait_for_service(timeout_sec=1.0))
+        request = Trigger.Request()
+        promise = mode_client.call_async(request)
+        ts = time.time()
+        while rclpy.ok() and time.time() - ts < 3.0 and not promise.done():
+            rclpy.spin_once(self.node, timeout_sec=0.1)
+        self.assertTrue(promise.done())
+        response = promise.result()
+        self.node.get_logger().info(response.message)
         self.assertTrue(response.success)
 
     def test_stop_the_robot(self, proc_output):
@@ -79,6 +94,7 @@ class TestServices(unittest.TestCase):
             rclpy.spin_once(self.node, timeout_sec=0.1)
         self.assertTrue(promise.done())
         response = promise.result()
+        self.node.get_logger().info(response.message)
         self.assertTrue(response.success)
 
     def test_runstop(self, proc_output):
@@ -92,6 +108,7 @@ class TestServices(unittest.TestCase):
             rclpy.spin_once(self.node, timeout_sec=0.1)
         self.assertTrue(promise.done())
         response = promise.result()
+        self.node.get_logger().info(response.message)
         self.assertTrue(response.success)
 
         request.data = False
@@ -101,4 +118,5 @@ class TestServices(unittest.TestCase):
             rclpy.spin_once(self.node, timeout_sec=0.1)
         self.assertTrue(promise.done())
         response = promise.result()
+        self.node.get_logger().info(response.message)
         self.assertTrue(response.success)

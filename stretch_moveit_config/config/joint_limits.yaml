@@ -13,61 +13,66 @@
             joint_limits:
               joint_arm_l0:
                 has_velocity_limits: true
-                max_velocity: 0.14
+                max_velocity: 0.02
                 has_acceleration_limits: true
-                max_acceleration: 0.14
+                max_acceleration: 0.02
               joint_arm_l1:
                 has_velocity_limits: true
-                max_velocity: 0.14
+                max_velocity: 0.02
                 has_acceleration_limits: true
-                max_acceleration: 0.14
+                max_acceleration: 0.02
               joint_arm_l2:
                 has_velocity_limits: true
-                max_velocity: 0.14
+                max_velocity: 0.02
                 has_acceleration_limits: true
-                max_acceleration: 0.14
+                max_acceleration: 0.02
               joint_arm_l3:
                 has_velocity_limits: true
-                max_velocity: 0.14
+                max_velocity: 0.02
                 has_acceleration_limits: true
-                max_acceleration: 0.14
+                max_acceleration: 0.02
               joint_gripper_finger_left:
                 has_velocity_limits: true
-                max_velocity: 4.0
+                max_velocity: 0.07
                 has_acceleration_limits: true
-                max_acceleration: 10.0
+                max_acceleration: 0.07
               joint_gripper_finger_right:
                 has_velocity_limits: true
-                max_velocity: 4.0
+                max_velocity: 0.07
                 has_acceleration_limits: true
-                max_acceleration: 10.0
+                max_acceleration: 0.07
               joint_head_pan:
-                has_acceleration_limits: true
                 has_velocity_limits: true
-                max_acceleration: 8.0
-                max_velocity: 3.0
+                max_velocity: 0.5
+                has_acceleration_limits: true
+                max_acceleration: 1.0
               joint_head_tilt:
-                has_acceleration_limits: true
                 has_velocity_limits: true
-                max_acceleration: 8.0
-                max_velocity: 3.0
+                max_velocity: 0.5
+                has_acceleration_limits: true
+                max_acceleration: 1.0
               joint_lift:
                 has_velocity_limits: true
-                max_velocity: 0.15
+                max_velocity: 0.06
                 has_acceleration_limits: true
-                max_acceleration: 0.095
+                max_acceleration: 0.04
               joint_wrist_yaw:
                 has_velocity_limits: true
-                max_velocity: 3.0
+                max_velocity: 0.5
                 has_acceleration_limits: true
-                max_acceleration: 8.0
+                max_acceleration: 1.0
               position/x:
                 has_velocity_limits: true
-                max_velocity: 0.15
+                max_velocity: 0.04
                 has_acceleration_limits: true
-                max_acceleration: 0.2
+                max_acceleration: 0.02
+              position/y:
+                has_velocity_limits: true
+                max_velocity: 0.04
+                has_acceleration_limits: true
+                max_acceleration: 0.02
               position/theta:
                 has_velocity_limits: true
-                max_velocity: 0.15
+                max_velocity: 0.1
                 has_acceleration_limits: true
-                max_acceleration: 0.2
+                max_acceleration: 0.1

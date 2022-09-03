@@ -2,15 +2,16 @@
 /**:
     ros__parameters:
         moveit_manage_controllers: true
-        moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+        moveit_controller_manager: stretch_simple_controller_manager/MoveItSimpleControllerManager
         trajectory_execution:
             # When determining the expected duration of a trajectory, this multiplicative factor is applied to get the allowed duration of execution
             allowed_execution_duration_scaling: 1.2
             # Allow more than the expected execution time before triggering a trajectory cancel (applied after scaling)
             allowed_goal_duration_margin: 0.5
             # Allowed joint-value tolerance for validation that trajectory's first point matches current robot state
-            allowed_start_tolerance: 0.01
-        moveit_simple_controller_manager:
+            # TODO: investigate separate allowed start tolerances for dynamixel and stepper joints
+            allowed_start_tolerance: 0.03
+        stretch_simple_controller_manager:
             controller_names:
               - stretch_controller
 
