@@ -1,24 +1,13 @@
 #!/usr/bin/env python3
 
-import calibration as ca
+from . import calibration as ca
 
-from sensor_msgs.msg import JointState
-from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry
+import rclpy
+from rclpy.node import Node
+from rclpy.duration import Duration
 
-import rospy
-import actionlib
-from control_msgs.msg import FollowJointTrajectoryAction
-from control_msgs.msg import FollowJointTrajectoryGoal
-from trajectory_msgs.msg import JointTrajectoryPoint
-
-from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 
-from tf.transformations import quaternion_from_euler, euler_from_quaternion, quaternion_from_matrix
-
-from sensor_msgs.msg import Imu
-from geometry_msgs.msg import Point
 from geometry_msgs.msg import Pose
 
 import math
@@ -27,12 +16,11 @@ import threading
 import sys
 
 import numpy as np
-import ros_numpy
+import ros2_numpy
 
 from copy import deepcopy
 
 import yaml
-import time
 import glob
 import argparse as ap
 
@@ -42,13 +30,11 @@ import urdf_parser_py as up
 from scipy.spatial.transform import Rotation
 import cma
 
-from visualization_msgs.msg import Marker
-from visualization_msgs.msg import MarkerArray
-
 
 class HeadCalibrator:
 
-    def __init__(self, uncalibrated_urdf_filename, calibration_directory, sample_selector_func, calibration_options, visualize, tilt_angle_backlash_transition_rad):
+    def __init__(self, node, uncalibrated_urdf_filename, calibration_directory, sample_selector_func, calibration_options, visualize, tilt_angle_backlash_transition_rad):
+        self.node = node
         self.visualize = visualize
         self.infinite_duration_visualization = False
 
@@ -73,7 +59,7 @@ class HeadCalibrator:
         self.head_calibration_data_filename = None
 
         if self.visualize: 
-            self.visualization_markers_pub = rospy.Publisher('/calibration/marker_array', MarkerArray, queue_size=1)
+            self.visualization_markers_pub = self.node.create_publisher(MarkerArray, '/calibration/marker_array', 10)
         else:
             self.visualization_markers_pub = None
 
@@ -216,7 +202,7 @@ class HeadCalibrator:
         self.head_calibration_data_filename = most_recent_filename
         print('Loading most recent head calibration data from a YAML file named ' + self.head_calibration_data_filename)
         fid = open(self.head_calibration_data_filename, 'r')
-        self.data = yaml.load(fid)
+        self.data = yaml.load(fid, Loader=yaml.SafeLoader)
         fid.close()
 
         # Convert data in yaml file from readable text to full joint
@@ -239,7 +225,7 @@ class HeadCalibrator:
                 pose_key = p + '_marker_pose'
                 pose_list = camera_measurements.get(pose_key)
                 if pose_list is not None:
-                    pose = ros_numpy.msgify(Pose, np.array(pose_list))
+                    pose = ros2_numpy.msgify(Pose, np.array(pose_list))
                     camera_measurements[pose_key] = pose
 
         self.calculate_normalization()
@@ -254,9 +240,9 @@ class HeadCalibrator:
         fit_error_threshold = 0.05
         fit_warning_threshold = 0.03
         if fit_error > fit_error_threshold:
-            rospy.logerr('The fit error is very high: {0} > {1} (fit_error > fit_error_threshold)'.format(fit_error, fit_error_threshold))
+            self.node.get_logger().error('The fit error is very high: {0} > {1} (fit_error > fit_error_threshold)'.format(fit_error, fit_error_threshold))
         elif fit_error > fit_warning_threshold:
-            rospy.logwarn('The fit error is high: {0} > {1} (fit_error > fit_warning_threshold)'.format(fit_error, fit_warning_threshold))
+            self.node.get_logger().warn('The fit error is high: {0} > {1} (fit_error > fit_warning_threshold)'.format(fit_error, fit_warning_threshold))
         
 
     def get_calibration_options(self):
@@ -556,11 +542,12 @@ class HeadCalibrator:
     def generate_target_visualizations(self):
         target_markers = []
         marker_id = 333333
-        marker_time = rospy.Time.now()
+        marker_time = self.node.get_clock().now().to_msg()
         # infinite lifetime (I think.)
         #lifetime = rospy.Duration()
         # 10 second lifetime, which assumes that these will be periodically resent.
-        lifetime = rospy.Duration(10.0)
+        duration = Duration(seconds=10.0)
+        lifetime = duration.to_msg()
         rgba = [1.0, 1.0, 1.0, 1.0]
         
         for i, s in enumerate(self.data):
@@ -653,7 +640,7 @@ class HeadCalibrator:
 
         # Initialize marker array for visualization.
         marker_array = MarkerArray()
-        marker_time = rospy.Time.now() 
+        marker_time = self.node.get_clock().now().to_msg()
         marker_id = 0
 
         if self.visualize:
@@ -755,7 +742,8 @@ class HeadCalibrator:
         if self.visualize:
             if self.infinite_duration_visualization:
                 for m in marker_array.markers:
-                    m.lifetime = rospy.Duration()
+                    duration = Duration()
+                    m.lifetime = duration.to_msg()
             self.visualization_markers_pub.publish(marker_array)
 
         # Returns the total error and the individual, unweighted error
@@ -800,7 +788,7 @@ class HeadCalibrator:
 
         
 
-class ProcessHeadCalibrationDataNode:
+class ProcessHeadCalibrationDataNode(Node):
 
     def __init__(self, opt_results_file_to_load=None, load_most_recent_opt_results=False, visualize_only=False, visualize=True):
         self.opt_results_file_to_load = opt_results_file_to_load
@@ -824,39 +812,47 @@ class ProcessHeadCalibrationDataNode:
             
     def main(self, use_check_calibration_data):
         
-        rospy.init_node('process_head_calibration_data')
-        self.node_name = rospy.get_name()        
-        rospy.loginfo("{0} started".format(self.node_name))
+        rclpy.init()
+        node = rclpy.create_node('process_head_calibration_data',
+                                allow_undeclared_parameters=True,
+                                automatically_declare_parameters_from_overrides=True)
+        self.node_name = node.get_name()        
+        node.get_logger().info("{0} started".format(self.node_name))
 
-        self.calibration_directory = rospy.get_param('~calibration_directory')
-        rospy.loginfo('Using the following directory for calibration files: {0}'.format(self.calibration_directory))
+        # TODO: Check significance of ~
+        self.calibration_directory = node.get_parameter_or('calibration_directory').value
+        node.get_logger().info('Using the following directory for calibration files: {0}'.format(self.calibration_directory))
 
         # load parameters for what data to fit and how well to fit it
-        head_calibration_options = rospy.get_param('/head_calibration_options')
+        #TODO: Check parameter type
+        head_calibration_options = {'data_to_use': node.get_parameter_or('head_calibration_options.data_to_use').value,
+                                    'fit_quality': node.get_parameter_or('head_calibration_options.fit_quality').value}
         self.data_to_use = head_calibration_options['data_to_use']
         self.fit_quality = head_calibration_options['fit_quality']
         if self.data_to_use not in self.data_to_use_dict.keys():
-            rospy.logerr('Unrecognized option: data_to_use = {0}, valid options are {1}'.format(self.data_to_use, self.data_to_use_dict.keys())) 
+            node.get_logger().error('Unrecognized option: data_to_use = {0}, valid options are {1}'.format(self.data_to_use, self.data_to_use_dict.keys())) 
         if self.fit_quality not in self.fit_quality_dict.keys():
-            rospy.logerr('Unrecognized option: fit_quality = {0}, valid options are {1}'.format(self.data_to_use, self.fit_quality_dict.keys())) 
-        rospy.loginfo('data_to_use = {0}'.format(self.data_to_use))
-        rospy.loginfo('fit_quality = {0}'.format(self.fit_quality))
+            node.get_logger().error('Unrecognized option: fit_quality = {0}, valid options are {1}'.format(self.data_to_use, self.fit_quality_dict.keys())) 
+        node.get_logger().info('data_to_use = {0}'.format(self.data_to_use))
+        node.get_logger().info('fit_quality = {0}'.format(self.fit_quality))
 
         self.cma_tolfun = self.fit_quality_dict[self.fit_quality]
         self.sample_selector_func = self.data_to_use_dict[self.data_to_use]
         
         # load default tilt backlash transition angle
-        self.uncalibrated_controller_calibration_filename = rospy.get_param('~uncalibrated_controller_calibration_filename')
-        rospy.loginfo('Loading factory default tilt backlash transition angle from the YAML file named {0}'.format(self.uncalibrated_controller_calibration_filename))
+        # TODO: Check significance of ~
+        self.uncalibrated_controller_calibration_filename = node.get_parameter('uncalibrated_controller_calibration_filename').value
+        node.get_logger().info('Loading factory default tilt backlash transition angle from the YAML file named {0}'.format(self.uncalibrated_controller_calibration_filename))
         fid = open(self.uncalibrated_controller_calibration_filename, 'r')
-        default_controller_parameters = yaml.load(fid)
+        default_controller_parameters = yaml.load(fid, Loader=yaml.SafeLoader)
         fid.close()
         tilt_angle_backlash_transition_rad = default_controller_parameters['tilt_angle_backlash_transition']
         deg_per_rad = 180.0/math.pi
-        rospy.loginfo('self.tilt_angle_backlash_transition_rad in degrees = {0}'.format(tilt_angle_backlash_transition_rad * deg_per_rad))
+        node.get_logger().info('self.tilt_angle_backlash_transition_rad in degrees = {0}'.format(tilt_angle_backlash_transition_rad * deg_per_rad))
 
-        self.uncalibrated_urdf_filename = rospy.get_param('~uncalibrated_urdf_filename')
-        rospy.loginfo('The uncalibrated URDF filename: {0}'.format(self.uncalibrated_urdf_filename))
+        # TODO: Check significance of ~
+        self.uncalibrated_urdf_filename = node.get_parameter('uncalibrated_urdf_filename').value
+        node.get_logger().info('The uncalibrated URDF filename: {0}'.format(self.uncalibrated_urdf_filename))
         
         if self.load_most_recent_opt_results or (self.opt_results_file_to_load is not None): 
             if self.load_most_recent_opt_results: 
@@ -868,7 +864,7 @@ class ProcessHeadCalibrationDataNode:
                 filename = self.opt_results_file_to_load
                 print('Loading CMA-ES result from a YAML file named ' + filename)
             fid = open(filename, 'r')
-            cma_result = yaml.load(fid)
+            cma_result = yaml.load(fid, Loader=yaml.SafeLoader)
             fid.close()
 
             show_data_used_during_optimization = True
@@ -883,14 +879,15 @@ class ProcessHeadCalibrationDataNode:
            
             calibration_options = cma_result.get('calibration_options', {})
             fit_parameters = np.array(cma_result['best_parameters'])
-            self.calibrator = HeadCalibrator(self.uncalibrated_urdf_filename, self.calibration_directory, self.sample_selector_func, calibration_options, self.visualize, tilt_angle_backlash_transition_rad)
+            self.calibrator = HeadCalibrator(node, self.uncalibrated_urdf_filename, self.calibration_directory, self.sample_selector_func, calibration_options, self.visualize, tilt_angle_backlash_transition_rad)
             
             if self.visualize_only:
                 print('Loading the most recent data file.')
                 self.calibrator.load_data(fit_parameters, use_check_calibration_data=use_check_calibration_data)
                 print('Visualizing how well the model fits the data.')
                 print('Wait to make sure that RViz has time to load.')
-                rospy.sleep(5.0)
+                # TODO: Replace time.sleep() instances with rclpy.clock.sleep_for() instances
+                time.sleep(5.0)
                 self.calibrator.visualize_fit(fit_parameters)
             else: 
                 time_string = ca.create_time_string()
@@ -912,7 +909,7 @@ class ProcessHeadCalibrationDataNode:
                                    'calibrate_tilt_backlash': True,
                                    'calibrate_arm_backlash': True}
 
-            self.calibrator = HeadCalibrator(self.uncalibrated_urdf_filename, self.calibration_directory, self.sample_selector_func, calibration_options, self.visualize, tilt_angle_backlash_transition_rad)
+            self.calibrator = HeadCalibrator(node, self.uncalibrated_urdf_filename, self.calibration_directory, self.sample_selector_func, calibration_options, self.visualize, tilt_angle_backlash_transition_rad)
             parameter_names = self.calibrator.get_names_of_parameters_to_fit()
             
             #"incumbent solution"
@@ -1025,7 +1022,7 @@ class ProcessHeadCalibrationDataNode:
                 print(cma_result)
 
 
-if __name__ == '__main__':
+def main():
     parser = ap.ArgumentParser(description='Process head calibration data and work with resulting files.')
     parser.add_argument('--load', action='store', help='Do not perform an optimization and instead load the specified file, which should contain CMA-ES optimization results.', default=None)
     parser.add_argument('--load_prev', action='store_true', help='Do not perform an optimization and instead load the most recent CMA-ES optimization results.')
@@ -1040,6 +1037,10 @@ if __name__ == '__main__':
     visualize_only = args.only_vis
     turn_on_visualization = not args.no_vis
     use_check_calibration_data = args.check
-    
+
     node = ProcessHeadCalibrationDataNode(opt_results_file_to_load = opt_results_file_to_load, load_most_recent_opt_results = load_most_recent_opt_results, visualize_only = visualize_only, visualize=turn_on_visualization)
     node.main(use_check_calibration_data)
+
+
+if __name__ == '__main__':
+    main()

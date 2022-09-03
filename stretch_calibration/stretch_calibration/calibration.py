@@ -1,45 +1,8 @@
 #!/usr/bin/env python3
 
-from sensor_msgs.msg import JointState
-from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry
-
-import rospy
-import actionlib
-from control_msgs.msg import FollowJointTrajectoryAction
-from control_msgs.msg import FollowJointTrajectoryGoal
-from trajectory_msgs.msg import JointTrajectoryPoint
-
-from visualization_msgs.msg import Marker
-from visualization_msgs.msg import MarkerArray
-
-from tf.transformations import quaternion_from_euler, euler_from_quaternion, quaternion_from_matrix
-
-from sensor_msgs.msg import Imu
-from geometry_msgs.msg import Point
-
-import math
-import time
-import threading
-import sys
-
 import numpy as np
 
-from copy import deepcopy
-
-import yaml
-import time
-import glob
-import argparse as ap
-
-from urdf_parser_py.urdf import URDF as urdf_parser
-import urdf_parser_py as up
-
 from scipy.spatial.transform import Rotation
-import cma
-
-from visualization_msgs.msg import Marker
-from visualization_msgs.msg import MarkerArray
 
 from hello_helpers.hello_misc import *
 import hello_helpers.hello_ros_viz as hr
