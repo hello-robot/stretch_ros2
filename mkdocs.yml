@@ -94,5 +94,5 @@ nav:
     - stretch_navigation: ./stretch_navigation/README.md
     - stretch_octomap: ./stretch_octomap/README.md
     - stretch_rtabmap: ./stretch_rtabmap/README.md
-    - stretch_simple_controller_manager: ./stretch_simple_controller_manager/README.md
+
 
