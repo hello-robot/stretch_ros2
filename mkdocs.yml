@@ -1,4 +1,4 @@
-site_name: Stretch ROS
+site_name: Stretch ROS2
 site_url: https://docs.hello-robot.com/stretch_ros2
 site_description: "Hello Robot Stretch ROS2 Documentation"
 copyright: 'Copyright &copy; 2022 Hello Robot Inc'
@@ -80,6 +80,7 @@ extra:
 
 nav:
  - Overview: README.md
+ - Tutorials: https://docs.hello-robot.com/0.2/stretch-tutorials/ros2/
  - Packages:
     - hello_helpers: ./hello_helpers/README.md
     - stretch_calibration: ./stretch_calibration/README.md
