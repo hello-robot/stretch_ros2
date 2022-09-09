@@ -6,6 +6,13 @@ import glob
 import sys
 
 
+def run_cmd(cmdstr):
+    process = subprocess.run(shlex.split(cmdstr), capture_output=True, text=True)
+    if(process.returncode != 0):
+        print("update_with_most_recent_calibration.py ERROR: {}".format(process.stderr), file=sys.stderr)
+        sys.exit(1)
+    return process
+
 def main():
     print(os.getenv('HOME'))
     bashCommand = "source {}/ament_ws/install/setup.bash".format(os.getenv('HOME'))
@@ -26,10 +33,7 @@ def main():
     print("Making it the new controller calibration file.")
 
     bashCommand = "ros2 pkg prefix stretch_core"
-    process = subprocess.run(shlex.split(bashCommand), capture_output=True, text=True)
-    if(process.stderr != ''):
-        print("There was an error while running the script: {}".format(process.stderr), file=sys.stderr)
-        sys.exit(1)
+    process = run_cmd(bashCommand)
     installpath = process.stdout
 
     addpath = "/src/stretch_ros2/stretch_core"
@@ -37,13 +41,10 @@ def main():
     installpath = installpath[0 : len(installpath) - len(minuspath) - 1]
     srcpath = "{0}{1}".format(installpath, addpath)
     print(srcpath)
-    
+
     bashCommand = "cp {0} {1}/config/controller_calibration_head.yaml".format(calibration_file, srcpath)
     print(bashCommand)
-    process = subprocess.run(shlex.split(bashCommand), capture_output=True, text=True)
-    if(process.stderr != ''):
-        print("There was an error while running the script: {}".format(process.stderr), file=sys.stderr)
-        sys.exit(1)
+    run_cmd(bashCommand)
     # cp $MOSTRECENT `rospack find stretch_core`/config/controller_calibration_head.yaml
 
     print("-----------------------------------------------------------")
@@ -55,12 +56,9 @@ def main():
 
     print("Found: ", calibrated_urdf_file)
     print("Making it the new URDF file.")
-    
+
     bashCommand = "ros2 pkg prefix stretch_description"
-    process = subprocess.run(shlex.split(bashCommand), capture_output=True, text=True)
-    if(process.stderr != ''):
-        print("There was an error while running the script: {}".format(process.stderr), file=sys.stderr)
-        sys.exit(1) 
+    process = run_cmd(bashCommand)
     installpath = process.stdout
 
     addpath = "/src/stretch_ros2/stretch_description"
@@ -68,13 +66,10 @@ def main():
     installpath = installpath[0 : len(installpath) - len(minuspath) - 1]
     srcpath = "{0}{1}".format(installpath, addpath)
     print(srcpath)
-    
+
     bashCommand = "cp {0} {1}/urdf/stretch.urdf".format(calibrated_urdf_file, srcpath)
     print(bashCommand)
-    process = subprocess.run(shlex.split(bashCommand), capture_output=True, text=True)
-    if(process.stderr != ''):
-        print("There was an error while running the script: {}".format(process.stderr), file=sys.stderr)
-        sys.exit(1)  
+    run_cmd(bashCommand)
     # cp $MOSTRECENT `rospack find stretch_description`/urdf/stretch.urdf
 
     print("-----------------------------------------------------------")
