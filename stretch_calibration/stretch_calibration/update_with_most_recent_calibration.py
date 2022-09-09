@@ -5,10 +5,11 @@ import os
 import glob
 import sys
 
+
 def run_cmd(cmdstr):
     process = subprocess.run(shlex.split(cmdstr), capture_output=True, text=True)
     if(process.returncode != 0):
-        print("update_with_mode_recent_calibration.py ERROR: {}".format(process.stderr), file=sys.stderr)
+        print("update_with_most_recent_calibration.py ERROR: {}".format(process.stderr), file=sys.stderr)
         sys.exit(1)
     return process
 

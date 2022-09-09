@@ -5,6 +5,14 @@ import os
 import glob
 import sys
 
+
+def run_cmd(cmdstr):
+    process = subprocess.run(shlex.split(cmdstr), capture_output=True, text=True)
+    if(process.returncode != 0):
+        print("revert_to_previous_calibration.py ERROR: {}".format(process.stderr), file=sys.stderr)
+        sys.exit(1)
+    return process
+
 def main():
     print("Attempt to revert to the previous calibration")
 
@@ -14,10 +22,7 @@ def main():
     print("Creating reversion directory if it does not already exist")
     bashCommand = "mkdir {}".format(reversion_dir)
     print(bashCommand)
-    process = subprocess.run(shlex.split(bashCommand), capture_output=True, text=True)
-    if(process.stderr != ''):
-        print("There was an error while running the script: {}".format(process.stderr), file=sys.stderr)
-        sys.exit(1)
+    process = run_cmd(bashCommand)
 
     print("-----------------------------------------------------------")
     print("Finding the most recent optimization results file")
@@ -32,10 +37,7 @@ def main():
 
     bashCommand = "mv {0} {1}".format(optimization_file, reversion_dir)
     print(bashCommand)
-    process = subprocess.run(shlex.split(bashCommand), text=True)
-    if(process.stderr != ''):
-        print("There was an error while running the script: {}".format(process.stderr), file=sys.stderr)
-        sys.exit(1)
+    process = run_cmd(bashCommand)
 
     print("-----------------------------------------------------------")
     print("Finding the most recent controller calibration file")
@@ -49,10 +51,7 @@ def main():
 
     bashCommand = "mv {0} {1}".format(controller_file, reversion_dir)
     print(bashCommand)
-    process = subprocess.run(shlex.split(bashCommand), text=True)
-    if(process.stderr != ''):
-        print("There was an error while running the script: {}".format(process.stderr), file=sys.stderr)
-        sys.exit(1)
+    process = run_cmd(bashCommand)
 
     print("-----------------------------------------------------------")
     print("Finding the most recent calibrated URDF file")
@@ -66,20 +65,14 @@ def main():
 
     bashCommand = "mv {0} {1}".format(urdf_file, reversion_dir)
     print(bashCommand)
-    process = subprocess.run(shlex.split(bashCommand), text=True)
-    if(process.stderr != ''):
-        print("There was an error while running the script: {}".format(process.stderr), file=sys.stderr)
-        sys.exit(1)
+    process = run_cmd(bashCommand)
 
     print("-----------------------------------------------------------")
     print("Now, update calibration using the most recent files remaining in the calibration directory")
     print("ros2 run stretch_calibration update_with_most_recent_calibration")
 
     bashCommand = "ros2 run stretch_calibration update_with_most_recent_calibration"
-    process = subprocess.run(shlex.split(bashCommand), text=True)
-    if(process.stderr != ''):
-        print("There was an error while running the script: {}".format(process.stderr), file=sys.stderr)
-        sys.exit(1)
+    process = run_cmd(bashCommand)
 
     print("-----------------------------------------------------------")
     print("Done")

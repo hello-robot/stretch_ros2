@@ -4,6 +4,13 @@ import shlex
 import sys
 
 
+def run_cmd(cmdstr):
+    process = subprocess.run(shlex.split(cmdstr), capture_output=True, text=True)
+    if(process.returncode != 0):
+        print("update_uncalibrated_urdf.py ERROR: {}".format(process.stderr), file=sys.stderr)
+        sys.exit(1)
+    return process
+
 def main():
     print("---")
     print("Convert the current xacro file to a fresh uncalibrated URDF file.")
@@ -12,10 +19,7 @@ def main():
     print("ros2 run xacro xacro `ros2 pkg prefix stretch_description`/urdf/stretch_description.xacro > `ros2 pkg prefix stretch_description`/urdf/stretch_uncalibrated.urdf")
 
     bashCommand = "ros2 pkg prefix stretch_description"
-    process = subprocess.run(shlex.split(bashCommand), capture_output=True, text=True)
-    if(process.stderr != ''):
-        print("There was an error while running the script: {}".format(process.stderr), file=sys.stderr)
-        sys.exit(1)
+    process = run_cmd(bashCommand)
     installpath = process.stdout
 
     # Following path manipulation is necessary because 'ros2 pkg prefix' command returns the /install path of the package whereas we want to make the changes in the /src path
@@ -26,10 +30,7 @@ def main():
     srcpath = "{0}{1}".format(installpath, addpath)
 
     bashCommand = "ros2 run xacro xacro {}/urdf/stretch_description.xacro".format(srcpath)
-    process = subprocess.run(shlex.split(bashCommand), capture_output=True, text=True)
-    if(process.stderr != ''):
-        print("There was an error while running the script: {}".format(process.stderr), file=sys.stderr)
-        sys.exit(1)
+    process = run_cmd(bashCommand)
     urdf = process.stdout
 
     test_filepath = "{}/urdf/stretch_uncalibrated.urdf".format(srcpath)
