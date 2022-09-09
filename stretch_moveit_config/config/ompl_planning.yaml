@@ -211,6 +211,33 @@
             - LazyPRMstar
             - SPARS
             - SPARStwo
+        mobile_base_arm:
+          default_planner_config: RRTConnect
+          planner_configs:
+            - AnytimePathShortening
+            - SBL
+            - EST
+            - LBKPIECE
+            - BKPIECE
+            - KPIECE
+            - RRT
+            - RRTConnect
+            - RRTstar
+            - TRRT
+            - PRM
+            - PRMstar
+            - FMT
+            - BFMT
+            - PDST
+            - STRIDE
+            - BiTRRT
+            - LBTRRT
+            - BiEST
+            - ProjEST
+            - LazyPRM
+            - LazyPRMstar
+            - SPARS
+            - SPARStwo
         planning_plugin: ompl_interface/OMPLPlanner
         request_adapters: "default_planner_request_adapters/AddTimeParameterization
                default_planner_request_adapters/FixWorkspaceBounds
