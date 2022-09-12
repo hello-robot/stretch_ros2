@@ -16,7 +16,6 @@ from launch_ros.actions import Node
 def generate_launch_description():
     moveit_config_path = get_package_share_path('stretch_moveit_config')
     stretch_core_path = get_package_share_path('stretch_core')
-    moveit_hybrid_planning_path = get_package_share_path('moveit_hybrid_planning')
 
     ld = LaunchDescription()
     ld.add_action(DeclareLaunchArgument('pipeline', default_value='ompl', description='specify the planning pipeline'))
