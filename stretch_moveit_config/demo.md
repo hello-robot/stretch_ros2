@@ -10,52 +10,14 @@ Stretch has a kinematically simple 3 DoF arm (+2 with DexWrist) that is suitable
 
 ## Demo with Stretch Robot
 
-### Installing ROS 2
-By default, Stretch RE1 ships with Ubuntu 18.04, ROS Melodic, and Python2 packages. These steps will install a second operating system with Ubuntu 20.04, ROS Noetic, ROS 2 Galactic (where MoveIt 2 is supported), and Python3 packages.
+### Installing ROS 2 on Ubuntu 20.04
+By default, Stretch RE1 ships with Ubuntu 18.04, ROS Melodic, and Python2 packages. The following steps will install a second operating system with Ubuntu 20.04, ROS Noetic, ROS 2 Galactic (where MoveIt 2 is supported), and Python3 packages. If you already have an Ubuntu 20.04 partition on the robot set up with the correct ROS workspaces, skip to the next section.
 
-1. A new firmware called protocol 1 (p1) for Stretch adds support for spline trajectories, a feature used by MoveIt2. Use the [firmware update guide](https://github.com/hello-robot/stretch_firmware/blob/master/tutorials/docs/updating_firmware.md) to install the new firmware.
-
-2. Use the [Noetic installation instructions](https://github.com/hello-robot/stretch_ros/blob/dev/noetic/install_noetic.md) to create the second Ubuntu 20.04 partition, and create a ROS2 Galactic workspace with MoveIt 2 installed.
-
-3. Boot into the new Ubuntu 20.04 partition, and edit the last few lines of the ~/.bashrc file to comment out sourcing of Noetic workspaces. When both versions of ROS are sourced, package conflicts arise. The result should look like:
-
-```
-#source /opt/ros/noetic/setup.bash
-source /opt/ros/galactic/setup.bash
-#source ~/catkin_ws/devel/setup.bash
-source ~/ament_ws/install/setup.bash
-```
+If your robot is an RE1 and you have not upgraded the software stack recently, follow the steps in this [link](https://docs.hello-robot.com/0.2/stretch-install/docs/robot_install/) to perform a fresh robot installation. We recommend backing up important data before you begin.
 
 ### Installing MoveIt 2 and Its Dependencies
 
-4. Clone the [stretch_ros2 repository](https://github.com/hello-robot/stretch_ros2) in your workspace and switch to the “feature/hybrid_planning” branch within stretch_ros2 using the following command.
-
-```
-cd ~/ament_ws/src
-git clone https://github.com/hello-robot/stretch_ros2.git
-git checkout feature/hybrid_planning
-```
-
-4. a. In the absence of support for stretch_calibration in ROS 2 (porting in progress which will make this step redundant), we need to manually move the calibrated urdf file named stretch.urdf from the stretch_description/urdf directory in stretch_ros (in ROS Melodic) to its counterpart in stretch_ros2 (in ROS 2 Galactic).
-
-4. b. We also need to move the controller_calibration_head.yaml file from the stretch_core/config directory in stretch_ros to its counterpart in stretch_ros2.
-
-5. In a new terminal, collect all of the packages to build from source. Use the command below to automate collection of these packages. Download the stretch_moveit2.repos file or copy and paste the contents of the file from [here](https://github.com/hello-robot/stretch_ros2/blob/feature/hybrid_planning/stretch_moveit_config/stretch_moveit2.repos).
-
-```
-cd ~/ament_ws/src
-vcs import < stretch_moveit2.repos
-```
-
-6. Download additional dependencies and build the workspace using these commands. This should install MoveIt 2 and everything else you need to run the tutorials!
-
-```
-cd ~/ament_ws
-rosdep install --from-paths src --ignore-src -r --rosdistro galactic -y
-cd ~/ament_ws
-colcon build
-source ~/ament_ws/install/setup.bash
-```
+If you performed the above steps successfully, you don't need to follow the steps in this section as the install scripts take care of satisfying all dependencies you need to run MoveIt 2 on your robot. However, if you already had a stable ROS 2 installation running but were missing the most up to date workspaces, follow the steps in this [link](https://docs.hello-robot.com/0.2/stretch-install/docs/ros_workspace/#ubuntu-2004) to update your ROS workspaces. We recommend backing up important data before you begin as this step replaces your existing workspace with a new one.
 
 ### Planning with MoveIt 2 Using RViz
 Before we proceed, it's always a good idea to home the robot first by running the following script so that we have the correct joint positions being published on the /joint_states topic. This is necessary for planning trajectories on Stretch with MoveIt.
@@ -64,13 +26,13 @@ Before we proceed, it's always a good idea to home the robot first by running th
 stretch_robot_home.py
 ```
 
-7. The easiest way to run MoveIt 2 on your robot is through RViz. With RViz you can plan, visualize, and also execute trajectories for various planning groups on your robot. To launch RViz with MoveIt 2, run the following command. (Press Ctrl+C in the terminal to terminate)
+The easiest way to run MoveIt 2 on your robot is through RViz. With RViz you can plan, visualize, and also execute trajectories for various planning groups on your robot. To launch RViz with MoveIt 2, run the following command. (Press Ctrl+C in the terminal to terminate)
 
 ```
 ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
 ```
 
-8. Follow instructions in this [tutorial](https://github.com/hello-robot/stretch_ros2/blob/feature/hybrid_planning/stretch_moveit_config/rviz_demo.md) to plan and execute trajectories using the interactive markers in RViz.
+Follow instructions in this [tutorial](https://docs.hello-robot.com/0.2/stretch-tutorials/ros2/moveit_rviz_demo/) to plan and execute trajectories using the interactive markers in RViz.
 
 Use the interactive markers to drag joints to desired positions or go to the manipulation tab in the Motion Planning pane to fine-tune joint values using the sliders. Next, click the 'Plan' button to plan the trajectory. If the plan is valid, you should be able to execute the trajectory by clicking the 'Execute' button. Below we see Stretch raising its arm without any obstacle in the way.
 
@@ -83,13 +45,14 @@ To plan with obstacles, you can insert objects like a box, cyclinder or sphere, 
 
 ### Planning with MoveIt 2 Using the MoveGroup C++ API
 
-9. If you want to integrate MoveIt 2 into your planning pipeline and want greater control over its various functionalities, using the MoveGroup API is the way to go. Execute the launch file again and go through the comments in the node to understand what's going on. (Press Ctrl+C in the terminal to terminate)
+If you want to integrate MoveIt 2 into your planning pipeline and want greater control over its various functionalities, using the MoveGroup API is the way to go. Execute the launch file again and go through the comments in the node to understand what's going on. (Press Ctrl+C in the terminal to terminate)
 
 ```
 ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
 ```
-10. Follow instructions in this [tutorial](https://github.com/hello-robot/stretch_ros2/blob/feature/hybrid_planning/stretch_moveit_config/movegroup_demo.md) to plan and execute trajectories using the MoveGroup C++ API.
+
+Follow instructions in this [tutorial](https://docs.hello-robot.com/0.2/stretch-tutorials/ros2/moveit_movegroup_demo/) to plan and execute trajectories using the MoveGroup C++ API.
 
 ![StowEdited](https://user-images.githubusercontent.com/97639181/166838248-cbfd537b-973e-4fb4-b60c-b5b3c111e02d.gif)
 
-Read the comments for a breakdown of the code
+Read the comments in the [code](https://github.com/hello-robot/stretch_ros2/blob/galactic/stretch_moveit_config/src/movegroup_test.cpp) for a breakdown of the node.
