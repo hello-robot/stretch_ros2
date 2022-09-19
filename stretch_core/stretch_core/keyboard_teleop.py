@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import math
-from keyboard import KBHit
+from .keyboard import KBHit
 import argparse as ap
 
 import rclpy
