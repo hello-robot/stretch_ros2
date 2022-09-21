@@ -16,7 +16,6 @@
   <build_export_depend>tf2</build_export_depend>
   
   <depend>sensor_msgs</depend>
-  <depend>tfros</depend>
   <depend>actionlib_msgs</depend>
   <depend>control_msgs</depend>
   <depend>hello_helpers</depend>
