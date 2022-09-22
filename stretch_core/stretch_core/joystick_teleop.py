@@ -17,7 +17,7 @@ import time
 
 class GetJoystickCommands:
 
-    def __init__(self, node):
+    def __init__(self):
         self.joy = Joy()
         self.step_size = 'medium'
         self.rad_per_deg = math.pi/180.0
@@ -179,9 +179,9 @@ class GetJoystickCommands:
         # arm in
         if self.joy.axes[3] > 0.25:
             command = {'joint': 'wrist_extension', 'delta': -self.get_deltas()['translate']}
-        if self.joy.buttons[4]:
-            command = {'joint': 'joint_wrist_yaw', 'delta': -self.get_deltas()['rad']}
         if self.joy.buttons[5]:
+            command = {'joint': 'joint_wrist_yaw', 'delta': -self.get_deltas()['rad']}
+        if self.joy.buttons[4]:
             command = {'joint': 'joint_wrist_yaw', 'delta': self.get_deltas()['rad']}
         if self.joy.buttons[1]:
             # grasp
@@ -220,7 +220,7 @@ class JoystickTeleopNode(Node):
     def __init__(self):
         rclpy.init()
         self.node = rclpy.create_node("joystick_teleop")
-        self.keys = GetJoystickCommands(self.node)
+        self.keys = GetJoystickCommands()
         self.joint_state = JointState()
         self.joy = Joy()
 
@@ -303,7 +303,7 @@ class JoystickTeleopNode(Node):
         for i in range(10):
             rclpy.spin_once(self.node)
 
-        timer_period = 1.0  # seconds
+        timer_period = 0.1  # seconds
         self.timer = self.node.create_timer(timer_period, self.command)
 
         rclpy.spin(self.node)
