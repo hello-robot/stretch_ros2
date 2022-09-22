@@ -1,0 +1,3 @@
+# Move this file into /etc/udev/rules.d/
+
+KERNEL=="event[0-9]*", SUBSYSTEM=="input", ATTRS{name}=="Microsoft X-Box 360 pad", ACTION=="add", SYMLINK+="hello-joystick", MODE="666"
