@@ -1,12 +1,10 @@
 
 #!/usr/bin/env python3
 
-import rclpy
 from rclpy.duration import Duration
-from visualization_msgs.msg import Marker, MarkerArray
+from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 from std_msgs.msg import ColorRGBA
-import numpy as np
 
 def create_line_strip(points, id_num, frame_id, timestamp, rgba=[1.0, 0.0, 0.0, 1.0], line_width_m=0.01, duration_s=0.0):
     marker = Marker()
