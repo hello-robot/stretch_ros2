@@ -3,12 +3,11 @@
 import cv2
 import numpy as np
 
-import rospy
+from rclpy.duration import Duration
 
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
 from geometry_msgs.msg import Point
-from scipy.spatial.transform import Rotation
 
 import hello_helpers.fit_plane as fp
 import hello_helpers.hello_ros_viz as hr
@@ -34,7 +33,8 @@ class DetectionBoxMarker:
         self.marker.type = self.marker.CUBE
         self.marker.action = self.marker.ADD
         self.lifetime_s = 2.0
-        self.marker.lifetime = rospy.Duration(self.lifetime_s)
+        duration = Duration(seconds=self.lifetime_s)
+        self.marker.lifetime = duration.to_msg()
         # although useful, this causes a warning and rviz and goes
         # against the documentation "NOTE: only used for text markers
         # string text"
@@ -148,7 +148,8 @@ class DetectionBoxMarker:
         marker.id = id_num
         marker.type = marker.ARROW
         marker.action = marker.ADD
-        marker.lifetime = rospy.Duration(1.0)
+        duration = Duration(seconds=1.0)
+        marker.lifetime = duration.to_msg()
         if name is not None:
             # although useful, this causes a warning and rviz and goes
             # against the documentation "NOTE: only used for text markers

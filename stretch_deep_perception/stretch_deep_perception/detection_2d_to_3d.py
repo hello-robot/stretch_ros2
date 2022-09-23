@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 
-import cv2
 import numpy as np
-import rospy
 from scipy.spatial.transform import Rotation
-import hello_helpers.hello_ros_viz as hr
 from numba_image_to_pointcloud import numba_image_to_pointcloud
 import hello_helpers.fit_plane as fp
 
