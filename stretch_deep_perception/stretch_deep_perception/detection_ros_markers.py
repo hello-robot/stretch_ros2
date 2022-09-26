@@ -128,9 +128,9 @@ class DetectionBoxMarker:
         self.marker.color.b = self.id_color[0]/den
         self.marker.color.a = 0.5
 
-        self.marker.pose.position.x = self.marker_position[0]
-        self.marker.pose.position.y = self.marker_position[1]
-        self.marker.pose.position.z = self.marker_position[2]
+        self.marker.pose.position.x = float(self.marker_position[0])
+        self.marker.pose.position.y = float(self.marker_position[1])
+        self.marker.pose.position.z = float(self.marker_position[2])
 
         q = self.marker_quaternion
         self.marker.pose.orientation.x = q[0]
@@ -189,9 +189,9 @@ class DetectionBoxMarker:
         x = self.marker_position[0]
         y = self.marker_position[1]
         z = self.marker_position[2]
-        start_point.x = x
-        start_point.y = y
-        start_point.z = z
+        start_point.x = float(x)
+        start_point.y = float(y)
+        start_point.z = float(z)
         end_point = Point()
         length = axis_arrow['length']
         end_point.x = x + (axis[0] * length)

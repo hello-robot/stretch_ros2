@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+from unicodedata import name
 import cv2
 import ctypes
 import rclpy
+import sys
 
 from std_msgs.msg import Header
 from sensor_msgs.msg import Image
@@ -16,8 +18,8 @@ import message_filters
 
 import struct
 
-import detection_ros_markers as dr
-import detection_2d_to_3d as d2
+from . import detection_ros_markers as dr
+from . import detection_2d_to_3d as d2
 
 
 class DetectionNode:
@@ -128,10 +130,10 @@ class DetectionNode:
         header = Header()
         header.frame_id = 'camera_color_optical_frame'
         header.stamp = self.node.get_clock().now().to_msg()
-        fields = [PointField('x', 0, PointField.FLOAT32, 1),
-                  PointField('y', 4, PointField.FLOAT32, 1),
-                  PointField('z', 8, PointField.FLOAT32, 1),
-                  PointField('rgba', 12, PointField.UINT32, 1)]
+        fields = [PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+                  PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+                  PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+                  PointField(name='rgba', offset=12, datatype=PointField.UINT32, count=1)]
         r = 255
         g = 0
         b = 0
@@ -166,9 +168,9 @@ class DetectionNode:
         point_step, pack_into = cloud_struct.size, cloud_struct.pack_into
         offset = 0
 
-        for p in points:
-            pack_into(buff, offset, *p)
-            offset += point_step
+        # for p in points:
+        #     pack_into(buff, offset, *p)
+        #     offset += point_step
 
         point_cloud = PointCloud2(
                         header=header,
@@ -186,22 +188,31 @@ class DetectionNode:
         self.all_points = []
     
     def main(self):
+        rclpy.init()
         self.node = rclpy.create_node(self.node_name)
         name = self.node.get_name()
         self.node.get_logger().info("{0} started".format(name))
         
         self.rgb_topic_name = '/camera/color/image_raw' #'/camera/infra1/image_rect_raw'
-        self.rgb_image_subscriber = message_filters.Subscriber(Image, self.rgb_topic_name)
+        self.rgb_image_subscriber = message_filters.Subscriber(self.node, Image, self.rgb_topic_name)
 
         self.depth_topic_name = '/camera/aligned_depth_to_color/image_raw'
-        self.depth_image_subscriber = message_filters.Subscriber(Image, self.depth_topic_name)
+        self.depth_image_subscriber = message_filters.Subscriber(self.node, Image, self.depth_topic_name)
 
-        self.camera_info_subscriber = message_filters.Subscriber(CameraInfo, '/camera/color/camera_info')
+        self.camera_info_subscriber = message_filters.Subscriber(self.node, CameraInfo, '/camera/color/camera_info')
 
         self.synchronizer = message_filters.TimeSynchronizer([self.rgb_image_subscriber, self.depth_image_subscriber, self.camera_info_subscriber], 10)
         self.synchronizer.registerCallback(self.image_callback)
         
-        self.visualize_markers_pub = self.node.create_publisher(MarkerArray, '/' + self.topic_base_name + '/marker_array', queue_size=1)
-        self.visualize_axes_pub = self.node.create_publisher(MarkerArray, '/' + self.topic_base_name + '/axes', queue_size=1)
-        self.visualize_point_cloud_pub = self.node.create_publisher(PointCloud2, '/' + self.topic_base_name + '/point_cloud2', queue_size=1)
+        self.visualize_markers_pub = self.node.create_publisher(MarkerArray, '/' + self.topic_base_name + '/marker_array', 1)
+        self.visualize_axes_pub = self.node.create_publisher(MarkerArray, '/' + self.topic_base_name + '/axes', 1)
+        self.visualize_point_cloud_pub = self.node.create_publisher(PointCloud2, '/' + self.topic_base_name + '/point_cloud2', 1)
 
+        try:
+            rclpy.spin(self.node)
+        except KeyboardInterrupt:
+            print('interrupt received, so shutting down')
+
+        self.node.destroy_node()
+        rclpy.shutdown()
+        

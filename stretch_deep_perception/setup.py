@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'detect_objects = stretch_deep_perception.detect_objects:main',
         ],
     },
 )
