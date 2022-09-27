@@ -89,6 +89,10 @@ class DetectionNode:
             print('DetectionNode.image_callback: output_image.shape =', output_image.shape)
             cv2.imwrite('./output_images/deep_learning_output_' + str(self.image_count).zfill(4) + '.png', output_image)
 
+        output_image = ros2_numpy.msgify(Image, output_image, encoding='rgb8')
+        if output_image is not None:
+            self.visualize_object_detections_pub.publish(output_image)
+
         detections_3d = d2.detections_2d_to_3d(detections_2d, self.rgb_image, self.camera_info, self.depth_image, fit_plane=self.fit_plane, min_box_side_m=self.min_box_side_m, max_box_side_m=self.max_box_side_m)
 
         if self.modify_3d_detections is not None:
@@ -207,6 +211,8 @@ class DetectionNode:
         self.visualize_markers_pub = self.node.create_publisher(MarkerArray, '/' + self.topic_base_name + '/marker_array', 1)
         self.visualize_axes_pub = self.node.create_publisher(MarkerArray, '/' + self.topic_base_name + '/axes', 1)
         self.visualize_point_cloud_pub = self.node.create_publisher(PointCloud2, '/' + self.topic_base_name + '/point_cloud2', 1)
+
+        self.visualize_object_detections_pub = self.node.create_publisher(Image, '/' + self.topic_base_name + '/color/image_with_bb', 1)
 
         try:
             rclpy.spin(self.node)

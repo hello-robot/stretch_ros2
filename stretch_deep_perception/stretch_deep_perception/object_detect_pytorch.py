@@ -29,10 +29,10 @@ class ObjectDetector:
             if confidence > self.confidence_threshold:
                 class_label = detection['name']
                 object_class_id = detection['class']
-                x_min = detection['xmin']
-                x_max = detection['xmax']
-                y_min = detection['ymin']
-                y_max = detection['ymax']
+                x_min = int(detection['xmin'])
+                x_max = int(detection['xmax'])
+                y_min = int(detection['ymin'])
+                y_max = int(detection['ymax'])
                 box = (x_min, y_min, x_max, y_max)
 
                 print(class_label, ' detected')
@@ -41,7 +41,7 @@ class ObjectDetector:
                                 'label': class_label,
                                 'confidence': confidence,
                                 'box': box})
-
+        draw_output = True
         output_image = None
         if draw_output:
             output_image = rgb_image.copy()
