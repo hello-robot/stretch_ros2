@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'detect_objects = stretch_deep_perception.detect_objects:main',
+            'detect_faces = stretch_deep_perception.detect_faces:main',
         ],
     },
 )

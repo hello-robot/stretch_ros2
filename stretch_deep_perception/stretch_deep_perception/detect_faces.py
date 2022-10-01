@@ -2,13 +2,12 @@
 
 import cv2
 import sys
-import rospy
-import head_estimator as he
-import detection_node as dn
-import deep_learning_model_options as do
+from . import head_estimator as he
+from . import detection_node as dn
+from . import deep_learning_model_options as do
 
 
-if __name__ == '__main__':    
+def main():
     print('cv2.__version__ =', cv2.__version__)
     print('Python version (must be > 3.0):', sys.version)
     assert(int(sys.version[0]) >= 3)
@@ -55,8 +54,11 @@ if __name__ == '__main__':
                             min_box_side_m=min_head_m,
                             max_box_side_m=max_head_m)
     node.main()
-    try:
-        rospy.spin()
-    except KeyboardInterrupt:
-        print('interrupt received, so shutting down')
+    # try:
+    #     rospy.spin()
+    # except KeyboardInterrupt:
+    #     print('interrupt received, so shutting down')
 
+
+if __name__ == '__main__':    
+    main()
