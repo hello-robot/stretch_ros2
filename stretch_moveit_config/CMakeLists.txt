@@ -48,6 +48,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
 )
 
 add_executable(movegroup_test src/movegroup_test.cpp)
+add_executable(moveit_draw src/moveit_draw.cpp)
 
 ament_target_dependencies(movegroup_test
   ament_cmake
@@ -68,8 +69,28 @@ ament_target_dependencies(movegroup_test
   control_msgs
 )
 
+ament_target_dependencies(moveit_draw
+  ament_cmake
+  rclcpp
+  rclcpp_action
+  tf2_geometry_msgs
+  tf2_ros
+  moveit_core
+  rviz_visual_tools
+  moveit_visual_tools
+  moveit_ros_planning_interface
+  interactive_markers
+  tf2_geometry_msgs
+  moveit_ros_planning
+  pluginlib
+  Eigen3
+  Boost
+  control_msgs
+)
+
 install(TARGETS
   movegroup_test
+  moveit_draw
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}
