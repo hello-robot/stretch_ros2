@@ -89,9 +89,10 @@ class DetectionNode:
             print('DetectionNode.image_callback: output_image.shape =', output_image.shape)
             cv2.imwrite('./output_images/deep_learning_output_' + str(self.image_count).zfill(4) + '.png', output_image)
 
-        output_image = ros2_numpy.msgify(Image, output_image, encoding='rgb8')
         if output_image is not None:
-            self.visualize_object_detections_pub.publish(output_image)
+            output_image = ros2_numpy.msgify(Image, output_image, encoding='rgb8')
+            if output_image is not None:
+                self.visualize_object_detections_pub.publish(output_image)
 
         detections_3d = d2.detections_2d_to_3d(detections_2d, self.rgb_image, self.camera_info, self.depth_image, fit_plane=self.fit_plane, min_box_side_m=self.min_box_side_m, max_box_side_m=self.max_box_side_m)
 

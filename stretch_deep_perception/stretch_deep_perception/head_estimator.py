@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import cv2
+import renamed_cv2
 import numpy as np
 from scipy.spatial.transform import Rotation
 from . import deep_models_shared as dm
@@ -20,18 +20,18 @@ class HeadPoseEstimator:
         print('attempting to load neural network from files')
         print('prototxt file =', head_detection_model_prototxt_filename)
         print('caffemodel file =', head_detection_model_caffemodel_filename)
-        self.head_detection_model = cv2.dnn.readNetFromCaffe(head_detection_model_prototxt_filename, head_detection_model_caffemodel_filename)
+        self.head_detection_model = renamed_cv2.dnn.readNetFromCaffe(head_detection_model_prototxt_filename, head_detection_model_caffemodel_filename)
         dm.print_model_info(self.head_detection_model, 'head_detection_model')
         
         # attempt to use Neural Compute Stick 2
         if use_neural_compute_stick:
-            print('HeadPoseEstimator.__init__: Attempting to use an Intel Neural Compute Stick 2 using the following command: self.head_detection_model.setPreferableTarget(cv2.dnn.DNN_TARGET_MYRIAD)')
-            self.head_detection_model.setPreferableTarget(cv2.dnn.DNN_TARGET_MYRIAD)
+            print('HeadPoseEstimator.__init__: Attempting to use an Intel Neural Compute Stick 2 using the following command: self.head_detection_model.setPreferableTarget(renamed_cv2.dnn.DNN_TARGET_MYRIAD)')
+            self.head_detection_model.setPreferableTarget(renamed_cv2.dnn.DNN_TARGET_MYRIAD)
 
         head_pose_model_dir = models_dir + '/open_model_zoo/head-pose-estimation-adas-0001/FP32/'
         head_pose_weights_filename = head_pose_model_dir + 'head-pose-estimation-adas-0001.bin'
         head_pose_config_filename = head_pose_model_dir + 'head-pose-estimation-adas-0001.xml'
-        self.head_pose_model = cv2.dnn.readNet(head_pose_weights_filename, head_pose_config_filename)
+        self.head_pose_model = renamed_cv2.dnn.readNet(head_pose_weights_filename, head_pose_config_filename)
         
         if use_neural_compute_stick:
             print('Not attempting to use a Intel Neural Compute Stick 2 for head pose estimation due to potential errors.')
@@ -41,7 +41,7 @@ class HeadPoseEstimator:
         landmarks_model_dir = models_dir + '/open_model_zoo/facial-landmarks-35-adas-0002/FP32/'
         landmarks_weights_filename = landmarks_model_dir + 'facial-landmarks-35-adas-0002.bin'
         landmarks_config_filename = landmarks_model_dir + 'facial-landmarks-35-adas-0002.xml'
-        self.landmarks_model = cv2.dnn.readNet(landmarks_weights_filename, landmarks_config_filename)
+        self.landmarks_model = renamed_cv2.dnn.readNet(landmarks_weights_filename, landmarks_config_filename)
 
         if use_neural_compute_stick:
             print('Not attempting to use a Intel Neural Compute Stick 2 for facial landmarks due to potential errors.')
@@ -81,10 +81,10 @@ class HeadPoseEstimator:
         # a width x width square image from the top.
         square_face_image = face_image[:rot_w, :, :]
         sqr_h, sqr_w, c = square_face_image.shape
-        network_image = cv2.resize(square_face_image, (300, 300))
+        network_image = renamed_cv2.resize(square_face_image, (300, 300))
         # Some magic numbers came from
         # https://www.pyimagesearch.com/2018/02/26/face-detection-with-opencv-and-deep-learning/
-        face_image_blob = cv2.dnn.blobFromImage(network_image, 1.0, (300, 300), (104.0, 177.0, 123.0))
+        face_image_blob = renamed_cv2.dnn.blobFromImage(network_image, 1.0, (300, 300), (104.0, 177.0, 123.0))
         self.head_detection_model.setInput(face_image_blob)
         face_detections = self.head_detection_model.forward()[0,0,:,:]
         confidence_mask = face_detections[:, 2] > self.face_confidence_threshold
@@ -153,11 +153,11 @@ class HeadPoseEstimator:
         sqr_h, sqr_w, c = face_crop_image.shape
 
         if (sqr_h > 0) and (sqr_w > 0):
-            head_pose_image_blob = cv2.dnn.blobFromImage(face_crop_image,
+            head_pose_image_blob = renamed_cv2.dnn.blobFromImage(face_crop_image,
                                                          size=(60, 60),
                                                          swapRB=False,
                                                          crop=False,
-                                                         ddepth=cv2.CV_32F)
+                                                         ddepth=renamed_cv2.CV_32F)
             self.head_pose_model.setInput(head_pose_image_blob)
             head_pose_out = self.head_pose_model.forward(['angle_r_fc', 'angle_p_fc', 'angle_y_fc'])
             rpy = head_pose_out
@@ -178,11 +178,11 @@ class HeadPoseEstimator:
         sqr_h, sqr_w, c = face_crop_image.shape
 
         if (sqr_h > 0) and (sqr_w > 0):
-            landmarks_image_blob = cv2.dnn.blobFromImage(face_crop_image,
+            landmarks_image_blob = renamed_cv2.dnn.blobFromImage(face_crop_image,
                                                          size=(60, 60),
                                                          swapRB=False,
                                                          crop=False,
-                                                         ddepth=cv2.CV_32F)
+                                                         ddepth=renamed_cv2.CV_32F)
             self.landmarks_model.setInput(landmarks_image_blob)
             landmarks_out = self.landmarks_model.forward()
 
@@ -208,7 +208,7 @@ class HeadPoseEstimator:
         y1 = int(round(bounding_box[3]))
         color = (0, 0, 255)
         thickness = 2
-        cv2.rectangle(image, (x0, y0), (x1, y1), color, thickness)
+        renamed_cv2.rectangle(image, (x0, y0), (x1, y1), color, thickness)
 
         
     def draw_head_pose(self, image, yaw, pitch, roll, bounding_box):
@@ -238,8 +238,8 @@ class HeadPoseEstimator:
                          [0.0,     0.0,      0.0   ]])
         head_ypr = np.array([-yaw, pitch, roll])
         rotation_mat = Rotation.from_euler('yxz', head_ypr).as_matrix()
-        rotation_vec, jacobian = cv2.Rodrigues(rotation_mat)
-        image_points, jacobian = cv2.projectPoints(axes, rotation_vec, face_translation, camera_matrix, distortion_coefficients)
+        rotation_vec, jacobian = renamed_cv2.Rodrigues(rotation_mat)
+        image_points, jacobian = renamed_cv2.projectPoints(axes, rotation_vec, face_translation, camera_matrix, distortion_coefficients)
         face_pix = np.array([face_x, face_y])
 
         origin = image_points[3].ravel()
@@ -249,11 +249,11 @@ class HeadPoseEstimator:
 
         p0 = tuple(np.int32(np.round(face_pix)))
         p1 = tuple(np.int32(np.round(x_axis)))
-        cv2.line(image, p0, p1, (0, 0, 255), 2)
+        renamed_cv2.line(image, p0, p1, (0, 0, 255), 2)
         p1 = tuple(np.int32(np.round(y_axis)))
-        cv2.line(image, p0, p1, (0, 255, 0), 2)
+        renamed_cv2.line(image, p0, p1, (0, 255, 0), 2)
         p1 = tuple(np.int32(np.round(z_axis)))
-        cv2.line(image, p0, p1, (255, 0, 0), 2)
+        renamed_cv2.line(image, p0, p1, (255, 0, 0), 2)
 
         
     def draw_landmarks(self, image, landmarks):
@@ -274,14 +274,15 @@ class HeadPoseEstimator:
                 color = (255, 0, 255)
             else:
                 color = (0, 0, 255)
-            cv2.circle(image, (x,y), 2, color, 1)
+            renamed_cv2.circle(image, (x,y), 2, color, 1)
             font_scale = 1.0
             line_color = [0, 0, 0]
             line_width = 1
-            font = cv2.FONT_HERSHEY_PLAIN 
+            font = renamed_cv2.FONT_HERSHEY_PLAIN 
 
             
     def apply_to_image(self, rgb_image, draw_output=False):
+        draw_output = True
         if draw_output:
             output_image = rgb_image.copy()
         else:
