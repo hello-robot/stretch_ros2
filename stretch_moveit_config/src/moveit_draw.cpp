@@ -6,6 +6,7 @@
 #include <moveit_msgs/msg/attached_collision_object.hpp>
 #include <moveit_msgs/msg/collision_object.hpp>
 #include <moveit_visual_tools/moveit_visual_tools.h>
+#include <vector>
 
 static const rclcpp::Logger LOGGER = rclcpp::get_logger("moveit_draw_demo");
 
@@ -52,6 +53,7 @@ int main(int argc, char** argv)
             std::ostream_iterator<std::string>(std::cout, ", "));
 
   moveit::planning_interface::MoveGroupInterface::Plan my_plan;
+  moveit::planning_interface::MoveGroupInterface::Plan disp_plan;
 
   bool success;
   std::vector<double> joint_group_positions;
@@ -83,20 +85,116 @@ int main(int argc, char** argv)
   target_pose1.orientation.w = currentPose.pose.orientation.w;
   target_pose1.position.x = currentPose.pose.position.x;
   target_pose1.position.y = currentPose.pose.position.y;
-  target_pose1.position.z = 1.25;
+  target_pose1.position.z = 1.05;
 
   move_group_arm.setApproximateJointValueTarget(target_pose1, "link_wrist_yaw");
 
   success = (move_group_arm.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-
+  
   RCLCPP_INFO(LOGGER, "Visualizing plan 1 (pose goal) %s", success ? "" : "FAILED");
 
   visual_tools.deleteAllMarkers();
-  visual_tools.publishTrajectoryLine(my_plan.trajectory_, ee_parent_link, joint_model_group);
+  visual_tools.publishTrajectoryLine(disp_plan.trajectory_, ee_parent_link, joint_model_group);
   visual_tools.trigger();
   visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
   
   move_group_arm.move();
+
+  // ##############################################################
+  currentPose = move_group_arm.getCurrentPose();
+  move_group_arm.setStartStateToCurrentState();
+  
+  disp_plan.trajectory_ = my_plan.trajectory_;
+
+  target_pose1.orientation.x = currentPose.pose.orientation.x;
+  target_pose1.orientation.y = currentPose.pose.orientation.y;
+  target_pose1.orientation.z = currentPose.pose.orientation.z;
+  target_pose1.orientation.w = currentPose.pose.orientation.w;
+  target_pose1.position.x = currentPose.pose.position.x;
+  target_pose1.position.y = -0.53;
+  target_pose1.position.z = currentPose.pose.position.z;
+
+  move_group_arm.setApproximateJointValueTarget(target_pose1, "link_wrist_yaw");
+
+  success = (move_group_arm.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  
+  std::vector<trajectory_msgs::msg::JointTrajectoryPoint> a, b;
+  a = disp_plan.trajectory_.joint_trajectory.points;
+  b = my_plan.trajectory_.joint_trajectory.points;
+  a.insert(std::end(a), std::begin(b), std::end(b));
+  disp_plan.trajectory_.joint_trajectory.points = a;
+
+  RCLCPP_INFO(LOGGER, "Visualizing plan 1 (pose goal) %s", success ? "" : "FAILED");
+
+  visual_tools.deleteAllMarkers();
+  visual_tools.publishTrajectoryLine(disp_plan.trajectory_, ee_parent_link, joint_model_group);
+  visual_tools.trigger();
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
+  
+  move_group_arm.move();
+
+  // ###
+
+  currentPose = move_group_arm.getCurrentPose();
+  move_group_arm.setStartStateToCurrentState();
+  
+  target_pose1.orientation.x = currentPose.pose.orientation.x;
+  target_pose1.orientation.y = currentPose.pose.orientation.y;
+  target_pose1.orientation.z = currentPose.pose.orientation.z;
+  target_pose1.orientation.w = currentPose.pose.orientation.w;
+  target_pose1.position.x = currentPose.pose.position.x;
+  target_pose1.position.y = currentPose.pose.position.y;
+  target_pose1.position.z = 0.75;
+
+  move_group_arm.setApproximateJointValueTarget(target_pose1, "link_wrist_yaw");
+
+  success = (move_group_arm.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  
+  a = disp_plan.trajectory_.joint_trajectory.points;
+  b = my_plan.trajectory_.joint_trajectory.points;
+  a.insert(std::end(a), std::begin(b), std::end(b));
+  disp_plan.trajectory_.joint_trajectory.points = a;
+
+  RCLCPP_INFO(LOGGER, "Visualizing plan 1 (pose goal) %s", success ? "" : "FAILED");
+
+  visual_tools.deleteAllMarkers();
+  visual_tools.publishTrajectoryLine(disp_plan.trajectory_, ee_parent_link, joint_model_group);
+  visual_tools.trigger();
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
+  
+  move_group_arm.move();
+
+  // ###
+
+  currentPose = move_group_arm.getCurrentPose();
+  move_group_arm.setStartStateToCurrentState();
+  
+  target_pose1.orientation.x = currentPose.pose.orientation.x;
+  target_pose1.orientation.y = currentPose.pose.orientation.y;
+  target_pose1.orientation.z = currentPose.pose.orientation.z;
+  target_pose1.orientation.w = currentPose.pose.orientation.w;
+  target_pose1.position.x = currentPose.pose.position.x;
+  target_pose1.position.y = -0.23;
+  target_pose1.position.z = currentPose.pose.position.z;
+
+  move_group_arm.setApproximateJointValueTarget(target_pose1, "link_wrist_yaw");
+
+  success = (move_group_arm.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  
+  a = disp_plan.trajectory_.joint_trajectory.points;
+  b = my_plan.trajectory_.joint_trajectory.points;
+  a.insert(std::end(a), std::begin(b), std::end(b));
+  disp_plan.trajectory_.joint_trajectory.points = a;
+
+  RCLCPP_INFO(LOGGER, "Visualizing plan 1 (pose goal) %s", success ? "" : "FAILED");
+
+  visual_tools.deleteAllMarkers();
+  visual_tools.publishTrajectoryLine(disp_plan.trajectory_, ee_parent_link, joint_model_group);
+  visual_tools.trigger();
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
+  
+  move_group_arm.move();
+  // ##############################################################
 
   visual_tools.deleteAllMarkers();
   visual_tools.trigger();
