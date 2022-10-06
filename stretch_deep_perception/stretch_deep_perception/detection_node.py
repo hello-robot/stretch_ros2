@@ -83,7 +83,10 @@ class DetectionNode:
             cv2.imwrite('./output_images/deep_learning_input_' + str(self.image_count).zfill(4) + '.png', detection_box_image)
         
         debug_output = False
-        detections_2d, output_image = self.detector.apply_to_image(detection_box_image, draw_output=debug_output)        
+        detections_2d, output_image = self.detector.apply_to_image(detection_box_image, draw_output=debug_output)
+
+        output_image = cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB)
+
         if debug_output: 
             print('DetectionNode.image_callback: processed image with deep network!')
             print('DetectionNode.image_callback: output_image.shape =', output_image.shape)
