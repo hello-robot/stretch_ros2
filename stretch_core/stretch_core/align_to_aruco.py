@@ -21,14 +21,13 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from tf_transformations import (euler_from_quaternion, quaternion_from_euler,
                                 quaternion_matrix)
-from trajectory_msgs.msg import (JointTrajectoryPoint,
-                                 MultiDOFJointTrajectoryPoint)
+from trajectory_msgs.msg import MultiDOFJointTrajectoryPoint
 
 
 class FrameListener(Node):
 
     def __init__(self):
-        super().__init__('align_to_table')
+        super().__init__('align_to_aruco')
 
         self.trans_base = TransformStamped()
         self.trans_camera = TransformStamped()
@@ -210,6 +209,7 @@ class AlignToAruco(FrameListener):
 
 
 def main():
+    time.sleep(20) # Allows time for realsense camera to boot up before this node becomes active
     rclpy.init()
     node = FrameListener()
     
