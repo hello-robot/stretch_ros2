@@ -28,6 +28,7 @@ setup(
             'd435i_accel_correction = stretch_core.d435i_accel_correction:main',
             'keyboard_teleop = stretch_core.keyboard_teleop:main',
             'avoider = stretch_core.avoider:main',
+            'align_to_aruco = stretch_core.align_to_aruco:main',
         ],
     },
 )

@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 
-import cv2
 import numpy as np
-import rospy
 from scipy.spatial.transform import Rotation
-import hello_helpers.hello_ros_viz as hr
-from numba_image_to_pointcloud import numba_image_to_pointcloud
+from .numba_image_to_pointcloud import numba_image_to_pointcloud
 import hello_helpers.fit_plane as fp
 
 
@@ -276,8 +273,8 @@ def detections_2d_to_3d(detections_2d, rgb_image, camera_info, depth_image, fit_
         y_out = min(orig_h - 1, y_out)
         return x_out, y_out
         
-    camera_matrix = np.reshape(camera_info.K, (3,3))
-    distortion_coefficients = np.array(camera_info.D)
+    camera_matrix = np.reshape(camera_info.k, (3,3))
+    distortion_coefficients = np.array(camera_info.d)
     
     def clockwise_rotate_bounding_box(box_2d): 
         x0, y0, x1, y1 = box_2d

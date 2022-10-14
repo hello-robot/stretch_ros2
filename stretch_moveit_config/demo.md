@@ -32,7 +32,7 @@ The easiest way to run MoveIt 2 on your robot is through RViz. With RViz you can
 ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
 ```
 
-Follow instructions in this [tutorial](https://docs.hello-robot.com/0.2/stretch-tutorials/ros2/moveit_rviz_demo/) to plan and execute trajectories using the interactive markers in RViz.
+Follow instructions in this [tutorial](https://github.com/hello-robot/stretch_tutorials/blob/master/ros2/moveit_rviz_demo.md) to plan and execute trajectories using the interactive markers in RViz.
 
 Use the interactive markers to drag joints to desired positions or go to the manipulation tab in the Motion Planning pane to fine-tune joint values using the sliders. Next, click the 'Plan' button to plan the trajectory. If the plan is valid, you should be able to execute the trajectory by clicking the 'Execute' button. Below we see Stretch raising its arm without any obstacle in the way.
 
@@ -51,7 +51,7 @@ If you want to integrate MoveIt 2 into your planning pipeline and want greater c
 ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
 ```
 
-Follow instructions in this [tutorial](https://docs.hello-robot.com/0.2/stretch-tutorials/ros2/moveit_movegroup_demo/) to plan and execute trajectories using the MoveGroup C++ API.
+Follow instructions in this [tutorial](https://github.com/hello-robot/stretch_tutorials/blob/master/ros2/moveit_movegroup_demo.md) to plan and execute trajectories using the MoveGroup C++ API.
 
 ![StowEdited](https://user-images.githubusercontent.com/97639181/166838248-cbfd537b-973e-4fb4-b60c-b5b3c111e02d.gif)
 

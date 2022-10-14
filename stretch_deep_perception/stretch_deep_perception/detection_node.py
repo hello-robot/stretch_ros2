@@ -1,31 +1,25 @@
 #!/usr/bin/env python3
 
-import sys
+from unicodedata import name
 import cv2
-import numpy as np
-import math
-
-import rospy
+import ctypes
+import rclpy
+import sys
 
 from std_msgs.msg import Header
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
-from sensor_msgs import point_cloud2
+# from sensor_msgs import point_cloud2
 from sensor_msgs.msg import PointCloud2, PointField
-from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
-from geometry_msgs.msg import Point
-from scipy.spatial.transform import Rotation
 
-import ros_numpy
+import ros2_numpy
 import message_filters
 
 import struct
 
-import body_landmark_detector as bl
-
-import detection_ros_markers as dr
-import detection_2d_to_3d as d2
+from . import detection_ros_markers as dr
+from . import detection_2d_to_3d as d2
 
 
 class DetectionNode:
@@ -55,9 +49,9 @@ class DetectionNode:
         
         
     def image_callback(self, ros_rgb_image, ros_depth_image, rgb_camera_info):
-        self.rgb_image = ros_numpy.numpify(ros_rgb_image)
+        self.rgb_image = ros2_numpy.numpify(ros_rgb_image)
         self.rgb_image_timestamp = ros_rgb_image.header.stamp
-        self.depth_image = ros_numpy.numpify(ros_depth_image)
+        self.depth_image = ros2_numpy.numpify(ros_depth_image)
         self.depth_image_timestamp = ros_depth_image.header.stamp
         self.camera_info = rgb_camera_info
         self.image_count = self.image_count + 1
@@ -65,10 +59,14 @@ class DetectionNode:
         # OpenCV expects bgr images, but numpify by default returns rgb images.
         self.rgb_image = cv2.cvtColor(self.rgb_image, cv2.COLOR_RGB2BGR)
         
-        # Copy the depth image to avoid a change to the depth image
-        # during the update.
-        time_diff = self.rgb_image_timestamp - self.depth_image_timestamp
-        time_diff = abs(time_diff.to_sec())
+        # TODO: Check if this operation can be handled by a ROS 2 method instead of
+        # doing it manually
+        ############
+        time_diff_nanosec = abs(self.rgb_image_timestamp.nanosec - self.depth_image_timestamp.nanosec)
+        time_diff_sec = abs(self.rgb_image_timestamp.sec - self.depth_image_timestamp.sec)
+        time_diff = time_diff_sec + time_diff_nanosec*0.000001
+        ############
+        
         if time_diff > 0.0001:
             print('WARNING: The rgb image and the depth image were not taken at the same time.')
             print('         The time difference between their timestamps =', closest_time_diff, 's')
@@ -85,11 +83,19 @@ class DetectionNode:
             cv2.imwrite('./output_images/deep_learning_input_' + str(self.image_count).zfill(4) + '.png', detection_box_image)
         
         debug_output = False
-        detections_2d, output_image = self.detector.apply_to_image(detection_box_image, draw_output=debug_output)        
+        detections_2d, output_image = self.detector.apply_to_image(detection_box_image, draw_output=debug_output)
+
+        output_image = cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB)
+
         if debug_output: 
             print('DetectionNode.image_callback: processed image with deep network!')
             print('DetectionNode.image_callback: output_image.shape =', output_image.shape)
             cv2.imwrite('./output_images/deep_learning_output_' + str(self.image_count).zfill(4) + '.png', output_image)
+
+        if output_image is not None:
+            output_image = ros2_numpy.msgify(Image, output_image, encoding='rgb8')
+            if output_image is not None:
+                self.visualize_object_detections_pub.publish(output_image)
 
         detections_3d = d2.detections_2d_to_3d(detections_2d, self.rgb_image, self.camera_info, self.depth_image, fit_plane=self.fit_plane, min_box_side_m=self.min_box_side_m, max_box_side_m=self.max_box_side_m)
 
@@ -131,38 +137,92 @@ class DetectionNode:
     def publish_point_cloud(self):
         header = Header()
         header.frame_id = 'camera_color_optical_frame'
-        header.stamp = rospy.Time.now()
-        fields = [PointField('x', 0, PointField.FLOAT32, 1),
-                  PointField('y', 4, PointField.FLOAT32, 1),
-                  PointField('z', 8, PointField.FLOAT32, 1),
-                  PointField('rgba', 12, PointField.UINT32, 1)]
+        header.stamp = self.node.get_clock().now().to_msg()
+        fields = [PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+                  PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+                  PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+                  PointField(name='rgba', offset=12, datatype=PointField.UINT32, count=1)]
         r = 255
         g = 0
         b = 0
         a = 128
         rgba = struct.unpack('I', struct.pack('BBBB', b, g, r, a))[0]
         points = [[x, y, z, rgba] for x, y, z in self.all_points]
-        point_cloud = point_cloud2.create_cloud(header, fields, points)
+        
+        # TODO: The following code chunk is a substitute for the create_cloud method
+        # in point_cloud2.py file in sensor_msgs in ROS 1; no equivalent in ROS 2
+        # Check 'from sensor_msgs import point_cloud2' in ROS 1
+        ###############
+        is_bigendian = False
+        field_names = None
+        _DATATYPES = {}
+
+        fmt = '>' if is_bigendian else '<'
+        offset = 0
+        for field in (f for f in sorted(fields, key=lambda f: f.offset) if field_names is None or f.name in field_names):
+            if offset < field.offset:
+                fmt += 'x' * (field.offset - offset)
+                offset = field.offset
+            if field.datatype not in _DATATYPES:
+                print('Skipping unknown PointField datatype [%d]' % field.datatype, file=sys.stderr)
+            else:
+                datatype_fmt, datatype_length = _DATATYPES[field.datatype]
+                fmt    += field.count * datatype_fmt
+                offset += field.count * datatype_length
+        cloud_struct = struct.Struct(fmt)
+
+        buff = ctypes.create_string_buffer(cloud_struct.size * len(points))
+
+        point_step, pack_into = cloud_struct.size, cloud_struct.pack_into
+        offset = 0
+
+        # for p in points:
+        #     pack_into(buff, offset, *p)
+        #     offset += point_step
+
+        point_cloud = PointCloud2(
+                        header=header,
+                        height=1,
+                        width=len(points),
+                        is_dense=False,
+                        is_bigendian=False,
+                        fields=fields,
+                        point_step=cloud_struct.size,
+                        row_step=cloud_struct.size * len(points),
+                        data=buff.raw)
+        ###############
+
         self.visualize_point_cloud_pub.publish(point_cloud)
         self.all_points = []
     
     def main(self):
-        rospy.init_node(self.node_name)
-        name = rospy.get_name()
-        rospy.loginfo("{0} started".format(name))
+        rclpy.init()
+        self.node = rclpy.create_node(self.node_name)
+        name = self.node.get_name()
+        self.node.get_logger().info("{0} started".format(name))
         
         self.rgb_topic_name = '/camera/color/image_raw' #'/camera/infra1/image_rect_raw'
-        self.rgb_image_subscriber = message_filters.Subscriber(self.rgb_topic_name, Image)
+        self.rgb_image_subscriber = message_filters.Subscriber(self.node, Image, self.rgb_topic_name)
 
         self.depth_topic_name = '/camera/aligned_depth_to_color/image_raw'
-        self.depth_image_subscriber = message_filters.Subscriber(self.depth_topic_name, Image)
+        self.depth_image_subscriber = message_filters.Subscriber(self.node, Image, self.depth_topic_name)
 
-        self.camera_info_subscriber = message_filters.Subscriber('/camera/color/camera_info', CameraInfo)
+        self.camera_info_subscriber = message_filters.Subscriber(self.node, CameraInfo, '/camera/color/camera_info')
 
         self.synchronizer = message_filters.TimeSynchronizer([self.rgb_image_subscriber, self.depth_image_subscriber, self.camera_info_subscriber], 10)
         self.synchronizer.registerCallback(self.image_callback)
         
-        self.visualize_markers_pub = rospy.Publisher('/' + self.topic_base_name + '/marker_array', MarkerArray, queue_size=1)
-        self.visualize_axes_pub = rospy.Publisher('/' + self.topic_base_name + '/axes', MarkerArray, queue_size=1)
-        self.visualize_point_cloud_pub = rospy.Publisher('/' + self.topic_base_name + '/point_cloud2', PointCloud2, queue_size=1)
+        self.visualize_markers_pub = self.node.create_publisher(MarkerArray, '/' + self.topic_base_name + '/marker_array', 1)
+        self.visualize_axes_pub = self.node.create_publisher(MarkerArray, '/' + self.topic_base_name + '/axes', 1)
+        self.visualize_point_cloud_pub = self.node.create_publisher(PointCloud2, '/' + self.topic_base_name + '/point_cloud2', 1)
 
+        self.visualize_object_detections_pub = self.node.create_publisher(Image, '/' + self.topic_base_name + '/color/image_with_bb', 1)
+
+        try:
+            rclpy.spin(self.node)
+        except KeyboardInterrupt:
+            print('interrupt received, so shutting down')
+
+        self.node.destroy_node()
+        rclpy.shutdown()
+        
