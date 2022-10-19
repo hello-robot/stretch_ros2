@@ -7,7 +7,6 @@
   <maintainer email="support@hello-robot.com">Hello Robot Inc.</maintainer>
   <license>Apache License 2.0</license>
 
-  <depend>actionlib</depend>
   <depend>actionlib_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
