@@ -17,7 +17,7 @@
   <depend>std_srvs</depend>
   <depend>tf2</depend>
   <depend>python-pytorch-pip</depend>
-  <depend>python-seaborn</depend>
+  <depend>python3-seaborn</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
