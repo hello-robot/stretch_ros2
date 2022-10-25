@@ -134,12 +134,12 @@ class StretchDriver(Node):
             print('arm_backlash_correction =', arm_backlash_correction)
         pos_out = arm_status['pos'] + arm_backlash_correction
         vel_out = arm_status['vel']
-        eff_out = arm_status['motor']['effort']
+        eff_out = arm_status['motor']['effort_pct']
 
         lift_status = robot_status['lift']
         pos_up = lift_status['pos']
         vel_up = lift_status['vel']
-        eff_up = lift_status['motor']['effort']
+        eff_up = lift_status['motor']['effort_pct']
 
         if self.use_robotis_end_of_arm:
             # assign relevant wrist status to variables
