@@ -1,27 +1,34 @@
 <?xml version="1.0"?>
-<package format="2">
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
   <name>stretch_navigation</name>
-  <version>0.2.0</version>
-  <description>Standard ROS navigation package using move_base and amcl.</description>
+  <version>0.0.1</version>
+  <description>The stretch_navigation package</description>
   <maintainer email="support@hello-robot.com">Hello Robot Inc.</maintainer>
   <license>Apache License 2.0</license>
-  <url type="repository">https://github.com/hello-robot/stretch_ros</url>
 
-  <buildtool_depend>catkin</buildtool_depend>
-  <exec_depend>move_base</exec_depend>
-  <exec_depend>global_planner</exec_depend>
-  <exec_depend>dwa_local_planner</exec_depend>
-  <exec_depend>amcl</exec_depend>
-  <exec_depend>map_server</exec_depend>
-  <exec_depend>gmapping</exec_depend>
-  <exec_depend>grid_map_octomap</exec_depend>
-  <exec_depend>octomap</exec_depend>
-  <exec_depend>octomap_mapping</exec_depend>
-  <exec_depend>octomap_msgs</exec_depend>
-  <exec_depend>octomap_ros</exec_depend>
-  <exec_depend>octomap_rviz_plugins</exec_depend>
-  <exec_depend>octomap_server</exec_depend>
-  <exec_depend>octovis</exec_depend>
-  <exec_depend>stretch_core</exec_depend>
-  <exec_depend>stretch_gazebo</exec_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>rclpy</depend>
+  <depend>joy</depend>
+  <depend>teleop_twist_keyboard</depend>
+  <depend>teleop_twist_joy</depend>
+  <depend>nav2_amcl</depend>
+  <depend>nav2_map_server</depend>
+  <depend>nav2_bringup</depend>
+  <depend>slam_toolbox</depend>
+  <depend>octomap</depend>
+  <depend>octomap_mapping</depend>
+  <depend>octomap_msgs</depend>
+  <depend>octomap_ros</depend>
+  <depend>octomap_rviz_plugins</depend>
+  <depend>octomap_server</depend>
+  <depend>octovis</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 </package>
