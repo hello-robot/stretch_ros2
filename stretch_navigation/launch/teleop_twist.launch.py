@@ -3,13 +3,13 @@ from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, ExecuteProcess
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
-from launch.conditions import IfCondition
+from launch.conditions import LaunchConfigurationEquals
 from launch.substitutions import LaunchConfiguration, PythonExpression, TextSubstitution
 
-configurable_parameters = [{'name': 'teleop_type',   'default': "2",                'description': "how to teleop (1=keyboard, 2=joystick, or 'none')"},
-                           {'name': 'linear',        'default': "0.5",             'description': "linear speed (m/s)"                               },
-                           {'name': 'angular',       'default': "0.5",              'description': "angular speed (rad/s)"                            },
-                           {'name': 'joystick_port', 'default': "/dev/input/js0",   'description': "joystick USB device name"                         },
+configurable_parameters = [{'name': 'teleop_type',   'default': "joystick",                'description': "how to teleop ('keyboard', 'joystick' or 'none')"},
+                           {'name': 'linear',        'default': "0.5",             'description': "linear speed (m/s)"                                      },
+                           {'name': 'angular',       'default': "0.5",              'description': "angular speed (rad/s)"                                  },
+                           {'name': 'joystick_port', 'default': "/dev/input/js0",   'description': "joystick USB device name"                               },
                            ]
 
 def declare_configurable_parameters(parameters):
@@ -31,11 +31,7 @@ def generate_launch_description():
     #         parameters=keyboard_teleop_params,
     #         output='screen',
     #         remappings=[('cmd_vel', '/stretch/cmd_vel')],
-    #         condition=IfCondition(
-    #             PythonExpression([
-    #                 LaunchConfiguration('teleop_type'),
-    #                 ' == 1'])
-    #         )
+    #         condition=LaunchConfigurationEquals('teleop_type', TextSubstitution(text='keyboard'))
     # )
 
     joy_node_params = [
@@ -51,11 +47,7 @@ def generate_launch_description():
             executable='joy_node',
             parameters=joy_node_params,
             output='screen',
-            condition=IfCondition(
-                PythonExpression([
-                    LaunchConfiguration('teleop_type'),
-                    ' == 2'])
-            )
+            condition=LaunchConfigurationEquals('teleop_type', TextSubstitution(text='joystick'))
     )
 
     joystick_twist_teleop_params = [
@@ -74,11 +66,7 @@ def generate_launch_description():
             parameters=joystick_twist_teleop_params,
             output='screen',
             remappings=[('cmd_vel', '/stretch/cmd_vel')],
-            condition=IfCondition(
-                PythonExpression([
-                    LaunchConfiguration('teleop_type'),
-                    ' == 2'])
-            )
+            condition=LaunchConfigurationEquals('teleop_type', TextSubstitution(text='joystick'))
     )
 
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
