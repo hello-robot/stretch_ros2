@@ -13,13 +13,13 @@ def generate_launch_description():
     stretch_navigation_path = get_package_share_directory('stretch_navigation')
     
     teleop_type = DeclareLaunchArgument(
-        'teleop_type', default_value="2", description="how to teleop (1=keyboard, 2=joystick, or 'none')"
-    )
+        'teleop_type', default_value="joystick", description="how to teleop ('keyboard', 'joystick' or 'none')")
     
     declare_use_sim_time_argument = DeclareLaunchArgument(
         'use_sim_time',
         default_value='false',
         description='Use simulation/Gazebo clock')
+
     declare_slam_params_file_cmd = DeclareLaunchArgument(
         'slam_params_file',
         default_value=os.path.join(stretch_navigation_path,
