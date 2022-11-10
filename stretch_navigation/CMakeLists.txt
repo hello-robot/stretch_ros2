@@ -27,5 +27,15 @@ install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY rviz DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY map DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY stretch_navigation DESTINATION share/${PROJECT_NAME})
+
+# Install Python modules
+ament_python_install_package(${PROJECT_NAME})
+
+# Install Python executables
+install(PROGRAMS
+  stretch_navigation/simple_commander_demo.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 ament_package()
