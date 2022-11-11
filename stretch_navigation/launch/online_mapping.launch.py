@@ -22,7 +22,7 @@ def generate_launch_description():
     base_teleop_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_navigation_path, '/launch/base_teleop.launch.py']))
 
-     online_async_slam_launch = IncludeLaunchDescription(
+    online_async_slam_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_navigation_path, '/launch/online_async_launch.py']))
 
     rviz_launch = IncludeLaunchDescription(
