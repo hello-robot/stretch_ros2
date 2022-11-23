@@ -203,6 +203,19 @@ class StretchDriver(Node):
             t.transform.rotation.w = q[3]
             self.tf_broadcaster.sendTransform(t)
 
+            b = TransformStamped()
+            b.header.stamp = current_time
+            b.header.frame_id = self.base_frame_id
+            b.child_frame_id = "base_footprint"
+            b.transform.translation.x = 0.0
+            b.transform.translation.y = 0.0
+            b.transform.translation.z = 0.0
+            b.transform.rotation.x = 0.0
+            b.transform.rotation.y = 0.0
+            b.transform.rotation.z = 0.0
+            b.transform.rotation.w = 1.0
+            self.tf_broadcaster.sendTransform(b)
+
         # publish odometry via the odom topic
         odom = Odometry()
         odom.header.stamp = current_time
