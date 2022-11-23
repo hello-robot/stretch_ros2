@@ -16,7 +16,7 @@ Rviz will show the robot and the map that is being constructed. With the termina
 
 ```bash
 mkdir ~/ament_ws/src/stretch_ros2/stretch_navigation/maps
-ros2 run nav2_map_server map_saver_cli -f ~/stretch_navigation/maps/<map_name>
+ros2 run nav2_map_server map_saver_cli -f ~/ament_ws/src/strech_ros2/stretch_navigation/maps/<map_name>
 ```
 
 If you want to preserve the generated map or use it across different ROS distributions, copy the files in the `stretch_user` directory.
