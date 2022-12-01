@@ -652,7 +652,7 @@ def main():
         node = StretchDriver()
         executor.add_node(node)
         executor.add_node(node.joint_trajectory_action)
-        executor.spin()
+        rclpy.spin(node)
     except (KeyboardInterrupt, ThreadServiceExit):
         node.robot.stop()
 
