@@ -13,6 +13,7 @@ from tf_transformations import quaternion_from_euler
 import rclpy
 from rclpy.duration import Duration
 from rclpy.executors import MultiThreadedExecutor
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 
 from geometry_msgs.msg import Twist
@@ -585,7 +586,8 @@ class StretchDriver(Node):
         self.magnetometer_mobile_base_pub = self.create_publisher(MagneticField, 'magnetometer_mobile_base', 1)
         self.imu_wrist_pub = self.create_publisher(Imu, 'imu_wrist', 1)
 
-        self.create_subscription(Twist, "cmd_vel", self.set_mobile_base_velocity_callback, 1)
+        self.group = MutuallyExclusiveCallbackGroup()
+        self.create_subscription(Twist, "cmd_vel", self.set_mobile_base_velocity_callback, 1, callback_group=self.group)
 
         self.declare_parameter('rate', 15.0)
         self.joint_state_rate = self.get_parameter('rate').value
@@ -611,7 +613,6 @@ class StretchDriver(Node):
         # start action server for joint trajectories
         self.declare_parameter('action_server_rate', 15.0)
         self.action_server_rate = self.get_parameter('action_server_rate').value
-        self.joint_trajectory_action = JointTrajectoryAction(self, self.action_server_rate)
 
         self.diagnostics = StretchDiagnostics(self, self.robot)
 
@@ -638,7 +639,7 @@ class StretchDriver(Node):
         self.runstop_service = self.create_service(SetBool,
                                                    '/runstop',
                                                    self.runstop_service_callback)
-
+        
         # start loop to command the mobile base velocity, publish
         # odometry, and publish joint states
         timer_period = 1.0 / self.joint_state_rate
@@ -650,9 +651,15 @@ def main():
         rclpy.init()
         executor = MultiThreadedExecutor(num_threads=2)
         node = StretchDriver()
+        joint_trajectory_action = JointTrajectoryAction(node, node.action_server_rate)
         executor.add_node(node)
-        executor.add_node(node.joint_trajectory_action)
-        rclpy.spin(node)
+        executor.add_node(joint_trajectory_action)
+        try:
+            executor.spin()
+        finally:
+            executor.shutdown()
+            joint_trajectory_action.destroy_node()
+            node.destroy_node()
     except (KeyboardInterrupt, ThreadServiceExit):
         node.robot.stop()
 
