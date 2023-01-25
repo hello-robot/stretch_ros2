@@ -59,6 +59,7 @@ class JointTrajectoryAction(Node):
         n_points = max([len(trajectory.points) for trajectory in trajectories])
         duration = max([Duration.from_msg(trajectory.points[-1].time_from_start) for trajectory in trajectories])
         self.node.get_logger().info(f"{self.node.node_name} joint_traj action: new traj with {n_points} points over {to_sec(duration.to_msg())} seconds")
+        self.node.robot.stop_trajectory()
         for joint in self.joints:
             self.joints[joint].trajectory_manager.trajectory.clear()
         for trajectory in trajectories:
@@ -67,7 +68,6 @@ class JointTrajectoryAction(Node):
                     self.joints[joint_name].add_waypoints(trajectory.points, joint_index)
                 except KeyError as e:
                     return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, str(e))
-        self.node.robot.stop_trajectory()
         if not self.node.robot.follow_trajectory():
             self.node.robot.stop_trajectory()
             return self.error_callback(goal_handle, -100, 'hardware failed to start trajectory')
