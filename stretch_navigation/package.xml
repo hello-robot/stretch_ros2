@@ -10,8 +10,6 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
   
-  <depend>rclcpp</depend>
-  <depend>rclpy</depend>
   <depend>joy</depend>
   <depend>teleop_twist_keyboard</depend>
   <depend>teleop_twist_joy</depend>
@@ -19,13 +17,6 @@
   <depend>nav2_map_server</depend>
   <depend>nav2_bringup</depend>
   <depend>slam_toolbox</depend>
-  <depend>octomap</depend>
-  <depend>octomap_mapping</depend>
-  <depend>octomap_msgs</depend>
-  <depend>octomap_ros</depend>
-  <depend>octomap_rviz_plugins</depend>
-  <depend>octomap_server</depend>
-  <depend>octovis</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
