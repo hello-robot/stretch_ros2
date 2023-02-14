@@ -32,11 +32,11 @@ def generate_launch_description():
         'config',
         'laser_filter_params.yaml'
         )
-
+    
     lidar_node = Node(
-            package='sllidar_ros2',
-            executable='sllidar_node',
-            name='sllidar_node',
+            package='rplidar_ros',
+            executable='rplidar_composition',
+            name='rplidar_node',
             parameters=[set_configurable_parameters(configurable_parameters)],
             output='screen')
 

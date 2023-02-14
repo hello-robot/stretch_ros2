@@ -41,7 +41,7 @@
   <depend>tf_transformations</depend>
   <depend>tf2_ros</depend>
   <depend>laser_filters</depend>
-
+  <depend>rplidar_ros</depend>
 
   <exec_depend>diagnostic_aggregator</exec_depend>
   <!-- Temporarily Disabled (see https://github.com/ros-perception/laser_filters/issues/132)
