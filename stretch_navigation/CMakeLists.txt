@@ -25,7 +25,7 @@ endif()
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
-install(DIRECTORY map DESTINATION share/${PROJECT_NAME})
+# install(DIRECTORY map DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY stretch_navigation DESTINATION share/${PROJECT_NAME})
 
 # Install Python modules
