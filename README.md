@@ -8,22 +8,21 @@ We are beginning to use this port internally at Hello Robot to test it, improve 
 
 ## Ported to ROS 2
 
+ - Stretch Core
+ - Stretch Calibration
  - Stretch Description
  - Stretch MoveIt Config
- - Stretch Core (Driver Node)
+ - Stretch Navigation
 
 ## Known Issues
 
 No support for:
 
- - Stretch Calibration
- - Stretch Core (Everything Else)
  - Stretch Dashboard
  - Stretch Deep Perception
  - Stretch Demos
  - Stretch FUNMAP
  - Stretch Gazebo
- - Stretch Navigation
  - Stretch OctoMap
  - Stretch RTABMap
  - The deep perception demos won't work with a default installation, since they require OpenCV compiled with OpenVINO.
@@ -34,27 +33,26 @@ No support for:
 
 ## Directories
 
-The *stretch_ros* repository holds ROS related code for the Stretch RE1 mobile manipulator from Hello Robot Inc. For an overview of the capabilities in this repository, we recommend you look at the following forum post: https://forum.hello-robot.com/t/autonomy-video-details
-
+The *stretch_ros2* repository holds ROS 2 related code for the Stretch mobile manipulator from Hello Robot Inc.
 
 | Resource                                                     | Description                                                  |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 [hello_helpers](hello_helpers/README.md) | Miscellaneous helper code used across the stretch_ros repository
-[stretch_calibration](stretch_calibration/README.md) | Creates and updates calibrated URDFs for the Stretch RE1
-[stretch_core](stretch_core/README.md) | Enables basic use of the Stretch RE1 from ROS
+[stretch_calibration](stretch_calibration/README.md) | Creates and updates calibrated URDFs for the Stretch mobile manipulator
+[stretch_core](stretch_core/README.md) | ROS 2 drivers for Stretch
 [stretch_deep_perception](stretch_deep_perception/README.md) | Demonstrations that use open deep learning models to perceive the world
 [stretch_demos](stretch_demos/README.md) | Demonstrations of simple autonomous manipulation
 [stretch_description](stretch_description/README.md) | Generate and export URDFs
 [stretch_funmap](stretch_funmap/README.md) | Demonstrations of Fast Unified Navigation, Manipulation And Planning (FUNMAP)
 [stretch_gazebo](stretch_gazebo/README.md) | Support for simulation of Stretch in the Gazebo simulator
-[stretch_moveit_config](stretch_gazebo/README.md) | Config files to use Stretch with the MoveIt Motion Planning Framework
-[stretch_navigation](stretch_navigation/README.md) | Support for the ROS navigation stack, including move_base, gmapping, and AMCL
+[stretch_moveit_config](stretch_gazebo/README.md) | Config files to use Stretch with the MoveIt2 Motion Planning Framework
+[stretch_navigation](stretch_navigation/README.md) | Support for the ROS navigation stack Nav2, including slam_toolbox, AMCL and Simple Commander
 [stretch_octomap](stretch_octomap/README.md) | Support for mapping using OctoMap: efficient probabilistic 3D Mapping based on Octrees
 [stretch_rtabmap](stretch_rtabmap/README.md) | Support for mapping using Real-Time Appearance-Based Mapping (RTAB-Map)
 
 ## Licenses
 
-This software is intended for use with the Stretch RE1 mobile manipulator, which is a robot produced and sold by Hello Robot Inc. For further information, including inquiries about dual licensing, please contact Hello Robot Inc.
+This software is intended for use with the Stretch mobile manipulator, which is a robot produced and sold by Hello Robot Inc. For further information, including inquiries about dual licensing, please contact Hello Robot Inc.
 
 For license details for this repository, see the LICENSE files found in the directories. A summary of the licenses follows: 
 
