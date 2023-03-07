@@ -34,9 +34,9 @@ def generate_launch_description():
         )
     
     lidar_node = Node(
-            package='rplidar_ros',
-            executable='rplidar_composition',
-            name='rplidar_node',
+            package='sllidar_ros2',
+            executable='sllidar_node',
+            name='sllidar_node',
             parameters=[set_configurable_parameters(configurable_parameters)],
             output='screen')
 
