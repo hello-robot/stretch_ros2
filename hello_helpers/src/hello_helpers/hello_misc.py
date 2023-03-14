@@ -283,6 +283,25 @@ def twist_to_pair(msg):
     """Given a message of type geometry_msgs/Twist, return the linear and angular components of the velocity."""
     return msg.linear.x, msg.angular.z
 
+def compare_versions(v1, v2):
+    """
+    Compare two strings of versions.
+    Returns 1  if v1>v2
+            -1 if v1<v2
+            0  if v1==v2
+    """
+    v1 = [int(v) for v in v1.split('.')]
+    v2 = [int(v) for v in v2.split('.')]
+    while len(v1) < len(v2):
+        v1.append(0)
+    while len(v2) < len(v1):
+        v2.append(0)
+    for i in range(len(v1)):
+        if v1[i] < v2[i]:
+            return -1
+        elif v1[i] > v2[i]:
+            return 1
+    return 0
 
 # Exceptions for dealing with FollowJointTrajectory
 class FollowJointTrajectoryException(RuntimeError):
