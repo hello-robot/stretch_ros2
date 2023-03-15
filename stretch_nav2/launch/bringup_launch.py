@@ -29,7 +29,7 @@ def generate_launch_description():
     # Get the launch directory
     bringup_dir = get_package_share_directory('nav2_bringup')
     launch_dir = os.path.join(bringup_dir, 'launch')
-    stretch_navigation_dir = get_package_share_directory('stretch_navigation')
+    stretch_navigation_dir = get_package_share_directory('stretch_nav2')
     stretch_navigation_launch_dir = os.path.join(stretch_navigation_dir, 'launch')
 
     # Create the launch configuration variables

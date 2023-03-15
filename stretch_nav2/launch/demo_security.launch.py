@@ -9,7 +9,7 @@ from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
-    stretch_navigation_path = get_package_share_directory('stretch_navigation')
+    stretch_navigation_path = get_package_share_directory('stretch_nav2')
     
     teleop_type_param = DeclareLaunchArgument(
         'teleop_type', default_value="joystick", description="how to teleop ('keyboard', 'joystick' or 'none')")
@@ -44,7 +44,7 @@ def generate_launch_description():
                           'params_file': LaunchConfiguration('params_file')}.items())
 
     demo_security_node = Node(
-            package='stretch_navigation',
+            package='stretch_nav2',
             executable='simple_commander_demo.py',
             name='demo_security',
             output='screen'

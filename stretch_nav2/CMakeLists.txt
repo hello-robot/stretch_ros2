@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(stretch_navigation)
+project(stretch_nav2)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -26,14 +26,14 @@ endif()
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 # install(DIRECTORY map DESTINATION share/${PROJECT_NAME})
-install(DIRECTORY stretch_navigation DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY stretch_nav2 DESTINATION share/${PROJECT_NAME})
 
 # Install Python modules
 ament_python_install_package(${PROJECT_NAME})
 
 # Install Python executables
 install(PROGRAMS
-  stretch_navigation/simple_commander_demo.py
+  stretch_nav2/simple_commander_demo.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
