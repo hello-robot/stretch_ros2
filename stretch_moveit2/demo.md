@@ -29,7 +29,7 @@ stretch_robot_home.py
 The easiest way to run MoveIt 2 on your robot is through RViz. With RViz you can plan, visualize, and also execute trajectories for various planning groups on your robot. To launch RViz with MoveIt 2, run the following command. (Press Ctrl+C in the terminal to terminate)
 
 ```
-ros2 launch stretch_moveit_config movegroup_moveit2.launch.py
+ros2 launch stretch_moveit_moveit2 movegroup_moveit2.launch.py
 ```
 
 Follow instructions in this [tutorial](https://github.com/hello-robot/stretch_tutorials/blob/master/ros2/moveit_rviz_demo.md) to plan and execute trajectories using the interactive markers in RViz.

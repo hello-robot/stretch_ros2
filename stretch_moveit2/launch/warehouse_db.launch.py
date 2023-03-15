@@ -8,7 +8,7 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    moveit_config_path = get_package_share_path('stretch_moveit_config')
+    moveit_config_path = get_package_share_path('stretch_moveit2')
 
     ld = LaunchDescription()
     ld.add_action(DeclareLaunchArgument('reset', default_value='false', choices=['true', 'false']))

@@ -10,11 +10,9 @@ from launch.substitutions import LaunchConfiguration
 
 from launch_ros.actions import Node
 
-# from hybrid_planning_common import (generate_common_hybrid_launch_description, load_yaml)
-
 
 def generate_launch_description():
-    moveit_config_path = get_package_share_path('stretch_moveit_config')
+    moveit_config_path = get_package_share_path('stretch_moveit2')
     stretch_core_path = get_package_share_path('stretch_core')
 
     ld = LaunchDescription()
@@ -58,11 +56,6 @@ def generate_launch_description():
     move_group_launch = IncludeLaunchDescription(move_group_launch_py,
                                                  launch_arguments=move_group_launch_args.items())
     ld.add_action(move_group_launch)
-
-    moveit_draw_py = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/movegroup_test_draw.launch.py'))
-    moveit_draw = IncludeLaunchDescription(moveit_draw_py,
-                                                 launch_arguments=move_group_launch_args.items())
-    ld.add_action(moveit_draw)
 
     # Run Rviz and load the default config to see the state of the move_group node
     moveit_rviz_launch_py = PythonLaunchDescriptionSource(

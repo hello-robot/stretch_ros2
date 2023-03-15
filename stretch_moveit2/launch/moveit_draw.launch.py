@@ -10,9 +10,12 @@ from launch.substitutions import LaunchConfiguration
 
 from launch_ros.actions import Node
 
+# from hybrid_planning_common import (generate_common_hybrid_launch_description, load_yaml)
+
 
 def generate_launch_description():
-    moveit_config_path = get_package_share_path('stretch_moveit_config')
+    moveit_config_path = get_package_share_path('stretch_moveit2')
+    stretch_core_path = get_package_share_path('stretch_core')
 
     ld = LaunchDescription()
     ld.add_action(DeclareLaunchArgument('pipeline', default_value='ompl', description='specify the planning pipeline'))
@@ -24,40 +27,28 @@ def generate_launch_description():
     ld.add_action(DeclareLaunchArgument('debug', default_value='false', choices=['true', 'false'],
                                         description='By default, we are not in debug mode'))
 
-    # MoveIt's "demo" mode replaces the real robot driver with the joint_state_publisher.
-    # The latter one maintains and publishes the current joint configuration of the simulated robot.
-    # It also provides a GUI to move the simulated robot around "manually".
-    # This corresponds to moving around the real robot without the use of MoveIt.
-    ld.add_action(DeclareLaunchArgument('use_gui', default_value='false', choices=['true', 'false'],
-                                        description="By default, hide joint_state_publisher's GUI"))
+    ld.add_action(DeclareLaunchArgument('use_stretch_driver', default_value='true', choices=['true', 'false'],
+                                        description='Allow user to launch Stretch Driver separately'))
     ld.add_action(DeclareLaunchArgument('use_rviz', default_value='true', choices=['true', 'false']))
 
     # Load the URDF, SRDF and other .yaml configuration files
-    robot_description_content = Command(
-        ['xacro ', str(moveit_config_path / 'config' / 'stretch.xacro')]
-    )
+    robot_description_content = Command(['xacro ',
+                                         str(get_package_share_path('stretch_description') / 'urdf' / 'stretch.urdf')])
     with open(moveit_config_path / 'config/stretch_description.srdf', 'r') as f:
         semantic_content = f.read()
 
-    # If needed, broadcast static tf for robot root
-    static_tf = Node(package='tf2_ros',
-                     executable='static_transform_publisher',
-                     name='static_transform_publisher',
-                     output='log',
-                     arguments=['0.0', '0.0', '0.0', '0.0', '0.0', '0.0', 'odom', 'base_link'])
-    ld.add_action(static_tf)
+    stretch_driver_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([str(stretch_core_path), '/launch/stretch_driver.launch.py']),
+        launch_arguments={'mode': 'manipulation', 'broadcast_odom_tf': 'True'}.items(),
+        condition=IfCondition(LaunchConfiguration('use_stretch_driver'))
+    )
+    ld.add_action(stretch_driver_launch)
 
-    # Given the published joint states, publish tf for the robot links
-    rsp_node = Node(package='robot_state_publisher', executable='robot_state_publisher',
-                    respawn=True, output='screen',
-                    parameters=[{'robot_description': robot_description_content, 'publish_frequency': 15.0}])
-    ld.add_action(rsp_node)
-
-    # Run the main MoveIt executable without trajectory execution (we do not have controllers configured by default)
+    # Run the main MoveIt executable
     move_group_launch_py = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/move_group.launch.py'))
     move_group_launch_args = {
         'allow_trajectory_execution': 'true',
-        'fake_execution': 'true',
+        'fake_execution': 'false',
         'info': 'true',
         'debug': LaunchConfiguration('debug'),
         'pipeline': LaunchConfiguration('pipeline'),
@@ -67,6 +58,11 @@ def generate_launch_description():
     move_group_launch = IncludeLaunchDescription(move_group_launch_py,
                                                  launch_arguments=move_group_launch_args.items())
     ld.add_action(move_group_launch)
+
+    moveit_draw_py = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/movegroup_test_draw.launch.py'))
+    moveit_draw = IncludeLaunchDescription(moveit_draw_py,
+                                                 launch_arguments=move_group_launch_args.items())
+    ld.add_action(moveit_draw)
 
     # Run Rviz and load the default config to see the state of the move_group node
     moveit_rviz_launch_py = PythonLaunchDescriptionSource(
@@ -92,30 +88,5 @@ def generate_launch_description():
                                                 condition=IfCondition(LaunchConfiguration('db'))
                                                 )
     ld.add_action(warehouse_launch)
-
-    # Fake joint driver
-    fake_joint_driver_node = Node(
-        package='controller_manager',
-        executable='ros2_control_node',
-        parameters=[{'robot_description': robot_description_content},
-                    str(moveit_config_path / 'config/ros_controllers.yaml'),
-                    ],
-    )
-    ld.add_action(fake_joint_driver_node)
-
-    spawner_node = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['stretch_controller'],
-    )
-    ld.add_action(spawner_node)
-
-    spawner_node2 = Node(
-        package='controller_manager',
-        executable='spawner',
-        output='screen',
-        arguments=['joint_state_broadcaster'],
-    )
-    ld.add_action(spawner_node2)
 
     return ld

@@ -2,7 +2,9 @@ from ament_index_python.packages import get_package_share_path
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration
+
 from launch_ros.actions import Node
 
 # Mapping from entry in the stretch_body configuration to joints in the SRDF
@@ -19,8 +21,9 @@ CONFIGURATION_TRANSLATION = {
 def load_joint_limits_from_config(moveit_config_path, mode='default'):
     return str(moveit_config_path / 'config/joint_limits.yaml')
 
+
 def generate_launch_description():
-    moveit_config_path = get_package_share_path('stretch_moveit_config')
+    moveit_config_path = get_package_share_path('stretch_moveit2')
 
     ld = LaunchDescription()
     ld.add_action(DeclareLaunchArgument('robot_description'))
@@ -70,14 +73,22 @@ def generate_launch_description():
         load_joint_limits_from_config(moveit_config_path),
         move_group_configuration,
     ]
+    move_group_node = Node(package='moveit_ros_move_group', executable='move_group',
+                           output='screen',
+                           parameters=move_group_params,
+                           condition=UnlessCondition(LaunchConfiguration('debug')),
+                           # args="$(arg command_args)"
+                           )
+    ld.add_action(move_group_node)
 
-    moveit_draw = Node(
-        name="moveit_draw",
-        package="stretch_moveit_config",
-        executable="moveit_draw",
-        output="screen",
-        parameters=move_group_params,
-    )
-    ld.add_action(moveit_draw)
+    debug_move_group_node = Node(package='moveit_ros_move_group', executable='move_group',
+                                 output='screen',
+                                 parameters=move_group_params,
+                                 condition=IfCondition(LaunchConfiguration('debug')),
+                                 # args="$(arg command_args)"
+                                 prefix=['gdb --ex run --args'],
+                                 )
+    # TODO: prefix=['gdb -x $(find stretch_moveit_config)/launch/gdb_settings.gdb --ex run --args'],
+    ld.add_action(debug_move_group_node)
 
     return ld

@@ -1,12 +1,12 @@
 <package format="3">
 
-  <name>stretch_moveit_config</name>
+  <name>stretch_moveit2</name>
   <version>0.3.0</version>
   <description>
      An automatically generated package with all the configuration and launch files for using the stretch_description with the MoveIt Motion Planning Framework
   </description>
-  <author email="davidvlu@gmail.com">David V. Lu!!</author>
-  <maintainer email="davidvlu@gmail.com">David V. Lu!!</maintainer>
+  <author email="support@hello-robot.com">Hello Robot Support</author>
+  <maintainer email="support@hello-robot.com">Hello Robot Support</maintainer>
 
   <license>Apache License 2.0</license>
 

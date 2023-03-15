@@ -20,7 +20,7 @@ def load_joint_limits_from_config(moveit_config_path, mode='default'):
     return str(moveit_config_path / 'config/joint_limits.yaml')
 
 def generate_launch_description():
-    moveit_config_path = get_package_share_path('stretch_moveit_config')
+    moveit_config_path = get_package_share_path('stretch_moveit2')
 
     ld = LaunchDescription()
     ld.add_action(DeclareLaunchArgument('robot_description'))
@@ -73,7 +73,7 @@ def generate_launch_description():
 
     movegroup_test = Node(
         name="movegroup_test",
-        package="stretch_moveit_config",
+        package="stretch_moveit2",
         executable="movegroup_test",
         output="screen",
         parameters=move_group_params,
