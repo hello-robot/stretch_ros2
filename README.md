@@ -6,18 +6,32 @@ This is a development branch that we are using to port [stretch_ros](https://git
 
 We are beginning to use this port internally at Hello Robot to test it, improve it, and add new capabilities.
 
-## Ported to ROS 2
+## Available support in ROS 2
 
- - Stretch Core
+ - Stretch Core (Partial)
+    - Stretch driver
+    - RPLidar driver
+    - D435i driver
+    - Aruco Detection
+    - Keyboard teleop (known bugs)
  - Stretch Calibration
  - Stretch Description
- - Stretch MoveIt Config
- - Stretch Navigation
+ - Stretch MoveIt2
+    - Joint Goals not involving base
+    - Pose Goals not involving base
+    - MoveGroup C++ API
+    - Python API (work in progress)
+ - Stretch Nav2
+    - Mapping with slam_toolbox
+    - Navigation with nav2
+    - Simple Commander Python API
 
 ## Known Issues
 
 No support for:
-
+ - Stretch Core 
+    - ReSpeaker driver
+    - Dex Wrist
  - Stretch Dashboard
  - Stretch Deep Perception
  - Stretch Demos
