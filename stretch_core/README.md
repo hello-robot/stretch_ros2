@@ -2,15 +2,27 @@
 
 ## Overview
 
-*stretch_core* provides the core ROS interfaces to the Stretch RE1 mobile manipulator from Hello Robot Inc. It includes the following nodes:
+*stretch_core* provides the core ROS interfaces to the Stretch mobile manipulator. It includes the following:
 
-*stretch_driver* : node that communicates with the low-level Python library (stretch_body) to interface with the Stretch RE1
+Nodes:
+ - `d435i_*.py` : various nodes to help use Stretch's 3D camera
+ - `detect_aruco_markers.py`: node that detects and estimates the pose of ArUco markers, including the markers on the robot's body
+ - `joint_trajectory_server.py`: action server to execute trajectories generated using planners like MoveIt2
+ - `keyboard_*.py` : nodes that provides a keyboard interface to control the robot's joints
+ - `stretch_driver.py`: node that communicates with the low-level Python library (stretch_body) to interface with the Stretch RE1
+ - `trajectory_components.py`: node defining classes for each joint to generate trajectory waypoints
 
-*detect_aruco_markers* : node that detects and estimates the pose of ArUco markers, including the markers on the robot's body
+Launch files:
+ - `d435i_*.launch.py`: launches the d435i driver node with defined resolution
+ - `keyboard_teleop.launch.py`: launches the node that allows teleoperating robot joints with keyboard
+ - `rplidar.launch.py`: launches the RPLidar driver node
+ - `stretch_aruco.launch.py`: launches the aruco detection node
+ - `stretch_driver.launch.py`: launches the stretch driver node with defined configurations
 
-*d435i_** : various nodes to help use the Stretch RE1's 3D camera
-
-*keyboard_teleop* : node that provides a keyboard interface to control the robot's joints
+Config:
+ - `controller_calibration_head.yaml`: stores the backlash errors in the head servos
+ - `laser_filter_params.yaml`: configures the filters that are used for laser scan filtering
+ - `stretch_marker_dict.yaml`: stores information about ArUco markers known and assigned for use with Stretch
 
 ## Testing
 

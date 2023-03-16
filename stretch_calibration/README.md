@@ -2,7 +2,7 @@
 
 ## Overview
 
-*stretch_calibration* provides tools for calibrating and managing the URDF for the Stretch RE1 robot from Hello Robot Inc. The code's primary role is to generate a geometric model (i.e., a URDF) of the robot's body that corresponds well with views of the body from the robot's 3D camera (i.e., a Intel RealSense D435i). The code achieves this objective by adjusting the geometry of the model to predict where the 3D camera will see markers (i.e., ArUco markers) on the robot's body. 
+*stretch_calibration* provides tools for calibrating and managing the URDF for the Stretch robot. The code's primary role is to generate a geometric model (i.e., a URDF) of the robot's body that corresponds well with views of the body from the robot's 3D camera (i.e., a Intel RealSense D435i). The code achieves this objective by adjusting the geometry of the model to predict where the 3D camera will see markers (i.e., ArUco markers) on the robot's body. 
 
 Hello Robot Inc. uses this code to calibrate each robot prior to shipping. Users may wish to recalibrate their robots to compensate for changes over time or take advantage of improvements to the calibration code. 
 
@@ -33,9 +33,6 @@ In addition, after changing a tool, this code can be used to generate a new cali
    
    ![](../images/calibration_fit_check.png)
    
-
-
-
 ## Visually Inspecting the Current Calibration
 
 The following command will allow you to visually inspect a calibration with Rviz. You can use RViz to see how well the robot's 3D body model matches point clouds from the 3D camera. While visualizing the 3D model and point clouds in RViz, you can use keyboard commands in the terminal to move the head around, the lift up and down, and the arm in and out. The keyboard commands will be printed in the terminal.
@@ -54,7 +51,7 @@ In the images below, examples of good and bad fit between the point cloud and th
 
 ![](../images/calibration_comparison2.png)
 
-## Calibrate the Stretch RE1
+## Calibrate Stretch
 
 1. Make sure the basic joint limit calibration has been performed.
 
@@ -113,7 +110,7 @@ In the images below, examples of good and bad fit between the point cloud and th
 
 ## Generate a New URDF After Changing the Tool
 
-If you change the Stretch RE1's tool attached to the wrist and want to generate a new URDF for it, you can do so with xacro files in the /stretch_ros/stretch_description/urdf/ directory. Specifically, you can edit stretch_description.xacro to include a xacro other than the default stretch_gripper.xacro. 
+If you change Stretch's tool attached to the wrist and want to generate a new URDF for it, you can do so with xacro files in the /stretch_ros/stretch_description/urdf/ directory. Specifically, you can edit stretch_description.xacro to include a xacro other than the default stretch_gripper.xacro. 
 
 After changing the tool xacro you will need to generate a new URDF and also update this new URDF with the previously optimized calibration parameters. To do so, follow the directions below: 
 

@@ -4,26 +4,26 @@
 
 *stretch_deep_perception* provides demonstration code that uses open deep learning models to perceive the world. 
 
-This code depends on the stretch_deep_perception_models repository, which should be installed under ~/stretch_user/ on your Stretch RE1 robot.
+This code depends on the stretch_deep_perception_models repository, which should be installed under ~/stretch_user/ on your Stretch robot.
 
 Link to the stretch_deep_perception_models repository:
 https://github.com/hello-robot/stretch_deep_perception_models
 
 ## Getting Started Demos
 
-There are four demonstrations for you to try.
+There are two demonstrations for you to try.
 
 ### Face Estimation Demo
 
 First, try running the face detection demonstration via the following command:
 
 ```
-roslaunch stretch_deep_perception stretch_detect_faces.launch 
+ros2 launch stretch_deep_perception stretch_detect_faces.launch.py 
 ```
 
 RViz should show you the robot, the point cloud from the camera, and information about detected faces. If it detects a face, it should show a 3D planar model of the face and 3D facial landmarks. These deep learning models come from OpenCV and the Open Model Zoo (https://github.com/opencv/open_model_zoo).
 
-You can use the keyboard_teleop commands within the terminal that you ran roslaunch in order to move the robot's head around to see your face.
+You can use the keyboard_teleop commands within the terminal that you ran the launch in order to move the robot's head around to see your face.
 
 
 ```
@@ -40,13 +40,13 @@ Now shut down everything that was launched by pressing q and Ctrl-C in the termi
 
 ### Object Detection Demo
 
-Second, try running the object detection demo, which uses the tiny YOLO v3 object detection network (https://pjreddie.com/darknet/yolo/). RViz will display planar detection regions. Detection class labels will be printed to the terminal. 
+Second, try running the object detection demo, which uses the tiny YOLO v5 object detection network (https://pytorch.org/hub/ultralytics_yolov5/). RViz will display planar detection regions. Detection class labels will be printed to the terminal. 
 
 ```
-roslaunch stretch_deep_perception stretch_detect_objects.launch
+ros2 launch stretch_deep_perception stretch_detect_objects.launch.py
 ```
 
-Once you're ready for the next demo, shut down everything that was launched by pressing q and Ctrl-C in the terminal.
+<!-- Once you're ready for the next demo, shut down everything that was launched by pressing q and Ctrl-C in the terminal.
 
 ### Body Landmark Detection Demo
 
@@ -70,7 +70,7 @@ A less risky use of this detection is for object delivery. stretch_demos has a d
 
 ```
 roslaunch stretch_deep_perception stretch_detect_nearest_mouth.launch 
-```
+``` -->
 
 ## References
 

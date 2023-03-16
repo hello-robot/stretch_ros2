@@ -14,6 +14,7 @@ We are beginning to use this port internally at Hello Robot to test it, improve 
     - D435i driver
     - Aruco Detection
     - Keyboard teleop (known bugs)
+ - Hello Helpers
  - Stretch Calibration
  - Stretch Description
  - Stretch MoveIt2
@@ -25,6 +26,9 @@ We are beginning to use this port internally at Hello Robot to test it, improve 
     - Mapping with slam_toolbox
     - Navigation with nav2
     - Simple Commander Python API
+ - Stretch Deep Perception
+    - Object Detection with YOLOv5 using PyTorch
+    - Head Pose Estimation with OpenVINO
 
 ## Known Issues
 
