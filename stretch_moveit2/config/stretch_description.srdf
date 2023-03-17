@@ -17,6 +17,8 @@
         <joint name="joint_arm_l1"/>
         <joint name="joint_arm_l0"/>
         <joint name="joint_wrist_yaw"/>
+        <joint name="joint_wrist_pitch"/>
+        <joint name="joint_wrist_roll"/>
     </group>
     <group name="stretch_gripper">
         <link name="link_gripper"/>
@@ -60,9 +62,13 @@
     </group_state>
     <group_state name="wrist_out" group="stretch_arm">
         <joint name="joint_wrist_yaw" value="0.0"/>
+        <joint name="joint_wrist_pitch" value="0.0"/>
+        <joint name="joint_wrist_roll" value="0.0"/>
     </group_state>
     <group_state name="wrist_in" group="stretch_arm">
         <joint name="joint_wrist_yaw" value="3.1415"/>
+        <joint name="joint_wrist_pitch" value="0.0"/>
+        <joint name="joint_wrist_roll" value="0.0"/>
     </group_state>
 
     <group_state name="stow" group="stretch_arm">
@@ -72,6 +78,8 @@
         <joint name="joint_arm_l3" value="0.0"/>
         <joint name="joint_lift" value="0.2"/>
         <joint name="joint_wrist_yaw" value="3.4"/>
+        <joint name="joint_wrist_pitch" value="0.0"/>
+        <joint name="joint_wrist_roll" value="0.0"/>
     </group_state>
     <group_state name="extended" group="stretch_arm">
         <joint name="joint_arm_l0" value="0.05"/>
@@ -80,6 +88,8 @@
         <joint name="joint_arm_l3" value="0.05"/>
         <joint name="joint_lift" value="0.9"/>
         <joint name="joint_wrist_yaw" value="0.0"/>
+        <joint name="joint_wrist_pitch" value="0.0"/>
+        <joint name="joint_wrist_roll" value="0.0"/>
     </group_state>
     <group_state name="stow" group="stretch_head">
         <joint name="joint_head_pan" value="0.0"/>
@@ -112,6 +122,8 @@
         <joint name="joint_arm_l3" value="0"/>
         <joint name="joint_lift" value="0.2"/>
         <joint name="joint_wrist_yaw" value="3.14159265358979323846264338327950"/>
+        <joint name="joint_wrist_pitch" value="0.0"/>
+        <joint name="joint_wrist_roll" value="0.0"/>
         <joint name="position" value="0 0 0"/>
     </group_state>
     <group_state name="forward_base" group="mobile_base_arm">
@@ -150,6 +162,8 @@
     <disable_collisions link1="base_link" link2="link_mast" reason="Adjacent"/>
     <disable_collisions link1="base_link" link2="link_right_wheel" reason="Adjacent"/>
     <disable_collisions link1="base_link" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="base_link" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="base_link" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="base_link" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="camera_link" link2="laser" reason="Never"/>
     <disable_collisions link1="camera_link" link2="link_arm_l0" reason="Never"/>
@@ -173,6 +187,8 @@
     <disable_collisions link1="camera_link" link2="link_mast" reason="Never"/>
     <disable_collisions link1="camera_link" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="camera_link" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="camera_link" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="camera_link" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="camera_link" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="laser" link2="link_arm_l0" reason="Never"/>
     <disable_collisions link1="laser" link2="link_arm_l1" reason="Never"/>
@@ -197,6 +213,8 @@
     <disable_collisions link1="laser" link2="link_mast" reason="Never"/>
     <disable_collisions link1="laser" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="laser" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="laser" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="laser" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="laser" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_arm_l0" link2="link_arm_l1" reason="Adjacent"/>
     <disable_collisions link1="link_arm_l0" link2="link_arm_l2" reason="Never"/>
@@ -242,6 +260,8 @@
     <disable_collisions link1="link_arm_l1" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_arm_l1" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_arm_l1" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_arm_l1" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_arm_l1" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_arm_l1" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_arm_l2" link2="link_arm_l3" reason="Adjacent"/>
     <disable_collisions link1="link_arm_l2" link2="link_arm_l4" reason="Never"/>
@@ -263,6 +283,8 @@
     <disable_collisions link1="link_arm_l2" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_arm_l2" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_arm_l2" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_arm_l2" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_arm_l2" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_arm_l2" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_arm_l3" link2="link_arm_l4" reason="Adjacent"/>
     <disable_collisions link1="link_arm_l3" link2="link_aruco_inner_wrist" reason="Never"/>
@@ -283,6 +305,8 @@
     <disable_collisions link1="link_arm_l3" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_arm_l3" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_arm_l3" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_arm_l3" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_arm_l3" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_arm_l3" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_arm_l4" link2="link_aruco_inner_wrist" reason="Never"/>
     <disable_collisions link1="link_arm_l4" link2="link_aruco_left_base" reason="Never"/>
@@ -302,6 +326,8 @@
     <disable_collisions link1="link_arm_l4" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_arm_l4" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_arm_l4" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_arm_l4" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_arm_l4" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_arm_l4" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_aruco_inner_wrist" link2="link_aruco_left_base" reason="Never"/>
     <disable_collisions link1="link_aruco_inner_wrist" link2="link_aruco_right_base" reason="Never"/>
@@ -320,6 +346,8 @@
     <disable_collisions link1="link_aruco_inner_wrist" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_aruco_inner_wrist" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_aruco_inner_wrist" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_aruco_inner_wrist" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_aruco_inner_wrist" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_aruco_inner_wrist" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_aruco_left_base" link2="link_aruco_right_base" reason="Never"/>
     <disable_collisions link1="link_aruco_left_base" link2="link_aruco_shoulder" reason="Never"/>
@@ -337,6 +365,8 @@
     <disable_collisions link1="link_aruco_left_base" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_aruco_left_base" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_aruco_left_base" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_aruco_left_base" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_aruco_left_base" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_aruco_left_base" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_aruco_right_base" link2="link_aruco_shoulder" reason="Never"/>
     <disable_collisions link1="link_aruco_right_base" link2="link_aruco_top_wrist" reason="Never"/>
@@ -349,6 +379,8 @@
     <disable_collisions link1="link_aruco_right_base" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_aruco_right_base" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_aruco_right_base" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_aruco_right_base" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_aruco_right_base" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_aruco_right_base" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_aruco_shoulder" link2="link_aruco_top_wrist" reason="Never"/>
     <disable_collisions link1="link_aruco_shoulder" link2="link_gripper" reason="Never"/>
@@ -364,6 +396,8 @@
     <disable_collisions link1="link_aruco_shoulder" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_aruco_shoulder" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_aruco_shoulder" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_aruco_shoulder" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_aruco_shoulder" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_aruco_shoulder" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_aruco_top_wrist" link2="link_gripper" reason="Never"/>
     <disable_collisions link1="link_aruco_top_wrist" link2="link_gripper_finger_left" reason="Never"/>
@@ -378,6 +412,8 @@
     <disable_collisions link1="link_aruco_top_wrist" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_aruco_top_wrist" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_aruco_top_wrist" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_aruco_top_wrist" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_aruco_top_wrist" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_aruco_top_wrist" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_gripper" link2="link_gripper_finger_left" reason="Adjacent"/>
     <disable_collisions link1="link_gripper" link2="link_gripper_finger_right" reason="Adjacent"/>
@@ -389,7 +425,7 @@
     <disable_collisions link1="link_gripper" link2="link_left_wheel" reason="Never"/>
     <disable_collisions link1="link_gripper" link2="link_lift" reason="Never"/>
     <disable_collisions link1="link_gripper" link2="link_mast" reason="Never"/>
-    <disable_collisions link1="link_gripper" link2="link_wrist_yaw" reason="Adjacent"/>
+    <disable_collisions link1="link_gripper" link2="link_wrist_roll" reason="Adjacent"/>
     <disable_collisions link1="link_gripper" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_gripper_finger_left" link2="link_gripper_fingertip_left" reason="Adjacent"/>
     <disable_collisions link1="link_gripper_finger_left" link2="link_head" reason="Never"/>
@@ -399,6 +435,8 @@
     <disable_collisions link1="link_gripper_finger_left" link2="link_lift" reason="Never"/>
     <disable_collisions link1="link_gripper_finger_left" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_gripper_finger_left" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_gripper_finger_left" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_gripper_finger_left" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_gripper_finger_left" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_gripper_finger_right" link2="link_gripper_fingertip_right" reason="Adjacent"/>
     <disable_collisions link1="link_gripper_finger_right" link2="link_head" reason="Never"/>
@@ -408,6 +446,8 @@
     <disable_collisions link1="link_gripper_finger_right" link2="link_lift" reason="Never"/>
     <disable_collisions link1="link_gripper_finger_right" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_gripper_finger_right" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_gripper_finger_right" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_gripper_finger_right" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_gripper_finger_right" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_gripper_fingertip_left" link2="link_head" reason="Never"/>
     <disable_collisions link1="link_gripper_fingertip_left" link2="link_head_pan" reason="Never"/>
@@ -416,6 +456,8 @@
     <disable_collisions link1="link_gripper_fingertip_left" link2="link_lift" reason="Never"/>
     <disable_collisions link1="link_gripper_fingertip_left" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_gripper_fingertip_left" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_gripper_fingertip_left" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_gripper_fingertip_left" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_gripper_fingertip_left" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_gripper_fingertip_right" link2="link_head" reason="Never"/>
     <disable_collisions link1="link_gripper_fingertip_right" link2="link_head_pan" reason="Never"/>
@@ -424,6 +466,8 @@
     <disable_collisions link1="link_gripper_fingertip_right" link2="link_lift" reason="Never"/>
     <disable_collisions link1="link_gripper_fingertip_right" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_gripper_fingertip_right" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_gripper_fingertip_right" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_gripper_fingertip_right" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_gripper_fingertip_right" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_head" link2="link_head_pan" reason="Adjacent"/>
     <disable_collisions link1="link_head" link2="link_head_tilt" reason="Never"/>
@@ -432,6 +476,8 @@
     <disable_collisions link1="link_head" link2="link_mast" reason="Adjacent"/>
     <disable_collisions link1="link_head" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_head" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_head" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_head" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_head" link2="respeaker_base" reason="Default"/>
     <disable_collisions link1="link_head_pan" link2="link_head_tilt" reason="Adjacent"/>
     <disable_collisions link1="link_head_pan" link2="link_left_wheel" reason="Never"/>
@@ -439,27 +485,41 @@
     <disable_collisions link1="link_head_pan" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_head_pan" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_head_pan" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_head_pan" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_head_pan" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_head_pan" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_head_tilt" link2="link_left_wheel" reason="Never"/>
     <disable_collisions link1="link_head_tilt" link2="link_lift" reason="Never"/>
     <disable_collisions link1="link_head_tilt" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_head_tilt" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_head_tilt" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_head_tilt" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_head_tilt" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_head_tilt" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_left_wheel" link2="link_lift" reason="Never"/>
     <disable_collisions link1="link_left_wheel" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_left_wheel" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_left_wheel" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_left_wheel" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_left_wheel" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_left_wheel" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_lift" link2="link_mast" reason="Adjacent"/>
     <disable_collisions link1="link_lift" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_lift" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_lift" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_lift" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_lift" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_mast" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_mast" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_mast" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_mast" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_mast" link2="respeaker_base" reason="Adjacent"/>
     <disable_collisions link1="link_right_wheel" link2="link_wrist_yaw" reason="Never"/>
+    <disable_collisions link1="link_right_wheel" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_right_wheel" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_right_wheel" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_wrist_yaw" link2="respeaker_base" reason="Never"/>
+    <disable_collisions link1="link_wrist_yaw" link2="link_wrist_pitch" reason="Adjacent"/>
+    <disable_collisions link1="link_wrist_pitch" link2="link_wrist_roll" reason="Adjacent"/>
     <disable_collisions link1="caster_link" link2="base_link" reason="Adjacent"/>
 </robot>

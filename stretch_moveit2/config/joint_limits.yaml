@@ -61,6 +61,16 @@
                 max_velocity: 0.5
                 has_acceleration_limits: true
                 max_acceleration: 1.0
+              joint_wrist_pitch:
+                has_velocity_limits: true
+                max_velocity: 0.5
+                has_acceleration_limits: true
+                max_acceleration: 1.0
+              joint_wrist_roll:
+                has_velocity_limits: true
+                max_velocity: 0.5
+                has_acceleration_limits: true
+                max_acceleration: 1.0
               position/x:
                 has_velocity_limits: true
                 max_velocity: 0.04
