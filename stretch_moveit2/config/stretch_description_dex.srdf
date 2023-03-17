@@ -21,7 +21,7 @@
         <joint name="joint_wrist_roll"/>
     </group>
     <group name="stretch_gripper">
-        <link name="link_gripper"/>
+        <link name="link_straight_gripper"/>
         <link name="link_grasp_center"/>
         <link name="link_gripper_finger_left"/>
         <link name="link_gripper_finger_right"/>
@@ -176,7 +176,7 @@
     <disable_collisions link1="camera_link" link2="link_aruco_right_base" reason="Never"/>
     <disable_collisions link1="camera_link" link2="link_aruco_shoulder" reason="Never"/>
     <disable_collisions link1="camera_link" link2="link_aruco_top_wrist" reason="Never"/>
-    <disable_collisions link1="camera_link" link2="link_gripper" reason="Never"/>
+    <disable_collisions link1="camera_link" link2="link_straight_gripper" reason="Never"/>
     <disable_collisions link1="camera_link" link2="link_gripper_finger_left" reason="Never"/>
     <disable_collisions link1="camera_link" link2="link_gripper_finger_right" reason="Never"/>
     <disable_collisions link1="camera_link" link2="link_gripper_fingertip_left" reason="Never"/>
@@ -200,7 +200,7 @@
     <disable_collisions link1="laser" link2="link_aruco_right_base" reason="Never"/>
     <disable_collisions link1="laser" link2="link_aruco_shoulder" reason="Never"/>
     <disable_collisions link1="laser" link2="link_aruco_top_wrist" reason="Never"/>
-    <disable_collisions link1="laser" link2="link_gripper" reason="Never"/>
+    <disable_collisions link1="laser" link2="link_straight_gripper" reason="Never"/>
     <disable_collisions link1="laser" link2="link_gripper_finger_left" reason="Never"/>
     <disable_collisions link1="laser" link2="link_gripper_finger_right" reason="Never"/>
     <disable_collisions link1="laser" link2="link_gripper_fingertip_left" reason="Never"/>
@@ -225,7 +225,7 @@
     <disable_collisions link1="link_arm_l0" link2="link_aruco_right_base" reason="Never"/>
     <disable_collisions link1="link_arm_l0" link2="link_aruco_shoulder" reason="Never"/>
     <disable_collisions link1="link_arm_l0" link2="link_aruco_top_wrist" reason="Adjacent"/>
-    <disable_collisions link1="link_arm_l0" link2="link_gripper" reason="Never"/>
+    <disable_collisions link1="link_arm_l0" link2="link_straight_gripper" reason="Never"/>
     <disable_collisions link1="link_arm_l0" link2="link_gripper_finger_left" reason="Never"/>
     <disable_collisions link1="link_arm_l0" link2="link_gripper_finger_right" reason="Never"/>
     <disable_collisions link1="link_arm_l0" link2="link_gripper_fingertip_left" reason="Never"/>
@@ -238,6 +238,8 @@
     <disable_collisions link1="link_arm_l0" link2="link_mast" reason="Never"/>
     <disable_collisions link1="link_arm_l0" link2="link_right_wheel" reason="Never"/>
     <disable_collisions link1="link_arm_l0" link2="link_wrist_yaw" reason="Adjacent"/>
+    <disable_collisions link1="link_arm_l0" link2="link_wrist_pitch" reason="Never"/>
+    <disable_collisions link1="link_arm_l0" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_arm_l0" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_arm_l1" link2="link_arm_l2" reason="Adjacent"/>
     <disable_collisions link1="link_arm_l1" link2="link_arm_l3" reason="Never"/>
@@ -247,7 +249,7 @@
     <disable_collisions link1="link_arm_l1" link2="link_aruco_right_base" reason="Never"/>
     <disable_collisions link1="link_arm_l1" link2="link_aruco_shoulder" reason="Never"/>
     <disable_collisions link1="link_arm_l1" link2="link_aruco_top_wrist" reason="Never"/>
-    <disable_collisions link1="link_arm_l1" link2="link_gripper" reason="Never"/>
+    <disable_collisions link1="link_arm_l1" link2="link_straight_gripper" reason="Never"/>
     <disable_collisions link1="link_arm_l1" link2="link_gripper_finger_left" reason="Never"/>
     <disable_collisions link1="link_arm_l1" link2="link_gripper_finger_right" reason="Never"/>
     <disable_collisions link1="link_arm_l1" link2="link_gripper_fingertip_left" reason="Never"/>
@@ -270,7 +272,7 @@
     <disable_collisions link1="link_arm_l2" link2="link_aruco_right_base" reason="Never"/>
     <disable_collisions link1="link_arm_l2" link2="link_aruco_shoulder" reason="Never"/>
     <disable_collisions link1="link_arm_l2" link2="link_aruco_top_wrist" reason="Never"/>
-    <disable_collisions link1="link_arm_l2" link2="link_gripper" reason="Never"/>
+    <disable_collisions link1="link_arm_l2" link2="link_straight_gripper" reason="Never"/>
     <disable_collisions link1="link_arm_l2" link2="link_gripper_finger_left" reason="Never"/>
     <disable_collisions link1="link_arm_l2" link2="link_gripper_finger_right" reason="Never"/>
     <disable_collisions link1="link_arm_l2" link2="link_gripper_fingertip_left" reason="Never"/>
@@ -292,7 +294,7 @@
     <disable_collisions link1="link_arm_l3" link2="link_aruco_right_base" reason="Never"/>
     <disable_collisions link1="link_arm_l3" link2="link_aruco_shoulder" reason="Never"/>
     <disable_collisions link1="link_arm_l3" link2="link_aruco_top_wrist" reason="Never"/>
-    <disable_collisions link1="link_arm_l3" link2="link_gripper" reason="Never"/>
+    <disable_collisions link1="link_arm_l3" link2="link_straight_gripper" reason="Never"/>
     <disable_collisions link1="link_arm_l3" link2="link_gripper_finger_left" reason="Never"/>
     <disable_collisions link1="link_arm_l3" link2="link_gripper_finger_right" reason="Never"/>
     <disable_collisions link1="link_arm_l3" link2="link_gripper_fingertip_left" reason="Never"/>
@@ -313,7 +315,7 @@
     <disable_collisions link1="link_arm_l4" link2="link_aruco_right_base" reason="Never"/>
     <disable_collisions link1="link_arm_l4" link2="link_aruco_shoulder" reason="Never"/>
     <disable_collisions link1="link_arm_l4" link2="link_aruco_top_wrist" reason="Never"/>
-    <disable_collisions link1="link_arm_l4" link2="link_gripper" reason="Never"/>
+    <disable_collisions link1="link_arm_l4" link2="link_straight_gripper" reason="Never"/>
     <disable_collisions link1="link_arm_l4" link2="link_gripper_finger_left" reason="Never"/>
     <disable_collisions link1="link_arm_l4" link2="link_gripper_finger_right" reason="Never"/>
     <disable_collisions link1="link_arm_l4" link2="link_gripper_fingertip_left" reason="Never"/>
@@ -333,7 +335,7 @@
     <disable_collisions link1="link_aruco_inner_wrist" link2="link_aruco_right_base" reason="Never"/>
     <disable_collisions link1="link_aruco_inner_wrist" link2="link_aruco_shoulder" reason="Never"/>
     <disable_collisions link1="link_aruco_inner_wrist" link2="link_aruco_top_wrist" reason="Never"/>
-    <disable_collisions link1="link_aruco_inner_wrist" link2="link_gripper" reason="Never"/>
+    <disable_collisions link1="link_aruco_inner_wrist" link2="link_straight_gripper" reason="Never"/>
     <disable_collisions link1="link_aruco_inner_wrist" link2="link_gripper_finger_left" reason="Never"/>
     <disable_collisions link1="link_aruco_inner_wrist" link2="link_gripper_finger_right" reason="Never"/>
     <disable_collisions link1="link_aruco_inner_wrist" link2="link_gripper_fingertip_left" reason="Never"/>
@@ -352,7 +354,7 @@
     <disable_collisions link1="link_aruco_left_base" link2="link_aruco_right_base" reason="Never"/>
     <disable_collisions link1="link_aruco_left_base" link2="link_aruco_shoulder" reason="Never"/>
     <disable_collisions link1="link_aruco_left_base" link2="link_aruco_top_wrist" reason="Never"/>
-    <disable_collisions link1="link_aruco_left_base" link2="link_gripper" reason="Never"/>
+    <disable_collisions link1="link_aruco_left_base" link2="link_straight_gripper" reason="Never"/>
     <disable_collisions link1="link_aruco_left_base" link2="link_gripper_finger_left" reason="Never"/>
     <disable_collisions link1="link_aruco_left_base" link2="link_gripper_finger_right" reason="Never"/>
     <disable_collisions link1="link_aruco_left_base" link2="link_gripper_fingertip_left" reason="Never"/>
@@ -370,7 +372,7 @@
     <disable_collisions link1="link_aruco_left_base" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_aruco_right_base" link2="link_aruco_shoulder" reason="Never"/>
     <disable_collisions link1="link_aruco_right_base" link2="link_aruco_top_wrist" reason="Never"/>
-    <disable_collisions link1="link_aruco_right_base" link2="link_gripper" reason="Default"/>
+    <disable_collisions link1="link_aruco_right_base" link2="link_straight_gripper" reason="Default"/>
     <disable_collisions link1="link_aruco_right_base" link2="link_head" reason="Never"/>
     <disable_collisions link1="link_aruco_right_base" link2="link_head_pan" reason="Never"/>
     <disable_collisions link1="link_aruco_right_base" link2="link_head_tilt" reason="Never"/>
@@ -383,7 +385,7 @@
     <disable_collisions link1="link_aruco_right_base" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_aruco_right_base" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_aruco_shoulder" link2="link_aruco_top_wrist" reason="Never"/>
-    <disable_collisions link1="link_aruco_shoulder" link2="link_gripper" reason="Never"/>
+    <disable_collisions link1="link_aruco_shoulder" link2="link_straight_gripper" reason="Never"/>
     <disable_collisions link1="link_aruco_shoulder" link2="link_gripper_finger_left" reason="Never"/>
     <disable_collisions link1="link_aruco_shoulder" link2="link_gripper_finger_right" reason="Never"/>
     <disable_collisions link1="link_aruco_shoulder" link2="link_gripper_fingertip_left" reason="Never"/>
@@ -399,7 +401,7 @@
     <disable_collisions link1="link_aruco_shoulder" link2="link_wrist_pitch" reason="Never"/>
     <disable_collisions link1="link_aruco_shoulder" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_aruco_shoulder" link2="respeaker_base" reason="Never"/>
-    <disable_collisions link1="link_aruco_top_wrist" link2="link_gripper" reason="Never"/>
+    <disable_collisions link1="link_aruco_top_wrist" link2="link_straight_gripper" reason="Never"/>
     <disable_collisions link1="link_aruco_top_wrist" link2="link_gripper_finger_left" reason="Never"/>
     <disable_collisions link1="link_aruco_top_wrist" link2="link_gripper_finger_right" reason="Never"/>
     <disable_collisions link1="link_aruco_top_wrist" link2="link_gripper_fingertip_left" reason="Never"/>
@@ -415,18 +417,18 @@
     <disable_collisions link1="link_aruco_top_wrist" link2="link_wrist_pitch" reason="Never"/>
     <disable_collisions link1="link_aruco_top_wrist" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_aruco_top_wrist" link2="respeaker_base" reason="Never"/>
-    <disable_collisions link1="link_gripper" link2="link_gripper_finger_left" reason="Adjacent"/>
-    <disable_collisions link1="link_gripper" link2="link_gripper_finger_right" reason="Adjacent"/>
-    <disable_collisions link1="link_gripper" link2="link_gripper_fingertip_left" reason="Never"/>
-    <disable_collisions link1="link_gripper" link2="link_gripper_fingertip_right" reason="Never"/>
-    <disable_collisions link1="link_gripper" link2="link_head" reason="Never"/>
-    <disable_collisions link1="link_gripper" link2="link_head_pan" reason="Never"/>
-    <disable_collisions link1="link_gripper" link2="link_head_tilt" reason="Never"/>
-    <disable_collisions link1="link_gripper" link2="link_left_wheel" reason="Never"/>
-    <disable_collisions link1="link_gripper" link2="link_lift" reason="Never"/>
-    <disable_collisions link1="link_gripper" link2="link_mast" reason="Never"/>
-    <disable_collisions link1="link_gripper" link2="link_wrist_roll" reason="Adjacent"/>
-    <disable_collisions link1="link_gripper" link2="respeaker_base" reason="Never"/>
+    <disable_collisions link1="link_straight_gripper" link2="link_gripper_finger_left" reason="Adjacent"/>
+    <disable_collisions link1="link_straight_gripper" link2="link_gripper_finger_right" reason="Adjacent"/>
+    <disable_collisions link1="link_straight_gripper" link2="link_gripper_fingertip_left" reason="Never"/>
+    <disable_collisions link1="link_straight_gripper" link2="link_gripper_fingertip_right" reason="Never"/>
+    <disable_collisions link1="link_straight_gripper" link2="link_head" reason="Never"/>
+    <disable_collisions link1="link_straight_gripper" link2="link_head_pan" reason="Never"/>
+    <disable_collisions link1="link_straight_gripper" link2="link_head_tilt" reason="Never"/>
+    <disable_collisions link1="link_straight_gripper" link2="link_left_wheel" reason="Never"/>
+    <disable_collisions link1="link_straight_gripper" link2="link_lift" reason="Never"/>
+    <disable_collisions link1="link_straight_gripper" link2="link_mast" reason="Never"/>
+    <disable_collisions link1="link_straight_gripper" link2="link_wrist_roll" reason="Adjacent"/>
+    <disable_collisions link1="link_straight_gripper" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_gripper_finger_left" link2="link_gripper_fingertip_left" reason="Adjacent"/>
     <disable_collisions link1="link_gripper_finger_left" link2="link_head" reason="Never"/>
     <disable_collisions link1="link_gripper_finger_left" link2="link_head_pan" reason="Never"/>
@@ -520,6 +522,11 @@
     <disable_collisions link1="link_right_wheel" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_wrist_yaw" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="link_wrist_yaw" link2="link_wrist_pitch" reason="Adjacent"/>
+    <disable_collisions link1="link_wrist_yaw" link2="link_wrist_yaw_bottom" reason="Adjacent"/>
+    <disable_collisions link1="link_wrist_yaw" link2="link_wrist_roll" reason="Never"/>
     <disable_collisions link1="link_wrist_pitch" link2="link_wrist_roll" reason="Adjacent"/>
+    <disable_collisions link1="link_wrist_pitch" link2="respeaker_base" reason="Never"/>
+    <disable_collisions link1="link_wrist_pitch" link2="link_wrist_yaw_bottom" reason="Adjacent"/>
+    <disable_collisions link1="link_wrist_roll" link2="respeaker_base" reason="Never"/>
     <disable_collisions link1="caster_link" link2="base_link" reason="Adjacent"/>
 </robot>
