@@ -44,5 +44,5 @@ default: stretch_core/config/controller_calibration_head.yaml
 `/home_the_robot`: home the robot
 `/runstop`: switches the robot to standby mode where it will ignore new commands
 
-### Exposed Action Servers
+#### Exposed Action Servers
 `/stretch_controller/follow_joint_trajectory`: action server to control the robot through joint trajectories
