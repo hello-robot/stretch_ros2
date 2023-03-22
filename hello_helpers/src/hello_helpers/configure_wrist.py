@@ -3,6 +3,7 @@
 import subprocess
 import shlex
 import sys
+import argparse as ap
 
 def run_cmd(cmdstr):
     process = subprocess.run(shlex.split(cmdstr), capture_output=True, text=True)
@@ -56,7 +57,7 @@ def configure_wrist(wrist_type):
 
 def main():
     try:
-        parser = ap.ArgumentParser(description='Keyboard teleoperation for stretch.')
+        parser = ap.ArgumentParser(description='Configure end-of-arm tool for stretch ROS.')
         parser.add_argument('--simple', action='store_true', help='Configures your robot to work with a simple gripper.')
         parser.add_argument('--dex', action='store_true', help='Configures your robot to work with a dex wrist gripper.')
 
@@ -65,8 +66,10 @@ def main():
         dex = args.dex
 
         if simple:
+            print('Configuring a simple wrist')
             configure_wrist('simple')
         elif dex:
+            print('Configuring a dex wrist')
             configure_wrist('dex')
 
     except KeyboardInterrupt:
