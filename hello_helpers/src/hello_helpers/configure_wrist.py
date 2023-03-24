@@ -58,16 +58,16 @@ def configure_wrist(wrist_type):
 def main():
     try:
         parser = ap.ArgumentParser(description='Configure end-of-arm tool for stretch ROS.')
-        parser.add_argument('--simple', action='store_true', help='Configures your robot to work with a simple gripper.')
+        parser.add_argument('--standard', action='store_true', help='Configures your robot to work with a standard gripper.')
         parser.add_argument('--dex', action='store_true', help='Configures your robot to work with a dex wrist gripper.')
 
         args, unknown = parser.parse_known_args()
-        simple = args.simple
+        standard = args.standard
         dex = args.dex
 
-        if simple:
-            print('Configuring a simple wrist')
-            configure_wrist('simple')
+        if standard:
+            print('Configuring a standard wrist')
+            configure_wrist('standard')
         elif dex:
             print('Configuring a dex wrist')
             configure_wrist('dex')
