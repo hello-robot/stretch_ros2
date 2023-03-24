@@ -8,6 +8,8 @@
 *.so
 
 # Stretch related
+stretch_description.srdf
+stretch_description.xacro
 stretch.urdf
 stretch_uncalibrated.urdf
 controller_calibration_head.yaml
