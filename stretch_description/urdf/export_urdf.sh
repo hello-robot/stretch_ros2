@@ -30,22 +30,22 @@ echo ""
 echo "Replace the mesh file locations in the exported URDF with local directories."
 OLD_NAME="package://stretch_description/"
 NEW_NAME="./"
-echo "rpl -Ri $OLD_NAME $NEW_NAME ./exported_urdf/stretch.urdf"
-rpl -Ri $OLD_NAME $NEW_NAME ./exported_urdf/stretch.urdf
+echo "rpl -i $OLD_NAME $NEW_NAME ./exported_urdf/stretch.urdf"
+rpl -i $OLD_NAME $NEW_NAME ./exported_urdf/stretch.urdf
 echo ""
 
 # Copy D435i mesh from the realsense2_description ROS package to the exported URDF.
 echo "Copy D435i mesh from the realsense2_description ROS package to the exported URDF."
-echo "cp `rospack find realsense2_description`/meshes/d435.dae ./exported_urdf/meshes/"
-cp `rospack find realsense2_description`/meshes/d435.dae ./exported_urdf/meshes/
-echo "rpl -Ri "package://realsense2_description/" "./" ./exported_urdf/stretch.urdf"
-rpl -Ri "package://realsense2_description/" "./" ./exported_urdf/stretch.urdf
+echo "cp `ros2 pkg prefix realsense2_description`/share/realsense2_description/meshes/d435.dae ./exported_urdf/meshes/"
+cp `ros2 pkg prefix realsense2_description`/share/realsense2_description/meshes/d435.dae ./exported_urdf/meshes/
+echo "rpl -i "package://realsense2_description/" "./" ./exported_urdf/stretch.urdf"
+rpl -i "package://realsense2_description/" "./" ./exported_urdf/stretch.urdf
 echo ""
 
 # copy controller calibration file used by stretch ROS
 echo "Copy the current controller parameter yaml file to the exported URDF."
-echo "cp `rospack find stretch_core`/config/controller_calibration_head.yaml ./exported_urdf/"
-cp `rospack find stretch_core`/config/controller_calibration_head.yaml ./exported_urdf/
+echo "cp `ros2 pkg prefix stretch_core`/share/stretch_core/config/controller_calibration_head.yaml ./exported_urdf/"
+cp `ros2 pkg prefix stretch_core`/share/stretch_core/config/controller_calibration_head.yaml ./exported_urdf/
 echo ""
 
 # copy license file
