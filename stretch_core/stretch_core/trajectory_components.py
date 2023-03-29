@@ -148,13 +148,24 @@ class BaseComponent(TrajectoryComponent):
 
 
 def get_trajectory_components(robot):
-    return {component.name: component for component in [HeadPanComponent(robot),
-                                                        HeadTiltComponent(robot),
-                                                        WristYawComponent(robot),
-                                                        WristPitchComponent(robot),
-                                                        WristRollComponent(robot),
-                                                        GripperComponent(robot),
-                                                        ArmComponent(robot),
-                                                        LiftComponent(robot),
-                                                        BaseComponent(robot),
-                                                        ]}
+    robot_status = robot.get_status()
+    if 'wrist_pitch' in robot_status['end_of_arm']:
+        return {component.name: component for component in [HeadPanComponent(robot),
+                                                            HeadTiltComponent(robot),
+                                                            WristYawComponent(robot),
+                                                            WristPitchComponent(robot),
+                                                            WristRollComponent(robot),
+                                                            GripperComponent(robot),
+                                                            ArmComponent(robot),
+                                                            LiftComponent(robot),
+                                                            BaseComponent(robot),
+                                                            ]}
+    else:
+        return {component.name: component for component in [HeadPanComponent(robot),
+                                                            HeadTiltComponent(robot),
+                                                            WristYawComponent(robot),
+                                                            GripperComponent(robot),
+                                                            ArmComponent(robot),
+                                                            LiftComponent(robot),
+                                                            BaseComponent(robot),
+                                                            ]}
