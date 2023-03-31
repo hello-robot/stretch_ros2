@@ -13,6 +13,15 @@ def run_cmd(cmdstr):
         sys.exit(1)
     return process
 
+def get_create_time_from_path(file):
+    time_format = 'yyyymmddhhmmss'
+    len_time_format = len(time_format)
+
+    len_file_type = len(os.path.splitext(file)[1])
+    len_filepath = len(file)
+
+    return float(file[(len_filepath-len_file_type-len_time_format):(len_filepath-len_file_type)])
+
 def main():
     print(os.getenv('HOME'))
     bashCommand = "source {}/ament_ws/install/setup.bash".format(os.getenv('HOME'))
@@ -27,7 +36,7 @@ def main():
     folder_path = "{0}/{1}/calibration_ros".format(os.getenv('HELLO_FLEET_PATH'), os.getenv('HELLO_FLEET_ID'))
     file_type = '/controller_calibration_head_*.yaml'
     files = glob.glob(folder_path + file_type)
-    calibration_file = max(files, key=os.path.getctime)
+    calibration_file = max(files, key=get_create_time_from_path)
 
     print("Found: ", calibration_file)
     print("Making it the new controller calibration file.")
@@ -52,7 +61,7 @@ def main():
 
     file_type = '/head_calibrated*.urdf'
     files = glob.glob(folder_path + file_type)
-    calibrated_urdf_file = max(files, key=os.path.getctime)
+    calibrated_urdf_file = max(files, key=get_create_time_from_path)
 
     print("Found: ", calibrated_urdf_file)
     print("Making it the new URDF file.")

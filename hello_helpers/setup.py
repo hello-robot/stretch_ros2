@@ -16,5 +16,11 @@ setup(
     license='Apache License 2.0',
     author='Hello Robot Inc.',
     author_email='support@hello-robot.com',
-    description='The hello_helpers package',
+    description='The hello_helpers package',\
+    tests_require=['pytest'],
+    entry_points={
+        'console_scripts': [
+            'configure_wrist = hello_helpers.configure_wrist:main',
+        ],
+    },
 )

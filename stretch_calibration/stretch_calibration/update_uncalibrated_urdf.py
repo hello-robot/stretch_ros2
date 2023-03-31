@@ -2,6 +2,8 @@
 import subprocess
 import shlex
 import sys
+import os
+from ament_index_python.packages import get_package_share_directory
 
 
 def run_cmd(cmdstr):
@@ -37,6 +39,11 @@ def main():
     with open(test_filepath, "w") as open_file:
         print(urdf, file=open_file)
         open_file.close()
+
+    # Copy the stretch_uncalibrated.urdf in share directory as well
+    uncalibrated_urdf_path = os.path.join(get_package_share_directory('stretch_description'), 'urdf', 'stretch_uncalibrated.urdf')
+    bashCommand = "cp {0} {1}".format(test_filepath, uncalibrated_urdf_path)
+    process = run_cmd(bashCommand)
 
 
 if __name__ == '__main__':
