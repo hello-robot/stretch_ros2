@@ -12,10 +12,10 @@ echo ""
 
 # Create new exported URDF directories.
 echo "Create new exported URDF directories."
-echo "mkdir ./exported_urdf/" 
-mkdir ./exported_urdf/
-echo "mkdir ./exported_urdf/meshes/"
-mkdir ./exported_urdf/meshes/
+echo "mkdir -p ./exported_urdf/" 
+mkdir -p ./exported_urdf/
+echo "mkdir -p ./exported_urdf/meshes/"
+mkdir -p ./exported_urdf/meshes/
 echo ""
 
 # Copy the mesh files and the original calibrated URDF file to the exported URDF.
