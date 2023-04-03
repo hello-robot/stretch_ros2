@@ -802,7 +802,7 @@ def main(args=None):
     if compare_versions(cv2.__version__,'4.7') == -1:
         txt = f"[ERROR] Found unsupported cv2 version({cv2.__version__}), Requires opencv-contrib-python>=4.7.0 " \
               f"\n\t\t\tShutting down node detect_aruco_markers"
-        rospy.logerr(click.style(txt,fg='red'))
+        print(click.style(txt,fg='red'))
         sys.exit()
     node = DetectArucoNode()
 
