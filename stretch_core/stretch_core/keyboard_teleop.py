@@ -283,6 +283,8 @@ class KeyboardTeleopNode(hm.HelloNode):
         
     def joint_states_callback(self, joint_state):
         self.joint_state = joint_state
+
+    def command_joints(self):
         command = self.keys.get_command(self)
         self.send_command(command)
 
@@ -409,10 +411,15 @@ class KeyboardTeleopNode(hm.HelloNode):
         self.subscription
 
         self.keys.print_commands()
+
+        timer_period = 1.0 / 10.0
+        self.timer = self.create_timer(timer_period, self.command_joints)
+
         rclpy.spin(self)
         self.keys.kb.set_normal_term()
         self.destroy_node()
         rclpy.shutdown()
+
 
 def main():
     try:
