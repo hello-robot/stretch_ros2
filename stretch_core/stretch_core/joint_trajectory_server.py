@@ -68,6 +68,11 @@ class JointTrajectoryAction(Node):
                     self.joints[joint_name].add_waypoints(trajectory.points, joint_index)
                 except KeyError as e:
                     return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, str(e))
+        
+        for joint in self.joints:
+            if not self.joints[joint].is_valid():
+                return self.error_callback(goal_handle, -100, 'trajectory exceeding valid dynamic range of joints!')
+
         if not self.node.robot.follow_trajectory():
             self.node.robot.stop_trajectory()
             return self.error_callback(goal_handle, -100, 'hardware failed to start trajectory')

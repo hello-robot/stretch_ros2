@@ -40,6 +40,11 @@ class TrajectoryComponent:
     def add_waypoint(self, t, x, v, a):
         self.trajectory_manager.trajectory.add(t, x, v, a)
 
+    def is_valid(self):
+        vel_r = self.trajectory_manager.params['motion']['trajectory_max']['vel_r']
+        accel_r = self.trajectory_manager.params['motion']['trajectory_max']['accel_r']
+        return self.trajectory_manager.trajectory.is_valid(vel_r, accel_r)[0]
+
 
 class HeadPanComponent(TrajectoryComponent):
     def __init__(self, robot):
@@ -98,6 +103,11 @@ class ArmComponent(TrajectoryComponent):
         a = None
         self.trajectory_manager.trajectory.add(t, x, v, a)
 
+    def is_valid(self):
+        vel_m = self.trajectory_manager.params['motion']['trajectory_max']['vel_m']
+        accel_m = self.trajectory_manager.params['motion']['trajectory_max']['accel_m']
+        return self.trajectory_manager.trajectory.is_valid(vel_m, accel_m)[0]
+
 
 class LiftComponent(TrajectoryComponent):
     def __init__(self, robot):
@@ -108,10 +118,16 @@ class LiftComponent(TrajectoryComponent):
         a = None
         self.trajectory_manager.trajectory.add(t, x, v, a)
 
+    def is_valid(self):
+        vel_m = self.trajectory_manager.params['motion']['trajectory_max']['vel_m']
+        accel_m = self.trajectory_manager.params['motion']['trajectory_max']['accel_m']
+        return self.trajectory_manager.trajectory.is_valid(vel_m, accel_m)[0]
+
 
 class BaseComponent(TrajectoryComponent):
     def __init__(self, robot):
         TrajectoryComponent.__init__(self, 'position', robot.base)
+        self.robot = robot
 
     def get_position(self):
         return to_transform(self.trajectory_manager.status)
@@ -145,6 +161,11 @@ class BaseComponent(TrajectoryComponent):
         v = twist_to_pair(v) if v is not None else (None, None)
         a = twist_to_pair(a) if a is not None else (None, None)
         self.trajectory_manager.trajectory.add(t, x[0], x[1], x[2], v[0], v[1], a[0], a[1])
+
+    def is_valid(self):
+        vel_r = self.trajectory_manager.params['motion']['trajectory_max']['vel_r']
+        accel_r = self.trajectory_manager.params['motion']['trajectory_max']['accel_r']
+        return self.trajectory_manager.trajectory.is_valid(vel_r, accel_r, self.robot.base.translate_to_motor_rad, self.robot.base.rotate_to_motor_rad)[0]
 
 
 def get_trajectory_components(robot):
