@@ -70,7 +70,7 @@ class JointTrajectoryAction(Node):
             self.node.stop_the_robot = False
         self.node.robot_mode_rwlock.acquire_read()
         if self.node.robot_mode not in ['position', 'manipulation', 'navigation']:
-            self.error_callback(goal_handle, FollowJointTrajectory.RESULT.INVALID_GOAL, "Cannot execute goals while in mode={0}".format(self.node.robot_mode))
+            self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, "Cannot execute goals while in mode={0}".format(self.node.robot_mode))
             self.node.robot_mode_rwlock.release_read()
             return
 
@@ -158,7 +158,7 @@ class JointTrajectoryAction(Node):
                     self.node.robot_mode_rwlock.release_read()
                     return
 
-                self.feedback_callback(commanded_joint_names, point, named_errors)
+                self.feedback_callback(goal_handle, point, named_errors)
                 goals_reached = [c.goal_reached() for c in self.command_groups]
                 self.action_server_rate.sleep()
 
