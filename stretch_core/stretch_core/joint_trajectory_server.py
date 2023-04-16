@@ -148,7 +148,7 @@ class JointTrajectoryAction(Node):
                         return self.error_callback(goal_handle, 100, "preemption requested")
 
                 robot_status = self.node.robot.get_status()
-                named_errors = [c.update_execution(robot_status, success_callback=self.success_callback)
+                named_errors = [c.update_execution(robot_status, contact_detected_callback=self.contact_detected_callback)
                                 for c in self.command_groups]
                 # It's not clear how this could ever happen. The
                 # groups in command_groups.py seem to return
@@ -167,6 +167,9 @@ class JointTrajectoryAction(Node):
         self.node.robot_mode_rwlock.release_read()
         return self.success_callback(goal_handle, "Achieved all target points.")
 
+    def contact_detected_callback(self, err_str):
+        self.node.get_logger().warn(err_str)
+    
     def invalid_joints_callback(self, err_str):
         self.node.get_logger().warn(err_str)
     
