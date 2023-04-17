@@ -162,10 +162,6 @@ class KeyboardTeleopNode(hm.HelloNode):
     def joint_states_callback(self, joint_state):
         self.joint_state = joint_state
 
-    def keyboard_callback(self):
-        command = self.keys.get_command(self)
-        self.send_command(command)
-
     def send_command(self, command):
         joint_state = self.joint_state
         if (joint_state is not None) and (command is not None):
@@ -198,14 +194,18 @@ class KeyboardTeleopNode(hm.HelloNode):
         rclpy.init()
         hm.HelloNode.main(self, 'keyboard_teleop', 'keyboard_teleop', wait_for_first_pointcloud=False)
 
-        self.subscription = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10)
+        self.subscription = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 1)
         self.subscription
-
-        timer_period = 1.0 / 15 # Hz
-        self.timer = self.create_timer(timer_period, self.keyboard_callback)
-
+        
         self.keys.print_commands()
-        rclpy.spin(self)
+        while rclpy.ok():
+            rclpy.spin_once(self)
+            command = self.keys.get_command(self)
+            self.send_command(command)
+            if command is not None:
+                print(command)
+
+        # rclpy.spin(self)
         self.keys.kb.set_normal_term()
         self.destroy_node()
         rclpy.shutdown()
