@@ -202,10 +202,7 @@ class KeyboardTeleopNode(hm.HelloNode):
             rclpy.spin_once(self)
             command = self.keys.get_command(self)
             self.send_command(command)
-            if command is not None:
-                print(command)
 
-        # rclpy.spin(self)
         self.keys.kb.set_normal_term()
         self.destroy_node()
         rclpy.shutdown()
