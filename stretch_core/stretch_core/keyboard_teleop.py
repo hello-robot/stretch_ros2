@@ -176,7 +176,7 @@ class KeyboardTeleopNode(hm.HelloNode):
             # for base joints
             if 'inc' in command:
                 inc = command['inc']
-                new_value = 'inc'
+                new_value = inc
 
             # for non-base joints
             elif 'delta' in command:
