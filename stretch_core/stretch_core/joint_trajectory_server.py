@@ -31,7 +31,12 @@ class JointTrajectoryAction(Node):
         self.server = ActionServer(self.node, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory',
                                    execute_callback=self.execute_cb,
                                    cancel_callback=self.cancel_cb)
-
+        
+        self.debug_dir = Path(hu.get_stretch_directory('goals'))
+        if not self.debug_dir.exists():
+            self.debug_dir.mkdir()
+        
+        # Position mode init
         self.head_pan_cg = HeadPanCommandGroup(node=self.node) \
             if 'head_pan' in self.node.robot.head.joints else None
         self.head_tilt_cg = HeadTiltCommandGroup(node=self.node) \
@@ -53,10 +58,11 @@ class JointTrajectoryAction(Node):
             if module_name and class_name:
                 endofarm_cg = getattr(importlib.import_module(module_name), class_name)(node=self.node)
                 self.command_groups.append(endofarm_cg)
-
-        self.debug_dir = Path(hu.get_stretch_directory('goals'))
-        if not self.debug_dir.exists():
-            self.debug_dir.mkdir()
+        
+        # Trajectory mode init
+        self.joints = get_trajectory_components(self.node.robot)
+        self.node.robot._update_trajectory_dynamixel = lambda : None
+        self.node.robot._update_trajectory_non_dynamixel = lambda : None
 
     def execute_cb(self, goal_handle):
         print("-------------------------------------------")
@@ -159,7 +165,7 @@ class JointTrajectoryAction(Node):
                         # TODO: Check when this condtion is met
                         return self.error_callback(goal_handle, 100, "--")
 
-                    self.feedback_callback(goal_handle, point, named_errors)
+                    self.feedback_callback(goal_handle, desired_point=point, named_errors=named_errors)
                     goals_reached = [c.goal_reached() for c in self.command_groups]
                     # self.action_server_rate.sleep()
 
@@ -204,14 +210,17 @@ class JointTrajectoryAction(Node):
             while rclpy.ok() and self.node.get_clock().now() - ts <= duration:
                 self._update_trajectory_dynamixel()
                 self._update_trajectory_non_dynamixel()
-                self.feedback_callback(goal_handle, ts)
-                self.action_server_rate.sleep()
+                self.feedback_callback(goal_handle, start_time=ts)
+                # self.action_server_rate.sleep()
 
             time.sleep(0.1)
             self._update_trajectory_dynamixel()
             self._update_trajectory_non_dynamixel()
             self.node.robot.stop_trajectory()
             return self.success_callback(goal_handle, 'traj succeeded!')
+        
+        else:
+            return self.error_callback(goal_handle, -100, 'Joint Trajectory Server only accepts goals in position or trajectory mode')
 
 
     def contact_detected_callback(self, err_str):
@@ -240,30 +249,46 @@ class JointTrajectoryAction(Node):
         self.node.robot.stop_trajectory()
         return 2 # Accepting cancel request
 
-    def feedback_callback(self, goal_handle, desired_point, named_errors):
+    def feedback_callback(self, goal_handle, desired_point=None, named_errors=None, start_time=None):
         goal = goal_handle.request
-        commanded_joint_names = goal.trajectory.joint_names
-        clean_named_errors = []
-        for named_error in named_errors:
-            if type(named_error) == tuple:
-                clean_named_errors.append(named_error)
-            elif type(named_error) == list:
-                clean_named_errors += named_error
-        clean_named_errors_dict = dict((k, v) for k, v in clean_named_errors)
-
-        actual_point = JointTrajectoryPoint()
-        error_point = JointTrajectoryPoint()
-        for i, commanded_joint_name in enumerate(commanded_joint_names):
-            error_point.positions.append(clean_named_errors_dict[commanded_joint_name])
-            actual_point.positions.append(desired_point.positions[i] - clean_named_errors_dict[commanded_joint_name])
-
-        self.node.get_logger().debug("{0} joint_traj action: sending feedback".format(self.node.node_name))
         feedback = FollowJointTrajectory.Feedback()
-        feedback.header.stamp = self.node.get_clock().now().to_msg()
+        commanded_joint_names = goal.trajectory.joint_names
+
+        if self.node.robot_mode == 'position':
+            clean_named_errors = []
+            for named_error in named_errors:
+                if type(named_error) == tuple:
+                    clean_named_errors.append(named_error)
+                elif type(named_error) == list:
+                    clean_named_errors += named_error
+            clean_named_errors_dict = dict((k, v) for k, v in clean_named_errors)
+
+            actual_point = JointTrajectoryPoint()
+            error_point = JointTrajectoryPoint()
+            for i, commanded_joint_name in enumerate(commanded_joint_names):
+                error_point.positions.append(clean_named_errors_dict[commanded_joint_name])
+                actual_point.positions.append(desired_point.positions[i] - clean_named_errors_dict[commanded_joint_name])
+
+            self.node.get_logger().debug("{0} joint_traj action: sending feedback".format(self.node.node_name))
+
+            feedback.desired = desired_point
+            feedback.actual = actual_point
+            feedback.error = error_point
+
+        elif self.node.robot_mode == 'manipulation':
+            time_along_traj = (self.node.get_clock().now() - start_time).to_msg()
+
+            feedback.desired.time_from_start = time_along_traj
+            feedback.actual.time_from_start = time_along_traj
+            feedback.error.time_from_start = time_along_traj
+            for joint_name in feedback.joint_names:
+                joint = self.joints[joint_name]
+                actual_pos = joint.get_position()
+
+            feedback.multi_dof_joint_names = goal.multi_dof_trajectory.joint_names
+        
         feedback.joint_names = commanded_joint_names
-        feedback.desired = desired_point
-        feedback.actual = actual_point
-        feedback.error = error_point
+        feedback.header.stamp = self.node.get_clock().now().to_msg()
         goal_handle.publish_feedback(feedback)
 
     def success_callback(self, goal_handle, success_str):
@@ -275,3 +300,19 @@ class JointTrajectoryAction(Node):
         result.error_string = success_str
         goal_handle.succeed()
         return result
+
+    def _update_trajectory_dynamixel(self):
+        try:
+            self.node.robot.end_of_arm.update_trajectory()
+            self.node.robot.head.update_trajectory()
+        except SerialException:
+            self.get_logger().warn(f'{self.node.node_name} joint_traj action: Serial Exception on updating dynamixel waypoint trajectories')
+
+    def _update_trajectory_non_dynamixel(self):
+        self.node.robot.arm.motor.pull_status()
+        self.node.robot.arm.update_trajectory()
+        self.node.robot.lift.motor.pull_status()
+        self.node.robot.lift.update_trajectory()
+        self.node.robot.base.left_wheel.pull_status()
+        self.node.robot.base.right_wheel.pull_status()
+        self.node.robot.base.update_trajectory()
