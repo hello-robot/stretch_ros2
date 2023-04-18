@@ -74,98 +74,145 @@ class JointTrajectoryAction(Node):
         if self.node.robot_mode not in ['position', 'manipulation', 'navigation']:
             self.node.robot_mode_rwlock.release_read()
             return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, "Cannot execute goals while in mode={0}".format(self.node.robot_mode))
+        
+        if self.node.robot_mode == 'position':
+            # For now, ignore goal time and configuration tolerances.
+            commanded_joint_names = goal.trajectory.joint_names
+            self.node.get_logger().info(("{0} joint_traj action: New trajectory received with joint_names = "
+                        "{1}").format(self.node.node_name, commanded_joint_names))
 
-        # For now, ignore goal time and configuration tolerances.
-        commanded_joint_names = goal.trajectory.joint_names
-        self.node.get_logger().info(("{0} joint_traj action: New trajectory received with joint_names = "
-                       "{1}").format(self.node.node_name, commanded_joint_names))
-
-        ###################################################
-        # Decide what to do based on the commanded joints.
-        updates = [c.update(commanded_joint_names, self.invalid_joints_callback,
-                   robot_mode=self.node.robot_mode)
-                   for c in self.command_groups]
-        if not all(updates):
-            # The joint names violated at least one of the command
-            # group's requirements. The command group should have
-            # reported the error.
-            self.node.robot_mode_rwlock.release_read()
-            return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_JOINTS, "joint names violated one of command group's requirements")
-
-        num_valid_points = sum([c.get_num_valid_commands() for c in self.command_groups])
-        if num_valid_points <= 0:
-            err_str = ("Received a command without any valid joint names. "
-                       "Received joint names = {0}").format(commanded_joint_names)
-            self.node.robot_mode_rwlock.release_read()
-            return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_JOINTS, err_str)
-        elif num_valid_points != len(commanded_joint_names):
-            err_str = ("Received only {0} valid joints out of {1} total joints. Received joint names = "
-                       "{2}").format(num_valid_points, len(commanded_joint_names), commanded_joint_names)
-            self.node.robot_mode_rwlock.release_read()
-            return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_JOINTS, err_str)
-
-        ###################################################
-        # Try to reach each of the goals in sequence until
-        # an error is detected or success is achieved.
-        for pointi, point in enumerate(goal.trajectory.points):
-            self.node.get_logger().debug(("{0} joint_traj action: "
-                            "target point #{1} = <{2}>").format(self.node.node_name, pointi, point))
-
-            valid_goals = [c.set_goal(point, self.invalid_goal_callback, self.node.fail_out_of_range_goal)
-                           for c in self.command_groups]
-            if not all(valid_goals):
-                # At least one of the goals violated the requirements
-                # of a command group. Any violations should have been
-                # reported as errors by the command groups.
+            ###################################################
+            # Decide what to do based on the commanded joints.
+            updates = [c.update(commanded_joint_names, self.invalid_joints_callback,
+                    robot_mode=self.node.robot_mode)
+                    for c in self.command_groups]
+            if not all(updates):
+                # The joint names violated at least one of the command
+                # group's requirements. The command group should have
+                # reported the error.
                 self.node.robot_mode_rwlock.release_read()
                 return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_JOINTS, "joint names violated one of command group's requirements")
 
-            robot_status = self.node.robot.get_status() # uses lock held by robot
-            for c in self.command_groups:
-                c.init_execution(self.node.robot, robot_status)
-            self.node.robot.push_command()
+            num_valid_points = sum([c.get_num_valid_commands() for c in self.command_groups])
+            if num_valid_points <= 0:
+                err_str = ("Received a command without any valid joint names. "
+                        "Received joint names = {0}").format(commanded_joint_names)
+                self.node.robot_mode_rwlock.release_read()
+                return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_JOINTS, err_str)
+            elif num_valid_points != len(commanded_joint_names):
+                err_str = ("Received only {0} valid joints out of {1} total joints. Received joint names = "
+                        "{2}").format(num_valid_points, len(commanded_joint_names), commanded_joint_names)
+                self.node.robot_mode_rwlock.release_read()
+                return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_JOINTS, err_str)
 
-            goals_reached = [c.goal_reached() for c in self.command_groups]
-            goal_start_time = self.node.get_clock().now()
+            ###################################################
+            # Try to reach each of the goals in sequence until
+            # an error is detected or success is achieved.
+            for pointi, point in enumerate(goal.trajectory.points):
+                self.node.get_logger().debug(("{0} joint_traj action: "
+                                "target point #{1} = <{2}>").format(self.node.node_name, pointi, point))
 
-            while not all(goals_reached):
-                if (self.node.get_clock().now() - goal_start_time) > self.node.default_goal_timeout_duration:
-                    err_str = ("Time to execute the current goal point = <{0}> exceeded the "
-                               "default_goal_timeout = {1}").format(point, self.node.default_goal_timeout_s)
+                valid_goals = [c.set_goal(point, self.invalid_goal_callback, self.node.fail_out_of_range_goal)
+                            for c in self.command_groups]
+                if not all(valid_goals):
+                    # At least one of the goals violated the requirements
+                    # of a command group. Any violations should have been
+                    # reported as errors by the command groups.
                     self.node.robot_mode_rwlock.release_read()
-                    return self.error_callback(goal_handle, FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED, err_str)
+                    return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_JOINTS, "joint names violated one of command group's requirements")
 
-                # Check if a premption request has been received.
-                with self.node.robot_stop_lock:
-                    # TODO: Handle preemption in ROS 2
-                    if self.node.stop_the_robot: # or self.server.is_preempt_requested():
-                        self.node.get_logger().debug(("{0} joint_traj action: PREEMPTION REQUESTED, but not stopping "
-                                        "current motions to allow smooth interpolation between "
-                                        "old and new commands.").format(self.node.node_name))
-                        # self.server.set_preempted()
-                        self.node.stop_the_robot = False
-                        self.node.robot_mode_rwlock.release_read()
-                        return self.error_callback(goal_handle, 100, "preemption requested")
+                robot_status = self.node.robot.get_status() # uses lock held by robot
+                for c in self.command_groups:
+                    c.init_execution(self.node.robot, robot_status)
+                self.node.robot.push_command()
 
-                robot_status = self.node.robot.get_status()
-                named_errors = [c.update_execution(robot_status, contact_detected_callback=self.contact_detected_callback)
-                                for c in self.command_groups]
-                # It's not clear how this could ever happen. The
-                # groups in command_groups.py seem to return
-                # (self.name, self.error) or None, rather than True.
-                if any(ret == True for ret in named_errors):
-                    self.node.robot_mode_rwlock.release_read()
-                    # TODO: Check when this condtion is met
-                    return self.error_callback(goal_handle, 100, "--")
-
-                self.feedback_callback(goal_handle, point, named_errors)
                 goals_reached = [c.goal_reached() for c in self.command_groups]
-                # self.action_server_rate.sleep()
+                goal_start_time = self.node.get_clock().now()
 
-            self.node.get_logger().debug("{0} joint_traj action: Achieved target point.".format(self.node.node_name))
+                while not all(goals_reached):
+                    if (self.node.get_clock().now() - goal_start_time) > self.node.default_goal_timeout_duration:
+                        err_str = ("Time to execute the current goal point = <{0}> exceeded the "
+                                "default_goal_timeout = {1}").format(point, self.node.default_goal_timeout_s)
+                        self.node.robot_mode_rwlock.release_read()
+                        return self.error_callback(goal_handle, FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED, err_str)
 
-        self.node.robot_mode_rwlock.release_read()
-        return self.success_callback(goal_handle, "Achieved all target points.")
+                    # Check if a premption request has been received.
+                    with self.node.robot_stop_lock:
+                        # TODO: Handle preemption in ROS 2
+                        if self.node.stop_the_robot: # or self.server.is_preempt_requested():
+                            self.node.get_logger().debug(("{0} joint_traj action: PREEMPTION REQUESTED, but not stopping "
+                                            "current motions to allow smooth interpolation between "
+                                            "old and new commands.").format(self.node.node_name))
+                            # self.server.set_preempted()
+                            self.node.stop_the_robot = False
+                            self.node.robot_mode_rwlock.release_read()
+                            return self.error_callback(goal_handle, 100, "preemption requested")
+
+                    robot_status = self.node.robot.get_status()
+                    named_errors = [c.update_execution(robot_status, contact_detected_callback=self.contact_detected_callback)
+                                    for c in self.command_groups]
+                    # It's not clear how this could ever happen. The
+                    # groups in command_groups.py seem to return
+                    # (self.name, self.error) or None, rather than True.
+                    if any(ret == True for ret in named_errors):
+                        self.node.robot_mode_rwlock.release_read()
+                        # TODO: Check when this condtion is met
+                        return self.error_callback(goal_handle, 100, "--")
+
+                    self.feedback_callback(goal_handle, point, named_errors)
+                    goals_reached = [c.goal_reached() for c in self.command_groups]
+                    # self.action_server_rate.sleep()
+
+                self.node.get_logger().debug("{0} joint_traj action: Achieved target point.".format(self.node.node_name))
+
+            self.node.robot_mode_rwlock.release_read()
+            return self.success_callback(goal_handle, "Achieved all target points.")
+        
+        elif self.node.robot_mode == 'manipulation':
+             # pre-process
+            try:
+                goal.trajectory = merge_arm_joints(goal.trajectory)
+                goal.trajectory = preprocess_gripper_trajectory(goal.trajectory)
+            except FollowJointTrajectoryException as e:
+                self.error_callback(goal_handle, e.CODE, str(e))
+            path_tolerance_dict = {tol.name: tol for tol in goal.path_tolerance}
+            goal_tolerance_dict = {tol.name: tol for tol in goal.goal_tolerance}
+
+            # load and start trajectory
+            trajectories = [goal.trajectory, goal.multi_dof_trajectory]
+            trajectories = [trajectory for trajectory in trajectories if len(trajectory.points) >= 2]
+            if len(trajectories) == 0:
+                return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_JOINTS, 'no trajectory in goal contains enough waypoints')
+            n_points = max([len(trajectory.points) for trajectory in trajectories])
+            duration = max([Duration.from_msg(trajectory.points[-1].time_from_start) for trajectory in trajectories])
+            self.node.get_logger().info(f"{self.node.node_name} joint_traj action: new traj with {n_points} points over {to_sec(duration.to_msg())} seconds")
+            self.node.robot.stop_trajectory()
+            for joint in self.joints:
+                self.joints[joint].trajectory_manager.trajectory.clear()
+            for trajectory in trajectories:
+                for joint_index, joint_name in enumerate(trajectory.joint_names):
+                    try:
+                        self.joints[joint_name].add_waypoints(trajectory.points, joint_index)
+                    except KeyError as e:
+                        return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, str(e))
+            if not self.node.robot.follow_trajectory():
+                self.node.robot.stop_trajectory()
+                return self.error_callback(goal_handle, -100, 'hardware failed to start trajectory')
+
+            # update trajectory and publish feedback
+            ts = self.node.get_clock().now()
+            while rclpy.ok() and self.node.get_clock().now() - ts <= duration:
+                self._update_trajectory_dynamixel()
+                self._update_trajectory_non_dynamixel()
+                self.feedback_callback(goal_handle, ts)
+                self.action_server_rate.sleep()
+
+            time.sleep(0.1)
+            self._update_trajectory_dynamixel()
+            self._update_trajectory_non_dynamixel()
+            self.node.robot.stop_trajectory()
+            return self.success_callback(goal_handle, 'traj succeeded!')
+
 
     def contact_detected_callback(self, err_str):
         self.node.get_logger().warn(err_str)
