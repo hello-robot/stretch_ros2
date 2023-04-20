@@ -10,9 +10,12 @@ import stretch_body.hello_utils as hu
 from hello_helpers.hello_misc import *
 from .trajectory_components import get_trajectory_components
 
+import threading
+from rclpy.callback_groups import ReentrantCallbackGroup
+
 from rclpy.node import Node
 from rclpy.duration import Duration
-from rclpy.action import ActionServer
+from rclpy.action import ActionServer, CancelResponse, GoalResponse
 
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
@@ -27,10 +30,15 @@ class JointTrajectoryAction(Node):
     def __init__(self, node, action_server_rate_hz):
         super().__init__('joint_trajectory_action')
         self.node = node
+        self._goal_handle = None
+        self._goal_lock = threading.Lock()
         self.action_server_rate = self.node.create_rate(action_server_rate_hz)
         self.server = ActionServer(self.node, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory',
                                    execute_callback=self.execute_cb,
-                                   cancel_callback=self.cancel_cb)
+                                   cancel_callback=self.cancel_cb,
+                                   goal_callback=self.goal_cb,
+                                   handle_accepted_callback=self.handle_accepted_cb,
+                                   callback_group=ReentrantCallbackGroup())
         
         self.debug_dir = Path(hu.get_stretch_directory('goals'))
         if not self.debug_dir.exists():
@@ -64,9 +72,26 @@ class JointTrajectoryAction(Node):
         self.node.robot._update_trajectory_dynamixel = lambda : None
         self.node.robot._update_trajectory_non_dynamixel = lambda : None
 
+    def goal_cb(self, goal_request):
+        """Accept or reject a client request to begin an action."""
+        self.get_logger().info('Received goal request')
+        # if self._goal_handle is not None and self._goal_handle.is_active:
+        #     return GoalResponse.REJECT # Reject goal if another goal is currently active
+    
+        return GoalResponse.ACCEPT
+
+    def handle_accepted_cb(self, goal_handle):
+        with self._goal_lock:
+            # This server only allows one goal at a time
+            if self._goal_handle is not None and self._goal_handle.is_active:
+                self.get_logger().info('Aborting previous goal')
+                # Abort the existing goal
+                self._goal_handle.abort()
+            self._goal_handle = goal_handle
+
+        goal_handle.execute()
+    
     def execute_cb(self, goal_handle):
-        print("-------------------------------------------")
-        print("Received new goal")
         # save goal to log directory
         goal = goal_handle.request
         goal_fpath = self.debug_dir / f'goal_{hu.create_time_string()}.pickle'
@@ -136,20 +161,31 @@ class JointTrajectoryAction(Node):
                 goal_start_time = self.node.get_clock().now()
 
                 while not all(goals_reached):
+                    # If goal is flagged as no longer active (ie. another goal was accepted),
+                    # then stop executing
+                    if not goal_handle.is_active:
+                        self.get_logger().info('Goal aborted')
+                        self.node.robot.stop_trajectory()
+                        return FollowJointTrajectory.Result()
+                    
+                    if goal_handle.is_cancel_requested:
+                        goal_handle.canceled()
+                        self.node.robot.stop_trajectory()
+                        self.get_logger().info('Goal canceled')
+                        self.node.robot_mode_rwlock.release_read()
+                        return FollowJointTrajectory.Result()
+                    
                     if (self.node.get_clock().now() - goal_start_time) > self.node.default_goal_timeout_duration:
                         err_str = ("Time to execute the current goal point = <{0}> exceeded the "
                                 "default_goal_timeout = {1}").format(point, self.node.default_goal_timeout_s)
                         self.node.robot_mode_rwlock.release_read()
                         return self.error_callback(goal_handle, FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED, err_str)
-
+                    
+                    # TODO: Handle preemption in ROS 2
                     # Check if a premption request has been received.
                     with self.node.robot_stop_lock:
-                        # TODO: Handle preemption in ROS 2
-                        if self.node.stop_the_robot: # or self.server.is_preempt_requested():
-                            self.node.get_logger().debug(("{0} joint_traj action: PREEMPTION REQUESTED, but not stopping "
-                                            "current motions to allow smooth interpolation between "
-                                            "old and new commands.").format(self.node.node_name))
-                            # self.server.set_preempted()
+                        if self.node.stop_the_robot:
+                            self.node.get_logger().info("{0} joint_traj action: PREEMPTION REQUESTED, but not stopping current motions to allow smooth interpolation between old and new commands.".format(self.node.node_name))
                             self.node.stop_the_robot = False
                             self.node.robot_mode_rwlock.release_read()
                             return self.error_callback(goal_handle, 100, "preemption requested")
@@ -167,9 +203,17 @@ class JointTrajectoryAction(Node):
 
                     self.feedback_callback(goal_handle, desired_point=point, named_errors=named_errors)
                     goals_reached = [c.goal_reached() for c in self.command_groups]
+                    time.sleep(0.067)
                     # self.action_server_rate.sleep()
 
                 self.node.get_logger().debug("{0} joint_traj action: Achieved target point.".format(self.node.node_name))
+
+            # If goal is flagged as no longer active (ie. another goal was accepted),
+            # then stop executing
+            if not goal_handle.is_active:
+                self.get_logger().info('Goal aborted')
+                self.node.robot.stop_trajectory()
+                return FollowJointTrajectory.Result()
 
             self.node.robot_mode_rwlock.release_read()
             return self.success_callback(goal_handle, "Achieved all target points.")
@@ -220,6 +264,7 @@ class JointTrajectoryAction(Node):
             return self.success_callback(goal_handle, 'traj succeeded!')
         
         else:
+            self.node.robot_mode_rwlock.release_read()
             return self.error_callback(goal_handle, -100, 'Joint Trajectory Server only accepts goals in position or trajectory mode')
 
 
@@ -243,11 +288,10 @@ class JointTrajectoryAction(Node):
         return result
 
     def cancel_cb(self, goal_handle):
-        print("-------------------------------------------")
-        print("Canceled goal")
+        """Accept or reject a client request to cancel an action."""
         self.node.get_logger().info("{0} joint_traj action: received cancel request".format(self.node.node_name))
-        self.node.robot.stop_trajectory()
-        return 2 # Accepting cancel request
+        # self.node.robot.stop_trajectory()
+        return CancelResponse.ACCEPT # Accepting cancel request
 
     def feedback_callback(self, goal_handle, desired_point=None, named_errors=None, start_time=None):
         goal = goal_handle.request
