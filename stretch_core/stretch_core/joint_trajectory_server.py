@@ -72,12 +72,19 @@ class JointTrajectoryAction(Node):
         self.node.robot._update_trajectory_dynamixel = lambda : None
         self.node.robot._update_trajectory_non_dynamixel = lambda : None
 
+        self.timeout = 0.2 # seconds
+        self.last_goal_time = self.get_clock().now().to_msg()
+
     def goal_cb(self, goal_request):
         """Accept or reject a client request to begin an action."""
         self.get_logger().info('Received goal request')
-        # if self._goal_handle is not None and self._goal_handle.is_active:
-        #     return GoalResponse.REJECT # Reject goal if another goal is currently active
-    
+        new_goal_time = self.get_clock().now().to_msg()
+        time_duration = (new_goal_time.sec + new_goal_time.nanosec*pow(10,-9)) - (self.last_goal_time.sec + self.last_goal_time.nanosec*pow(10,-9))
+        # If incoming commands received above 5 Hz, they are rejected
+        if self._goal_handle is not None and self._goal_handle.is_active and (time_duration < self.timeout):
+            return GoalResponse.REJECT # Reject goal if another goal is currently active
+
+        self.last_goal_time = self.get_clock().now().to_msg()
         return GoalResponse.ACCEPT
 
     def handle_accepted_cb(self, goal_handle):
@@ -140,6 +147,11 @@ class JointTrajectoryAction(Node):
             # Try to reach each of the goals in sequence until
             # an error is detected or success is achieved.
             for pointi, point in enumerate(goal.trajectory.points):
+                if not goal_handle.is_active:
+                        self.get_logger().info('Goal aborted')
+                        self.node.robot.stop_trajectory()
+                        return FollowJointTrajectory.Result()
+
                 self.node.get_logger().debug(("{0} joint_traj action: "
                                 "target point #{1} = <{2}>").format(self.node.node_name, pointi, point))
 
@@ -203,10 +215,12 @@ class JointTrajectoryAction(Node):
 
                     self.feedback_callback(goal_handle, desired_point=point, named_errors=named_errors)
                     goals_reached = [c.goal_reached() for c in self.command_groups]
-                    time.sleep(0.067)
+                    time.sleep(0.01)
                     # self.action_server_rate.sleep()
 
                 self.node.get_logger().debug("{0} joint_traj action: Achieved target point.".format(self.node.node_name))
+
+            self.node.robot_mode_rwlock.release_read()
 
             # If goal is flagged as no longer active (ie. another goal was accepted),
             # then stop executing
@@ -214,8 +228,6 @@ class JointTrajectoryAction(Node):
                 self.get_logger().info('Goal aborted')
                 self.node.robot.stop_trajectory()
                 return FollowJointTrajectory.Result()
-
-            self.node.robot_mode_rwlock.release_read()
             return self.success_callback(goal_handle, "Achieved all target points.")
         
         elif self.node.robot_mode == 'manipulation':
