@@ -2,6 +2,7 @@ import os
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
@@ -37,6 +38,8 @@ def generate_launch_description():
         default_value=os.path.join(stretch_navigation_path, 'config', 'nav2_params.yaml'),
         description='Full path to the ROS2 parameters file to use for all launched nodes')
 
+    rviz_param = DeclareLaunchArgument('use_rviz', default_value='true', choices=['true', 'false'])
+
     stretch_driver_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_core_path, '/launch/stretch_driver.launch.py']),
         launch_arguments={'mode': 'navigation', 'broadcast_odom_tf': 'True'}.items())
@@ -53,10 +56,12 @@ def generate_launch_description():
         launch_arguments={'use_sim_time': LaunchConfiguration('use_sim_time'), 
                           'autostart': LaunchConfiguration('autostart'),
                           'map': LaunchConfiguration('map'),
-                          'params_file': LaunchConfiguration('params_file')}.items())
+                          'params_file': LaunchConfiguration('params_file'),
+                          'use_rviz': LaunchConfiguration('use_rviz')}.items())
 
     rviz_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([navigation_bringup_path, '/launch/rviz_launch.py']))
+        PythonLaunchDescriptionSource([navigation_bringup_path, '/launch/rviz_launch.py']),
+        condition=IfCondition(LaunchConfiguration('use_rviz')))
 
     return LaunchDescription([
         teleop_type_param,
@@ -64,6 +69,7 @@ def generate_launch_description():
         autostart_param,
         map_path_param,
         params_file_param,
+        rviz_param,
         stretch_driver_launch,
         rplidar_launch,
         base_teleop_launch,
