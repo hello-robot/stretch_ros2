@@ -140,17 +140,17 @@ int main(int argc, char** argv)
     RCLCPP_INFO(LOGGER, "Visualizing plan (joint space goal) %s", success ? "" : "FAILED");
 
     if(i <= 1){
-      disp_plan.trajectory_ = my_plan.trajectory_;
+      disp_plan.trajectory = my_plan.trajectory;
     }
     else{
       std::vector<trajectory_msgs::msg::JointTrajectoryPoint> a, b;
-      a = disp_plan.trajectory_.joint_trajectory.points;
-      b = my_plan.trajectory_.joint_trajectory.points;
+      a = disp_plan.trajectory.joint_trajectory.points;
+      b = my_plan.trajectory.joint_trajectory.points;
       a.insert(std::end(a), std::begin(b), std::end(b));
-      disp_plan.trajectory_.joint_trajectory.points = a;
+      disp_plan.trajectory.joint_trajectory.points = a;
 
       visual_tools.deleteAllMarkers();
-      visual_tools.publishTrajectoryLine(disp_plan.trajectory_, ee_parent_link, joint_model_group);
+      visual_tools.publishTrajectoryLine(disp_plan.trajectory, ee_parent_link, joint_model_group);
       visual_tools.trigger();
     }
 
