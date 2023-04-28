@@ -1,111 +1,93 @@
-"""
-A launch file for running the motion planning python api tutorial
-"""
-import os
-from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import get_package_share_path
+
 from launch import LaunchDescription
-from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, ExecuteProcess
+from launch.actions import DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription
+from launch.conditions import IfCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import Command
 from launch.substitutions import LaunchConfiguration
-from moveit_configs_utils import MoveItConfigsBuilder
+
+from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    moveit_config = (
-        MoveItConfigsBuilder(
-            robot_name="panda", package_name="moveit_resources_panda_moveit_config"
-        )
-        .robot_description(file_path="config/panda.urdf.xacro")
-        .trajectory_execution(file_path="config/gripper_moveit_controllers.yaml")
-        .moveit_cpp(
-            file_path=get_package_share_directory("moveit2_tutorials")
-            + "/config/motion_planning_python_api_tutorial.yaml"
-        )
-        .to_moveit_configs()
-    )
+    moveit_config_path = get_package_share_path('stretch_moveit2')
+    stretch_core_path = get_package_share_path('stretch_core')
 
-    example_file = DeclareLaunchArgument(
-        "example_file",
-        default_value="motion_planning_python_api_tutorial.py",
-        description="Python API tutorial file name",
-    )
+    ld = LaunchDescription()
+    ld.add_action(DeclareLaunchArgument('pipeline', default_value='ompl', description='specify the planning pipeline'))
+    ld.add_action(DeclareLaunchArgument('db', default_value='false', choices=['true', 'false'],
+                                        description='By default, we do not start a database (it can be large)'))
 
-    moveit_py_node = Node(
-        name="moveit_py",
-        package="moveit2_tutorials",
-        executable=LaunchConfiguration("example_file"),
-        output="both",
-        parameters=[moveit_config.to_dict()],
-    )
+    ld.add_action(DeclareLaunchArgument('db_path', default_value=str(moveit_config_path / 'default_warehouse_mongo_db'),
+                                        description='Allow user to specify database location'))
+    ld.add_action(DeclareLaunchArgument('debug', default_value='false', choices=['true', 'false'],
+                                        description='By default, we are not in debug mode'))
 
-    rviz_config_file = os.path.join(
-        get_package_share_directory("moveit2_tutorials"),
-        "config",
-        "motion_planning_python_api_tutorial.rviz",
-    )
+    ld.add_action(DeclareLaunchArgument('use_stretch_driver', default_value='true', choices=['true', 'false'],
+                                        description='Allow user to launch Stretch Driver separately'))
+    ld.add_action(DeclareLaunchArgument('use_rviz', default_value='true', choices=['true', 'false']))
 
-    rviz_node = Node(
-        package="rviz2",
-        executable="rviz2",
-        name="rviz2",
-        output="log",
-        arguments=["-d", rviz_config_file],
-        parameters=[
-            moveit_config.robot_description,
-            moveit_config.robot_description_semantic,
-        ],
-    )
+    # Load the URDF, SRDF and other .yaml configuration files
+    robot_description_content = Command(['xacro ',
+                                         str(get_package_share_path('stretch_description') / 'urdf' / 'stretch.urdf')])
+    with open(moveit_config_path / 'config/stretch_description.srdf', 'r') as f:
+        semantic_content = f.read()
 
-    static_tf = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        name="static_transform_publisher",
-        output="log",
-        arguments=["0.0", "0.0", "0.0", "0.0", "0.0", "0.0", "world", "panda_link0"],
+    stretch_driver_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([str(stretch_core_path), '/launch/stretch_driver.launch.py']),
+        launch_arguments={'mode': 'manipulation', 'broadcast_odom_tf': 'True'}.items(),
+        condition=IfCondition(LaunchConfiguration('use_stretch_driver'))
     )
+    ld.add_action(stretch_driver_launch)
 
-    robot_state_publisher = Node(
-        package="robot_state_publisher",
-        executable="robot_state_publisher",
-        name="robot_state_publisher",
-        output="log",
-        parameters=[moveit_config.robot_description],
-    )
+    # Run the main MoveIt executable
+    move_group_py_launch_py = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/move_group_py.launch.py'))
+    move_group_py_launch_args = {
+        'allow_trajectory_execution': 'true',
+        'fake_execution': 'false',
+        'info': 'true',
+        'debug': LaunchConfiguration('debug'),
+        'pipeline': LaunchConfiguration('pipeline'),
+        'robot_description': robot_description_content,
+        'semantic_config': semantic_content,
+        "publish_robot_description": 'true', 
+        "publish_robot_description_semantic": 'true',
+    }
+    move_group_py_launch = IncludeLaunchDescription(move_group_py_launch_py,
+                                                 launch_arguments=move_group_py_launch_args.items())
 
-    ros2_controllers_path = os.path.join(
-        get_package_share_directory("moveit_resources_panda_moveit_config"),
-        "config",
-        "ros2_controllers.yaml",
-    )
-    ros2_control_node = Node(
-        package="controller_manager",
-        executable="ros2_control_node",
-        parameters=[moveit_config.robot_description, ros2_controllers_path],
-        output="log",
-    )
+    move_group = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/move_group.launch.py'))
+    move_group_launch = IncludeLaunchDescription(move_group,
+                                                 launch_arguments=move_group_py_launch_args.items())
+    ld.add_action(move_group_launch)
+    ld.add_action(move_group_py_launch)
 
-    load_controllers = []
-    for controller in [
-        "panda_arm_controller",
-        "panda_hand_controller",
-        "joint_state_broadcaster",
-    ]:
-        load_controllers += [
-            ExecuteProcess(
-                cmd=["ros2 run controller_manager spawner {}".format(controller)],
-                shell=True,
-                output="log",
-            )
-        ]
 
-    return LaunchDescription(
-        [
-            example_file,
-            moveit_py_node,
-            robot_state_publisher,
-            ros2_control_node,
-            rviz_node,
-            static_tf,
-        ]
-        + load_controllers
+    # Run Rviz and load the default config to see the state of the move_group node
+    moveit_rviz_launch_py = PythonLaunchDescriptionSource(
+        str(moveit_config_path / 'launch/moveit_rviz.launch.py')
     )
+    moveit_rviz_args = {
+        'rviz_config': str(moveit_config_path / 'launch/moveit.rviz'),
+        'debug': LaunchConfiguration('debug'),
+        'robot_description': robot_description_content,
+        'semantic_config': semantic_content,
+    }
+    moveit_rviz_launch = IncludeLaunchDescription(moveit_rviz_launch_py, launch_arguments=moveit_rviz_args.items(),
+                                                  condition=IfCondition(LaunchConfiguration('use_rviz')))
+    ld.add_action(moveit_rviz_launch)
+
+    # If database loading was enabled, start mongodb as well
+    warehouse_launch_py = PythonLaunchDescriptionSource(
+        str(moveit_config_path / 'launch/warehouse_db.launch.py')
+    )
+    warehouse_launch = IncludeLaunchDescription(warehouse_launch_py,
+                                                launch_arguments={'moveit_warehouse_database_path':
+                                                                  LaunchConfiguration('db_path')}.items(),
+                                                condition=IfCondition(LaunchConfiguration('db'))
+                                                )
+    ld.add_action(warehouse_launch)
+
+    return ld
