@@ -36,6 +36,8 @@ def generate_launch_description():
     ld.add_action(DeclareLaunchArgument('max_safe_path_cost', default_value='1'))
     ld.add_action(DeclareLaunchArgument('jiggle_fraction', default_value='0.05'))
     ld.add_action(DeclareLaunchArgument('publish_monitored_planning_scene', default_value='true'))
+    ld.add_action(DeclareLaunchArgument('publish_robot_description', default_value='false'))
+    ld.add_action(DeclareLaunchArgument('publish_robot_description_semantic', default_value='false'))
     # load non-default MoveGroup capabilities (space separated)
     ld.add_action(DeclareLaunchArgument('capabilities', default_value=''))
     # inhibit these default MoveGroup capabilities (space separated)
@@ -62,6 +64,8 @@ def generate_launch_description():
         'publish_geometry_updates': LaunchConfiguration('publish_monitored_planning_scene'),
         'publish_state_updates': LaunchConfiguration('publish_monitored_planning_scene'),
         'publish_transforms_updates': LaunchConfiguration('publish_monitored_planning_scene'),
+        'publish_robot_description_semantic': LaunchConfiguration('publish_robot_description_semantic'),
+        'publish_robot_description': LaunchConfiguration('publish_robot_description'),
     }
 
     move_group_params = [
