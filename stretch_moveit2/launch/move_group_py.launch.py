@@ -9,6 +9,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
 from launch.substitutions import LaunchConfiguration
 from moveit_configs_utils import MoveItConfigsBuilder
+import yaml
 
 # Mapping from entry in the stretch_body configuration to joints in the SRDF
 CONFIGURATION_TRANSLATION = {
@@ -20,6 +21,16 @@ CONFIGURATION_TRANSLATION = {
     'head_pan': ['joint_head_pan'],
     'head_tilt': ['joint_head_tilt'],
 }
+
+def load_yaml(package_name, file_path):
+    package_path = get_package_share_directory(package_name)
+    absolute_file_path = os.path.join(package_path, file_path)
+
+    try:
+        with open(absolute_file_path) as file:
+            return yaml.safe_load(file)
+    except OSError:  # parent of IOError, OSError *and* WindowsError where available
+        return None
 
 def load_joint_limits_from_config(moveit_config_path, mode='default'):
     return str(moveit_config_path / 'config/joint_limits.yaml')
@@ -84,18 +95,13 @@ def generate_launch_description():
     )
     ld.add_action(moveit_py_file)
 
-    moveit_cpp_config = os.path.join(
-    get_package_share_directory('stretch_moveit2'),
-    'config',
-    'motion_planning_python.yaml'
-    )
-
+    moveit_cpp_config = load_yaml("stretch_moveit2", "config/motion_planning_python.yaml")
     moveit_py_node = Node(
         name="moveit_py",
         package="stretch_moveit2",
         executable=LaunchConfiguration("moveit_py_file"),
         output="both",
-        parameters=move_group_params + [moveit_cpp_config],
+        parameters=[moveit_cpp_config] + move_group_params,
     )
     ld.add_action(moveit_py_node)
 
