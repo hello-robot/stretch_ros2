@@ -22,7 +22,7 @@ def generate_test_description():
 
     stretch_driver_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([str(stretch_core_path), '/launch/stretch_driver.launch.py']),
-        launch_arguments={'mode': 'manipulation'}.items()
+        launch_arguments={'mode': 'trajectory'}.items()
     )
 
     return LaunchDescription([stretch_driver_launch,

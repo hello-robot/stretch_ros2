@@ -12,7 +12,7 @@ choices=['True', 'False']
 `mode`:
 description: The mode in which the Stretch ROS driver commands the robot
 default='position'
-choices=['position', 'navigation', 'manipulation']
+choices=['position', 'navigation', 'trajectory']
 
 `fail_out_of_range_goal`:
 description: Whether the motion action servers fail on out-of-range commands
@@ -38,7 +38,7 @@ default: stretch_core/config/controller_calibration_head.yaml
 
 #### Exposed Services
 `/switch_to_position_mode`: change mode to position mode
-`/switch_to_manipulation_mode`: change mode to manipulation mode
+`/switch_to_trajectory_mode`: change mode to trajectory mode
 `/switch_to_navigation_mode`: change mode to navigation mode
 `/stop_the_robot`: stop the robot
 `/home_the_robot`: home the robot

@@ -71,8 +71,8 @@ class TestServices(unittest.TestCase):
         self.node.get_logger().info(response.message)
         self.assertTrue(response.success)
 
-    def test_switch_to_manipulation_mode(self, proc_output):
-        mode_client = self.node.create_client(Trigger, '/switch_to_manipulation_mode')
+    def test_switch_to_trajectory_mode(self, proc_output):
+        mode_client = self.node.create_client(Trigger, '/switch_to_trajectory_mode')
         self.assertTrue(mode_client.wait_for_service(timeout_sec=1.0))
         request = Trigger.Request()
         promise = mode_client.call_async(request)

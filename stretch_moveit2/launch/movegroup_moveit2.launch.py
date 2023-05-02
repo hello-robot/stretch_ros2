@@ -39,7 +39,7 @@ def generate_launch_description():
 
     stretch_driver_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([str(stretch_core_path), '/launch/stretch_driver.launch.py']),
-        launch_arguments={'mode': 'manipulation', 'broadcast_odom_tf': 'True'}.items(),
+        launch_arguments={'mode': 'trajectory', 'broadcast_odom_tf': 'True'}.items(),
         condition=IfCondition(LaunchConfiguration('use_stretch_driver'))
     )
     ld.add_action(stretch_driver_launch)
