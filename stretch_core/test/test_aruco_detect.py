@@ -29,7 +29,7 @@ def generate_test_description():
 
     stretch_aruco_detect = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([str(stretch_core_path), '/launch/stretch_aruco.launch.py']),
-        launch_arguments={'mode': 'manipulation'}.items()
+        launch_arguments={'mode': 'trajectory'}.items()
     )
 
     return LaunchDescription([stretch_realsense,
