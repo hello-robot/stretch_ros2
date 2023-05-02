@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
 A script to outline the fundamentals of the moveit_py motion planning API.
+This tutorial has been adapted for Stretch from the official MoveIt 2 Python bindigs
+tutorial on https://moveit.picknik.ai/main/doc/examples/motion_planning_python_api/motion_planning_python_api_tutorial.html
 """
 
 import time
@@ -67,11 +69,14 @@ def main():
     # Plan 1 - set states with predefined string
     ###########################################################################
 
-    # set plan start state using predefined state
-    stretch_arm.set_start_state(configuration_name="arm_in")
+    # # set plan start state using predefined state
+    # stretch_arm.set_start_state(configuration_name="arm_in")
+
+    # set plan start state to current state
+    stretch_arm.set_start_state_to_current_state()
 
     # set pose goal using predefined state
-    stretch_arm.set_goal_state(configuration_name="arm_out")
+    stretch_arm.set_goal_state(configuration_name="extended")
 
     # plan to goal
     plan_and_execute(stretch, stretch_arm, logger, sleep_time=3.0)
@@ -109,10 +114,13 @@ def main():
 
     pose_goal = PoseStamped()
     pose_goal.header.frame_id = "base_link"
-    pose_goal.pose.orientation.w = 1.0
-    pose_goal.pose.position.x = 0.28
-    pose_goal.pose.position.y = -0.2
-    pose_goal.pose.position.z = 0.5
+    pose_goal.pose.orientation.x = -0.023
+    pose_goal.pose.orientation.y = 0.010
+    pose_goal.pose.orientation.z = -0.709
+    pose_goal.pose.orientation.w = 0.704
+    pose_goal.pose.position.x = -0.018
+    pose_goal.pose.position.y = -0.60
+    pose_goal.pose.position.z = 0.63
     stretch_arm.set_goal_state(pose_stamped_msg=pose_goal, pose_link="link_grasp_center")
 
     # plan to goal
@@ -129,7 +137,7 @@ def main():
     from moveit.core.kinematic_constraints import construct_joint_constraint
 
     joint_values = {
-        "joint_lift": 0.4,
+        "joint_lift": 0.8,
         "joint_arm_l3": 0.1,
         "joint_arm_l2": 0.1,
         "joint_arm_l1": 0.1,
