@@ -1,6 +1,6 @@
 <package format="3">
 
-  <name>stretch_moveit2</name>
+  <name>stretch_moveit_config</name>
   <version>0.3.0</version>
   <description>
      An automatically generated package with all the configuration and launch files for using the stretch_description with the MoveIt Motion Planning Framework

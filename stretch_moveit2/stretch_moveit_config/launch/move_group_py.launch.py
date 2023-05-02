@@ -37,7 +37,7 @@ def load_joint_limits_from_config(moveit_config_path, mode='default'):
 
 def generate_launch_description():
     # Run the main MoveIt executable
-    moveit_config_path = get_package_share_path('stretch_moveit2')
+    moveit_config_path = get_package_share_path('stretch_moveit_config')
 
     ld = LaunchDescription()
     ld.add_action(DeclareLaunchArgument('robot_description'))
@@ -95,10 +95,10 @@ def generate_launch_description():
     )
     ld.add_action(moveit_py_file)
 
-    moveit_cpp_config = load_yaml("stretch_moveit2", "config/motion_planning_python.yaml")
+    moveit_cpp_config = load_yaml("stretch_moveit_config", "config/motion_planning_python.yaml")
     moveit_py_node = Node(
         name="moveit_py",
-        package="stretch_moveit2",
+        package="stretch_moveit_config",
         executable=LaunchConfiguration("moveit_py_file"),
         output="both",
         parameters=[moveit_cpp_config] + move_group_params,

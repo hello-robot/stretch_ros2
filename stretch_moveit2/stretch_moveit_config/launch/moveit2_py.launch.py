@@ -12,7 +12,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    moveit_config_path = get_package_share_path('stretch_moveit2')
+    moveit_config_path = get_package_share_path('stretch_moveit_config')
     stretch_core_path = get_package_share_path('stretch_core')
 
     ld = LaunchDescription()
@@ -43,8 +43,8 @@ def generate_launch_description():
     ld.add_action(stretch_driver_launch)
 
     # Run the main MoveIt executable
-    move_group_launch_py = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/move_group.launch.py'))
-    move_group_launch_args = {
+    move_group_py_launch_py = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/move_group_py.launch.py'))
+    move_group_py_launch_args = {
         'allow_trajectory_execution': 'true',
         'fake_execution': 'false',
         'info': 'true',
@@ -52,10 +52,18 @@ def generate_launch_description():
         'pipeline': LaunchConfiguration('pipeline'),
         'robot_description': robot_description_content,
         'semantic_config': semantic_content,
+        "publish_robot_description": 'true', 
+        "publish_robot_description_semantic": 'true',
     }
-    move_group_launch = IncludeLaunchDescription(move_group_launch_py,
-                                                 launch_arguments=move_group_launch_args.items())
+    move_group_py_launch = IncludeLaunchDescription(move_group_py_launch_py,
+                                                 launch_arguments=move_group_py_launch_args.items())
+
+    move_group = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/move_group.launch.py'))
+    move_group_launch = IncludeLaunchDescription(move_group,
+                                                 launch_arguments=move_group_py_launch_args.items())
     ld.add_action(move_group_launch)
+    ld.add_action(move_group_py_launch)
+
 
     # Run Rviz and load the default config to see the state of the move_group node
     moveit_rviz_launch_py = PythonLaunchDescriptionSource(

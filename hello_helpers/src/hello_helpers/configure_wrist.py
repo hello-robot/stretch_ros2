@@ -36,18 +36,18 @@ def configure_wrist(wrist_type):
     print(bashCommand)
     run_cmd(bashCommand)
 
-    # Update SRDF in stretch_moveit2
-    bashCommand = "ros2 pkg prefix stretch_moveit2"
+    # Update SRDF in stretch_moveit_config
+    bashCommand = "ros2 pkg prefix stretch_moveit_config"
     process = run_cmd(bashCommand)
     installpath = process.stdout
 
-    addpath = "/src/stretch_ros2/stretch_moveit2/config/stretch_description_{}.srdf".format(wrist_type)
-    minuspath = "/install/stretch_moveit2"
+    addpath = "/src/stretch_ros2/stretch_moveit_config/config/stretch_description_{}.srdf".format(wrist_type)
+    minuspath = "/install/stretch_moveit_config"
     installpath = installpath[0 : len(installpath) - len(minuspath) - 1]
     srcpath = "{0}{1}".format(installpath, addpath)
     print(srcpath)
 
-    addpath = "/src/stretch_ros2/stretch_moveit2/config/stretch_description.srdf"
+    addpath = "/src/stretch_ros2/stretch_moveit_config/config/stretch_description.srdf"
     srdf_path = "{0}{1}".format(installpath, addpath)
     print(xacro_path)
 

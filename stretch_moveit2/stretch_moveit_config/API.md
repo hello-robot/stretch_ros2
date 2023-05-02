@@ -1,7 +1,7 @@
 ## API Documentation Stretch MoveIt 2
 
 ### movegroup_moveit2
-This is the API documentation for the movegroup_moveit2 node in the stretch_moveit2 package of the stretch_ros2 repository. MoveIt 2 provides a way to plan for and control control the robot joints both in task and joint space.
+This is the API documentation for the movegroup_moveit2 node in the stretch_moveit_config package of the stretch_ros2 repository. MoveIt 2 provides a way to plan for and control control the robot joints both in task and joint space.
 
 #### Parameters
 `robot_description`:
@@ -10,7 +10,7 @@ default: 'stretch_description/urdf/stretch.urdf'
 
 `semantic_config`:
 description: The robot semantic configuration with robot SRDF
-default: 'stretch_moveit2/config/stretch_description.srdf'
+default: 'stretch_moveit_config/config/stretch_description.srdf'
 
 `allow_trajectory_execution`:
 description: Whether to allow trajectory execution on actual robot
@@ -57,7 +57,7 @@ choices=['True', 'False']
 
 `db_path`:
 description: Allow user to specify database location
-default='stretch_moveit2/default_warehouse_mongo_db'
+default='stretch_moveit_config/default_warehouse_mongo_db'
 
 `use_stretch_driver`:
 description: Whether to launch stretch_driver separately

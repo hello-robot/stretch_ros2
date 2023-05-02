@@ -23,7 +23,7 @@ def load_joint_limits_from_config(moveit_config_path, mode='default'):
 
 
 def generate_launch_description():
-    moveit_config_path = get_package_share_path('stretch_moveit2')
+    moveit_config_path = get_package_share_path('stretch_moveit_config')
 
     ld = LaunchDescription()
     ld.add_action(DeclareLaunchArgument('robot_description'))
