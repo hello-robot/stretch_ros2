@@ -99,7 +99,8 @@ ament_python_install_package(${PROJECT_NAME})
 
 # Install Python executables
 install(PROGRAMS
-  scripts/moveit2_python_api.py
+  scripts/moveit2_planning.py
+  scripts/moveit2_model_groups.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

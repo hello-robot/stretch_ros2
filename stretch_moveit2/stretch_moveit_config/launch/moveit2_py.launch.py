@@ -28,6 +28,7 @@ def generate_launch_description():
     ld.add_action(DeclareLaunchArgument('use_stretch_driver', default_value='true', choices=['true', 'false'],
                                         description='Allow user to launch Stretch Driver separately'))
     ld.add_action(DeclareLaunchArgument('use_rviz', default_value='true', choices=['true', 'false']))
+    ld.add_action(DeclareLaunchArgument('moveit_py_file', default_value='moveit2_planning.py'))
 
     # Load the URDF, SRDF and other .yaml configuration files
     robot_description_content = Command(['xacro ',
@@ -43,11 +44,12 @@ def generate_launch_description():
     ld.add_action(stretch_driver_launch)
 
     # Run the main MoveIt executable
-    move_group_py_launch_py = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/move_group_py.launch.py'))
-    move_group_py_launch_args = {
+    moveit2_py_node_launch_py = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/moveit2_py_node.launch.py'))
+    moveit2_py_node_launch_args = {
         'allow_trajectory_execution': 'true',
         'fake_execution': 'false',
         'info': 'true',
+        'moveit_py_file': LaunchConfiguration('moveit_py_file'),
         'debug': LaunchConfiguration('debug'),
         'pipeline': LaunchConfiguration('pipeline'),
         'robot_description': robot_description_content,
@@ -55,14 +57,14 @@ def generate_launch_description():
         "publish_robot_description": 'true', 
         "publish_robot_description_semantic": 'true',
     }
-    move_group_py_launch = IncludeLaunchDescription(move_group_py_launch_py,
-                                                 launch_arguments=move_group_py_launch_args.items())
+    moveit2_py_node_launch = IncludeLaunchDescription(moveit2_py_node_launch_py,
+                                                 launch_arguments=moveit2_py_node_launch_args.items())
 
     move_group = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/move_group.launch.py'))
     move_group_launch = IncludeLaunchDescription(move_group,
-                                                 launch_arguments=move_group_py_launch_args.items())
+                                                 launch_arguments=moveit2_py_node_launch_args.items())
     ld.add_action(move_group_launch)
-    ld.add_action(move_group_py_launch)
+    ld.add_action(moveit2_py_node_launch)
 
 
     # Run Rviz and load the default config to see the state of the move_group node

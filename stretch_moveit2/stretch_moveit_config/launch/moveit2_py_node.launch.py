@@ -90,7 +90,7 @@ def generate_launch_description():
 
     moveit_py_file = DeclareLaunchArgument(
         "moveit_py_file",
-        default_value="moveit2_python_api.py",
+        default_value="moveit2_planning.py",
         description="Python API tutorial file name",
     )
     ld.add_action(moveit_py_file)
