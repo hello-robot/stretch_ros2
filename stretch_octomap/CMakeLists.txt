@@ -24,7 +24,7 @@ if(BUILD_TESTING)
 endif()
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
-# install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY rviz DESTINATION share/${PROJECT_NAME})
 # install(DIRECTORY stretch_octomap DESTINATION share/${PROJECT_NAME})
 
 ament_package()
