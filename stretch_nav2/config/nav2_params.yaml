@@ -26,7 +26,7 @@ amcl:
     recovery_alpha_fast: 0.0
     recovery_alpha_slow: 0.0
     resample_interval: 1
-    robot_model_type: "differential"
+    robot_model_type: "nav2_amcl::DifferentialMotionModel"
     save_pose_rate: 0.5
     sigma_hit: 0.2
     tf_broadcast: true
@@ -39,14 +39,6 @@ amcl:
     z_short: 0.05
     scan_topic: scan
 
-amcl_map_client:
-  ros__parameters:
-    use_sim_time: False
-
-amcl_rclcpp_node:
-  ros__parameters:
-    use_sim_time: False
-
 bt_navigator:
   ros__parameters:
     use_sim_time: False
@@ -56,34 +48,39 @@ bt_navigator:
     default_bt_xml_filename: "navigate_w_replanning_and_recovery.xml"
     bt_loop_duration: 10
     default_server_timeout: 20
-    enable_groot_monitoring: True
-    groot_zmq_publisher_port: 1666
-    groot_zmq_server_port: 1667
     plugin_lib_names:
     - nav2_compute_path_to_pose_action_bt_node
     - nav2_compute_path_through_poses_action_bt_node
+    - nav2_smooth_path_action_bt_node
     - nav2_follow_path_action_bt_node
-    - nav2_back_up_action_bt_node
     - nav2_spin_action_bt_node
     - nav2_wait_action_bt_node
+    - nav2_assisted_teleop_action_bt_node
+    - nav2_back_up_action_bt_node
+    - nav2_drive_on_heading_bt_node
     - nav2_clear_costmap_service_bt_node
     - nav2_is_stuck_condition_bt_node
     - nav2_goal_reached_condition_bt_node
     - nav2_goal_updated_condition_bt_node
+    - nav2_globally_updated_goal_condition_bt_node
+    - nav2_is_path_valid_condition_bt_node
     - nav2_initial_pose_received_condition_bt_node
     - nav2_reinitialize_global_localization_service_bt_node
     - nav2_rate_controller_bt_node
     - nav2_distance_controller_bt_node
     - nav2_speed_controller_bt_node
     - nav2_truncate_path_action_bt_node
+    - nav2_truncate_path_local_action_bt_node
     - nav2_goal_updater_node_bt_node
     - nav2_recovery_node_bt_node
     - nav2_pipeline_sequence_bt_node
     - nav2_round_robin_node_bt_node
     - nav2_transform_available_condition_bt_node
     - nav2_time_expired_condition_bt_node
+    - nav2_path_expiring_timer_condition
     - nav2_distance_traveled_condition_bt_node
     - nav2_single_trigger_bt_node
+    - nav2_goal_updated_controller_bt_node
     - nav2_is_battery_low_condition_bt_node
     - nav2_navigate_through_poses_action_bt_node
     - nav2_navigate_to_pose_action_bt_node
@@ -91,8 +88,19 @@ bt_navigator:
     - nav2_planner_selector_bt_node
     - nav2_controller_selector_bt_node
     - nav2_goal_checker_selector_bt_node
+    - nav2_controller_cancel_bt_node
+    - nav2_path_longer_on_approach_bt_node
+    - nav2_wait_cancel_bt_node
+    - nav2_spin_cancel_bt_node
+    - nav2_back_up_cancel_bt_node
+    - nav2_assisted_teleop_cancel_bt_node
+    - nav2_drive_on_heading_cancel_bt_node
 
-bt_navigator_rclcpp_node:
+bt_navigator_navigate_through_poses_rclcpp_node:
+  ros__parameters:
+    use_sim_time: False
+
+bt_navigator_navigate_to_pose_rclcpp_node:
   ros__parameters:
     use_sim_time: False
 
@@ -119,7 +127,6 @@ controller_server:
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.25
       yaw_goal_tolerance: 0.25
-
     # DWB parameters
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
@@ -161,10 +168,6 @@ controller_server:
       RotateToGoal.slowing_factor: 5.0
       RotateToGoal.lookahead_time: -1.0
       PreferForward.penalty: 2.0
-
-controller_server_rclcpp_node:
-  ros__parameters:
-    use_sim_time: False
 
 local_costmap:
   local_costmap:
@@ -217,12 +220,6 @@ local_costmap:
       static_layer:
         map_subscribe_transient_local: True
       always_send_full_costmap: True
-  local_costmap_client:
-    ros__parameters:
-      use_sim_time: False
-  local_costmap_rclcpp_node:
-    ros__parameters:
-      use_sim_time: False
 
 global_costmap:
   global_costmap:
@@ -278,17 +275,11 @@ global_costmap:
         cost_scaling_factor: 3.0
         inflation_radius: 0.55
       always_send_full_costmap: True
-  global_costmap_client:
-    ros__parameters:
-      use_sim_time: False
-  global_costmap_rclcpp_node:
-    ros__parameters:
-      use_sim_time: False
 
 map_server:
   ros__parameters:
     use_sim_time: False
-    yaml_filename: "turtlebot3_world.yaml"
+    yaml_filename: ""
 
 map_saver:
   ros__parameters:
@@ -309,25 +300,35 @@ planner_server:
       use_astar: false
       allow_unknown: true
 
-planner_server_rclcpp_node:
+smoother_server:
   ros__parameters:
-    use_sim_time: False
+    use_sim_time: True
+    smoother_plugins: ["simple_smoother"]
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      tolerance: 1.0e-10
+      max_its: 1000
+      do_refinement: True
 
-recoveries_server:
+behavior_server:
   ros__parameters:
     costmap_topic: local_costmap/costmap_raw
     footprint_topic: local_costmap/published_footprint
     cycle_frequency: 10.0
-    recovery_plugins: ["spin", "backup", "wait"]
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]
     spin:
-      plugin: "nav2_recoveries/Spin"
+      plugin: "nav2_behaviors/Spin"
     backup:
-      plugin: "nav2_recoveries/BackUp"
+      plugin: "nav2_behaviors/BackUp"
+    drive_on_heading:
+      plugin: "nav2_behaviors/DriveOnHeading"
     wait:
-      plugin: "nav2_recoveries/Wait"
+      plugin: "nav2_behaviors/Wait"
+    assisted_teleop:
+      plugin: "nav2_behaviors/AssistedTeleop"
     global_frame: odom
     robot_base_frame: base_link
-    transform_timeout: 0.1
+    transform_tolerance: 0.1
     use_sim_time: False
     simulate_ahead_time: 2.0
     max_rotational_vel: 1.0
@@ -340,10 +341,26 @@ robot_state_publisher:
 
 waypoint_follower:
   ros__parameters:
+    use_sim_time: False
     loop_rate: 20
     stop_on_failure: false
-    waypoint_task_executor_plugin: "wait_at_waypoint"   
+    waypoint_task_executor_plugin: "wait_at_waypoint"
     wait_at_waypoint:
       plugin: "nav2_waypoint_follower::WaitAtWaypoint"
       enabled: True
       waypoint_pause_duration: 200
+
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: True
+    smoothing_frequency: 20.0
+    scale_velocities: False
+    feedback: "OPEN_LOOP"
+    max_velocity: [0.26, 0.0, 1.0]
+    min_velocity: [-0.26, 0.0, -1.0]
+    max_accel: [2.5, 0.0, 3.2]
+    max_decel: [-2.5, 0.0, -3.2]
+    odom_topic: "odom"
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 1.0
