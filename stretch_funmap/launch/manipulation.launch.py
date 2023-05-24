@@ -30,7 +30,6 @@ def generate_launch_description():
         semantic_content = f.read()
 
     # Run the main MoveIt executable
-    moveit2_py_node_launch_py = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/moveit2_py_node.launch.py'))
     moveit2_py_node_launch_args = {
         'allow_trajectory_execution': 'true',
         'fake_execution': 'false',
@@ -43,27 +42,14 @@ def generate_launch_description():
         "publish_robot_description": 'true', 
         "publish_robot_description_semantic": 'true',
     }
-    moveit2_py_node_launch = IncludeLaunchDescription(moveit2_py_node_launch_py,
-                                                 launch_arguments=moveit2_py_node_launch_args.items())
+    # moveit2_py_node_launch_py = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/moveit2_py_node.launch.py'))
+    # moveit2_py_node_launch = IncludeLaunchDescription(moveit2_py_node_launch_py,
+    #                                              launch_arguments=moveit2_py_node_launch_args.items())
 
     move_group = PythonLaunchDescriptionSource(str(moveit_config_path / 'launch/move_group.launch.py'))
     move_group_launch = IncludeLaunchDescription(move_group,
                                                  launch_arguments=moveit2_py_node_launch_args.items())
     ld.add_action(move_group_launch)
-    ld.add_action(moveit2_py_node_launch)
-
-    # Run Rviz and load the default config to see the state of the move_group node
-    moveit_rviz_launch_py = PythonLaunchDescriptionSource(
-        str(moveit_config_path / 'launch/moveit_rviz.launch.py')
-    )
-    moveit_rviz_args = {
-        'rviz_config': str(moveit_config_path / 'launch/moveit.rviz'),
-        'debug': LaunchConfiguration('debug'),
-        'robot_description': robot_description_content,
-        'semantic_config': semantic_content,
-    }
-    moveit_rviz_launch = IncludeLaunchDescription(moveit_rviz_launch_py, launch_arguments=moveit_rviz_args.items(),
-                                                  condition=IfCondition(LaunchConfiguration('use_rviz')))
-    ld.add_action(moveit_rviz_launch)
+    # ld.add_action(moveit2_py_node_launch)
 
     return ld
