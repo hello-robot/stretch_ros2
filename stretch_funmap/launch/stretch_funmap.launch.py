@@ -19,6 +19,11 @@ def generate_launch_description():
         'map',
         default_value=os.path.join(map_path, 'hq.yaml'),
         description='Full path to the map yaml file to use for navigation')
+    
+    rviz_config = DeclareLaunchArgument(
+        'rviz_config',
+        default_value=os.path.join(stretch_funmap_path, 'rviz/stretch_funmap.rviz'),
+        description='Full path to the map yaml file to use for navigation')
 
     stretch_driver_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_core_path, '/launch/stretch_driver.launch.py']),
@@ -39,13 +44,22 @@ def generate_launch_description():
     
     perception_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_funmap_path, '/launch/perception.launch.py']))
+    
+    rviz_node = Node(package='rviz2', executable='rviz2',
+                     output='log',
+                     respawn=True,
+                     arguments=['-d', LaunchConfiguration('rviz_config')],
+                    #  parameters=rviz_parameters,
+                     )
 
     return LaunchDescription([
         map_path_param,
+        rviz_config,
         stretch_driver_launch,
         d435i_launch,
         rplidar_launch,
         manipulation_launch,
         navigation_launch,
         perception_launch,
+        rviz_node,
     ])
