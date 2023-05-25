@@ -9,6 +9,7 @@ import stretch_body.hello_utils as hu
 from hello_helpers.hello_misc import *
 from .trajectory_components import get_trajectory_components
 
+import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
 from rclpy.action import ActionServer
