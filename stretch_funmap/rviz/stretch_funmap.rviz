@@ -1,14 +1,13 @@
 Panels:
   - Class: rviz_common/Displays
-    Help Height: 84
+    Help Height: 0
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /MotionPlanning1
         - /MotionPlanning1/Planned Path1
-        - /MarkerArray1
+        - /MarkerArray2
       Splitter Ratio: 0.7425600290298462
-    Tree Height: 300
+    Tree Height: 449
   - Class: rviz_common/Help
     Name: Help
   - Class: rviz_common/Views
@@ -53,8 +52,6 @@ Visualization Manager:
       MoveIt_Planning_Time: 5
       MoveIt_Use_Cartesian_Path: false
       MoveIt_Use_Constraint_Aware_IK: true
-      MoveIt_Warehouse_Host: 127.0.0.1
-      MoveIt_Warehouse_Port: 33829
       MoveIt_Workspace:
         Center:
           X: 0
@@ -200,11 +197,6 @@ Visualization Manager:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-          link_gripper:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
           link_gripper_finger_left:
             Alpha: 1
             Show Axes: false
@@ -260,7 +252,27 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
+          link_straight_gripper:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          link_wrist_pitch:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          link_wrist_roll:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
           link_wrist_yaw:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          link_wrist_yaw_bottom:
             Alpha: 1
             Show Axes: false
             Show Trail: false
@@ -279,6 +291,7 @@ Visualization Manager:
         State Display Time: 0.05 s
         Trail Step Size: 1
         Trajectory Topic: display_planned_path
+        Use Sim Time: false
       Planning Metrics:
         Payload: 1
         Show Joint Torques: false
@@ -441,11 +454,6 @@ Visualization Manager:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-          link_gripper:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
           link_gripper_finger_left:
             Alpha: 1
             Show Axes: false
@@ -501,7 +509,27 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
+          link_straight_gripper:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          link_wrist_pitch:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          link_wrist_roll:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
           link_wrist_yaw:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          link_wrist_yaw_bottom:
             Alpha: 1
             Show Axes: false
             Show Trail: false
@@ -652,11 +680,6 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        link_gripper:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
         link_gripper_finger_left:
           Alpha: 1
           Show Axes: false
@@ -712,7 +735,27 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        link_straight_gripper:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        link_wrist_pitch:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        link_wrist_roll:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         link_wrist_yaw:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        link_wrist_yaw_bottom:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -733,8 +776,8 @@ Visualization Manager:
       State Display Time: 3x
       Trail Step Size: 1
       Trajectory Topic: /display_planned_path
+      Use Sim Time: false
       Value: true
-    
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -750,9 +793,9 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 0
+      Max Intensity: 47
       Min Color: 0; 0; 0
-      Min Intensity: 0
+      Min Intensity: 47
       Name: LaserScan
       Position Transformer: XYZ
       Selectable: true
@@ -778,29 +821,37 @@ Visualization Manager:
       Topic:
         Depth: 1
         Durability Policy: Transient Local
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /map
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /map_updates
       Use Timestamp: false
       Value: true
     - Alpha: 1
       Class: nav2_rviz_plugins/ParticleCloud
       Color: 0; 180; 0
       Enabled: true
-      Max Arrow Length: 0.3
-      Min Arrow Length: 0.02
+      Max Arrow Length: 0.30000001192092896
+      Min Arrow Length: 0.019999999552965164
       Name: Amcl Particle Swarm
       Shape: Arrow (Flat)
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Best Effort
         Value: /particle_cloud
       Value: true
     - Class: rviz_common/Group
       Displays:
-        - Alpha: 0.3
+        - Alpha: 0.30000001192092896
           Class: rviz_default_plugins/Map
           Color Scheme: costmap
           Draw Behind: false
@@ -809,12 +860,19 @@ Visualization Manager:
           Topic:
             Depth: 1
             Durability Policy: Transient Local
+            Filter size: 10
             History Policy: Keep Last
             Reliability Policy: Reliable
             Value: /global_costmap/costmap
+          Update Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /global_costmap/costmap_updates
           Use Timestamp: false
           Value: true
-        - Alpha: 0.3
+        - Alpha: 0.30000001192092896
           Class: rviz_default_plugins/Map
           Color Scheme: costmap
           Draw Behind: false
@@ -1088,7 +1146,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 2.5615234375
+      Distance: 7.396969795227051
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -1103,10 +1161,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5697969794273376
+      Pitch: 0.4947971999645233
       Target Frame: base_link
       Value: XYOrbit (rviz)
-      Yaw: 5.364950656890869
+      Yaw: 3.044950485229492
     Saved: ~
 Window Geometry:
   Displays:
@@ -1122,13 +1180,13 @@ Window Geometry:
     collapsed: false
   Navigation 2:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000002a2000003a2fc0200000009fb000000100044006900730070006c006100790073010000003b000001bb000000c700fffffffb0000000800480065006c00700000000342000000bb0000006e00fffffffb0000000a0056006900650077007300000003b0000000b0000000a000fffffffb0000000c00430061006d00650072006100000002ff000001610000000000000000fb0000001e004d006f00740069006f006e00200050006c0061006e006e0069006e00670100000374000001890000000000000000fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000003f00fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e006701000001fc0000019c0000016900fffffffb0000003c005400720061006a006500630074006f007200790020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000003f00fffffffb00000024005200760069007a00560069007300750061006c0054006f006f006c0073004700750069010000039e0000003f0000003f00ffffff000004d8000003a200000001000000020000000100000002fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000002a20000039efc0200000009fb000000100044006900730070006c006100790073010000003d000001fe000000c900fffffffc000002410000019a0000019a0100001cfa000000000100000002fb00000018004e0061007600690067006100740069006f006e002000320100000000ffffffff0000011600fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e00670100000000000002a2000001f300fffffffb0000000800480065006c007000000002a2000001390000006e00fffffffb0000000a00560069006500770073000000028f000000a4000000a400fffffffb0000000c00430061006d00650072006100000002ff000001610000000000000000fb0000001e004d006f00740069006f006e00200050006c0061006e006e0069006e00670100000374000001890000000000000000fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000004100fffffffb0000003c005400720061006a006500630074006f007200790020002d0020005400720061006a006500630074006f0072007900200053006c006900640065007200000002f2000000410000001600000016fb00000024005200760069007a00560069007300750061006c0054006f006f006c0073004700750069000000029a000000410000004100ffffff0000048e0000039e00000001000000020000000100000002fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   RvizVisualToolsGui:
     collapsed: false
   Trajectory - Trajectory Slider:
     collapsed: false
   Views:
     collapsed: false
-  Width: 1920
-  X: 0
+  Width: 1846
+  X: 74
   Y: 27
