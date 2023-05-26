@@ -2,10 +2,10 @@ import copy
 import numpy as np
 import scipy.ndimage as nd
 import cv2
-import cython_min_cost_path as cm
+# from . import cython_min_cost_path as cm
 # from numba_check_line_path import numba_check_line_path
 # from numba_sample_ridge import numba_sample_ridge, numba_sample_ridge_list
-import segment_max_height_image as sm
+from . import segment_max_height_image as sm
 import hello_helpers.hello_misc as hm
 
 def draw_robot_footprint_rectangle(x_pix, y_pix, ang_rad, m_per_pix, image, verbose=False, value=255):

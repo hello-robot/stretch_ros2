@@ -28,7 +28,7 @@ from scipy.spatial.transform import Rotation
 
 from copy import deepcopy
 
-from max_height_image import *
+from .max_height_image import *
     
 class ROSVolumeOfInterest(VolumeOfInterest):
 

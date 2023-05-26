@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 
-import max_height_image as mh
+from . import max_height_image as mh
 import numpy as np
 import scipy.ndimage as nd
 import scipy.signal as si
@@ -11,9 +11,9 @@ import skimage as sk
 from skimage.morphology import convex_hull_image
 import math
 import hello_helpers.hello_misc as hm
-import navigation_planning as na
+from . import navigation_planning as na
 
-from numba_height_image import numba_create_segment_image_uint8
+from .numba_height_image import numba_create_segment_image_uint8
 import hello_helpers.fit_plane as fp
 
 

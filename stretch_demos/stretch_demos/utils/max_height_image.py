@@ -14,8 +14,8 @@ import struct
 import threading
 from collections import deque
 
-import numba_height_image as nh
-from numba_create_plane_image import numba_create_plane_image, numba_correct_height_image, transform_original_to_corrected, transform_corrected_to_original
+from . import numba_height_image as nh
+from .numba_create_plane_image import numba_create_plane_image, numba_correct_height_image, transform_original_to_corrected, transform_corrected_to_original
 
 from scipy.spatial.transform import Rotation
 

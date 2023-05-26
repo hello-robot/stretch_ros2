@@ -7,6 +7,7 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 
 import rclpy
+from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.duration import Duration
 from rclpy.time import Time
@@ -29,7 +30,7 @@ import argparse as ap
 
 import hello_helpers.hello_misc as hm
 # import stretch_funmap.navigate as nv
-import stretch_demos.manipulation_planning as mp
+import stretch_demos.utils.manipulation_planning as mp
 
 
 # class CleanSurfaceNode(hm.HelloNode):
@@ -249,6 +250,12 @@ class CleanSurfaceNode(Node):
         # rospy.loginfo('Node ' + self.node_name + ' connected to /funmap/trigger_lower_until_contact.')
         # self.trigger_lower_until_contact_service = rospy.ServiceProxy('/funmap/trigger_lower_until_contact', Trigger)
 
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
+        server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
+        if not server_reached:
+            self.get_logger().error('Unable to connect to joint_trajectory_server. Timeout exceeded.')
+            sys.exit()
+
         default_service = '/camera/switch_to_default_mode'
         high_accuracy_service = '/camera/switch_to_high_accuracy_mode'
     
@@ -266,12 +273,15 @@ class CleanSurfaceNode(Node):
         while rclpy.ok():
             rate.sleep()
 
-        
-if __name__ == '__main__':
+def main():
     try:
+        rclpy.init()
         parser = ap.ArgumentParser(description='Clean Surface behavior for stretch.')
         args, unknown = parser.parse_known_args()
         node = CleanSurfaceNode()
         # node.main()
     except KeyboardInterrupt:
         rclpy.logging.get_logger("clean_surface").info('interrupt received, so shutting down')
+        
+if __name__ == '__main__':
+    main()
