@@ -33,8 +33,8 @@ class JointTrajectoryAction(Node):
             self.debug_dir.mkdir()
 
     def execute_cb(self, goal_handle):
-        if self.node.robot_mode != 'manipulation':
-            self.node.get_logger().warn('Only manipulation mode support currently. Use /switch_to_manipulation_mode service.')
+        if self.node.robot_mode != 'trajectory':
+            self.node.get_logger().warn('Only trajectory mode support currently. Use /switch_to_trajectory_mode service.')
 
         # save goal to log directory
         goal = goal_handle.request

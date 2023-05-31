@@ -477,8 +477,8 @@ class MobileBaseCommandGroup(SimpleCommandGroup):
         self.index_rotate_mobile_base = None
         active_incrementing_joint_names = list(set(commanded_joint_names) & set(self.incrementing_joint_names))
 
-        if robot_mode == 'manipulation':
-            err_str = ("MobileBaseCommandGroup.update: Manipulation mode is no longer allowed.")
+        if robot_mode == 'trajectory':
+            err_str = ("MobileBaseCommandGroup.update: Trajectory mode is no longer allowed.")
             invalid_joints_callback(err_str)
             return False
         

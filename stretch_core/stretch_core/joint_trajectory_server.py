@@ -109,7 +109,7 @@ class JointTrajectoryAction(Node):
             # Escape stopped mode to execute trajectory
             self.node.stop_the_robot = False
         self.node.robot_mode_rwlock.acquire_read()
-        if self.node.robot_mode not in ['position', 'manipulation', 'navigation']:
+        if self.node.robot_mode not in ['position', 'trajectory', 'navigation']:
             self.node.robot_mode_rwlock.release_read()
             return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, "Cannot execute goals while in mode={0}".format(self.node.robot_mode))
         
@@ -230,7 +230,7 @@ class JointTrajectoryAction(Node):
                 return FollowJointTrajectory.Result()
             return self.success_callback(goal_handle, "Achieved all target points.")
         
-        elif self.node.robot_mode == 'manipulation':
+        elif self.node.robot_mode == 'trajectory':
              # pre-process
             try:
                 goal.trajectory = merge_arm_joints(goal.trajectory)
@@ -331,7 +331,7 @@ class JointTrajectoryAction(Node):
             feedback.actual = actual_point
             feedback.error = error_point
 
-        elif self.node.robot_mode == 'manipulation':
+        elif self.node.robot_mode == 'trajectory':
             time_along_traj = (self.node.get_clock().now() - start_time).to_msg()
 
             feedback.desired.time_from_start = time_along_traj

@@ -29,7 +29,7 @@ class GetKeyboardCommands:
         self.big_deg = 12.0
         self.big_rad = self.rad_per_deg * self.big_deg
         self.big_translate = 0.06
-        self.mode = 'position' #'manipulation' #'navigation'
+        self.mode = 'position' #'trajectory' #'navigation'
 
     def get_deltas(self):
         if self.step_size == 'small':
@@ -91,7 +91,7 @@ class GetKeyboardCommands:
         # 2 or down arrow
         if c == '2' or c == '\x1b[B':
             command = {'joint': 'joint_lift', 'delta': -self.get_deltas()['translate']}
-        if self.mode == 'manipulation':
+        if self.mode == 'trajectory':
             # 4 or left arrow
             if c == '4' or c == '\x1b[D':
                 command = {'joint': 'joint_mobile_base_translation', 'delta': self.get_deltas()['translate']}
@@ -197,7 +197,7 @@ class KeyboardTeleopNode(hm.HelloNode):
                 trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
                 self.trajectory_client.send_goal_async(trajectory_goal)
 
-            elif self.robot_mode == 'manipulation':
+            elif self.robot_mode == 'trajectory':
                 trajectory_goal = FollowJointTrajectory.Goal()
                 # trajectory_goal.goal_time_tolerance = rclpy.time.Time()
                 joint_name = command['joint']
