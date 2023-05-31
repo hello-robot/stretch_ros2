@@ -36,7 +36,7 @@ $ colcon test --packages-select stretch_core
 Here are description of each test suite:
 
  - **test_services.py**: tests the ROS2 services within the stretch_driver node
- - **test_action_manipulation_mode.py**: tests the ROS2 FollowJointTrajectory action server's manipulation mode
+ - **test_action_trajectory_mode.py**: tests the ROS2 FollowJointTrajectory action server's trajectory mode
  - **test_flake8.py and test_pep257.py**: linters that identify unrecommended code style
 
 ## License
