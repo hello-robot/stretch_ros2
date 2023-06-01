@@ -7,7 +7,7 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 
 import rclpy
-from rclpy.action import ActionClient
+from rclpy.action import ActionClient, ActionServer
 from rclpy.node import Node
 from rclpy.duration import Duration
 from rclpy.time import Time
@@ -36,9 +36,7 @@ import stretch_demos.utils.manipulation_planning as mp
 # class CleanSurfaceNode(hm.HelloNode):
 class CleanSurfaceNode(Node):
     def __init__(self):
-        super().__init__('clean_surface',
-                         allow_undeclared_parameters=True,
-                         automatically_declare_parameters_from_overrides=True)
+        super().__init__('clean_surface')
         # hm.HelloNode.__init__(self)
         self.rate = 10.0
         self.joint_states = None
@@ -49,7 +47,8 @@ class CleanSurfaceNode(Node):
         self.lift_position = None
         self.manipulation_view = None
         self.debug_directory = None
-        self.log = rclpy.logging.get_logger("clean_surface")
+        self.tf2_buffer = tf2_ros.Buffer()
+        self.log = self.get_logger()
         
     def joint_states_callback(self, joint_states):
         with self.joint_states_lock: 
@@ -124,7 +123,8 @@ class CleanSurfaceNode(Node):
         else:
             self.log.info('CleanSurfaceNode: No debug directory provided, so debugging data will not be saved.')
         
-    def trigger_clean_surface_callback(self, request):
+    def trigger_clean_surface_callback(self, request, response):
+        self.log.info("Cleaning initiating!")
 
         tool_width_m = 0.08 #0.06
         tool_length_m = 0.08 #0.06
@@ -224,31 +224,28 @@ class CleanSurfaceNode(Node):
                 self.log.info('Retract tool to initial position.')
                 self.move_to_pose(pose)
 
-        return Trigger(
-            success=True,
-            message='Completed surface cleaning!'
-            )
+        response = Trigger.Response(success=True, message='Completed surface cleaning!')
 
+        return response
+    
+    def hello_world_callback(self, request, response):
+        self.get_logger().info("Hello world!")
+        response = Trigger.Response(success=True, message='Logged!')
+        return response
     
     def main(self):
         self.debug_directory = self.get_parameter_or('~debug_directory').value
         self.log.info('Using the following directory for debugging files: {0}'.format(self.debug_directory))
 
-        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback)
+        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10)
         
-        self.trigger_clean_surface_service = self.create_ervice(Trigger,
+        self.trigger_clean_surface_service = self.create_service(Trigger,
                                                                 '/clean_surface/trigger_clean_surface',
                                                                 self.trigger_clean_surface_callback)
 
-
-
-        # rospy.wait_for_service('/funmap/trigger_reach_until_contact')
-        # rospy.loginfo('Node ' + self.node_name + ' connected to /funmap/trigger_reach_until_contact.')
-        # self.trigger_reach_until_contact_service = rospy.ServiceProxy('/funmap/trigger_reach_until_contact', Trigger)
-
-        # rospy.wait_for_service('/funmap/trigger_lower_until_contact')
-        # rospy.loginfo('Node ' + self.node_name + ' connected to /funmap/trigger_lower_until_contact.')
-        # self.trigger_lower_until_contact_service = rospy.ServiceProxy('/funmap/trigger_lower_until_contact', Trigger)
+        self.hello_world_service = self.create_service(Trigger,
+                                                        '/clean_surface/hello_world',
+                                                        self.hello_world_callback)
 
         self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
         server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
@@ -256,22 +253,7 @@ class CleanSurfaceNode(Node):
             self.get_logger().error('Unable to connect to joint_trajectory_server. Timeout exceeded.')
             sys.exit()
 
-        default_service = '/camera/switch_to_default_mode'
-        high_accuracy_service = '/camera/switch_to_high_accuracy_mode'
-    
-        self.log.info('Node ' + self.get_name() + ' waiting to connect to ' + default_service + ' and ' + high_accuracy_service)
-
-        self.trigger_d435i_default_mode_service = self.create_client(Trigger, default_service)
-        self.trigger_d435i_default_mode_service.wait_for_service()
-        self.log.info('Node ' + self.get_name() + ' connected to ' + default_service)
-
-        self.trigger_d435i_high_accuracy_mode_service = self.create_client(Trigger, high_accuracy_service)
-        self.trigger_d435i_high_accuracy_mode_service.wait_for_service()
-        self.log.info('Node ' + self.get_name() + ' connected to'  + high_accuracy_service)
-        
-        rate = self.create_rate(self.rate)
-        while rclpy.ok():
-            rate.sleep()
+        self.log.info("Clean surface node is ready!")
 
 def main():
     try:
@@ -279,7 +261,8 @@ def main():
         parser = ap.ArgumentParser(description='Clean Surface behavior for stretch.')
         args, unknown = parser.parse_known_args()
         node = CleanSurfaceNode()
-        # node.main()
+        node.main()
+        rclpy.spin(node=node)
     except KeyboardInterrupt:
         rclpy.logging.get_logger("clean_surface").info('interrupt received, so shutting down')
         

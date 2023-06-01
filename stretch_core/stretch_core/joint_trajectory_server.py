@@ -1,6 +1,8 @@
 #! /usr/bin/env python3
 
+import random
 import time
+import threading
 import pickle
 import numpy as np
 from pathlib import Path
@@ -13,6 +15,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
 from rclpy.action import ActionServer
+from rclpy.qos import QoSProfile, QoSHistoryPolicy
 
 from control_msgs.action import FollowJointTrajectory
 
@@ -23,17 +26,25 @@ class JointTrajectoryAction(Node):
         super().__init__('joint_trajectory_action')
         self.node = node
         self.action_server_rate = self.node.create_rate(action_server_rate_hz)
+
+        qos = QoSProfile(history=QoSHistoryPolicy.KEEP_LAST, depth=0)
         self.server = ActionServer(self.node, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory',
                                    execute_callback=self.execute_cb,
-                                   cancel_callback=self.cancel_cb)
+                                   cancel_callback=self.cancel_cb,
+                                   goal_service_qos_profile=qos)
         self.joints = get_trajectory_components(self.node.robot)
         self.node.robot._update_trajectory_dynamixel = lambda : None
         self.node.robot._update_trajectory_non_dynamixel = lambda : None
         self.debug_dir = Path(hu.get_stretch_directory('goals'))
+        self.goal_id = 0
+        self.goal_id_lock = threading.Lock()
         if not self.debug_dir.exists():
             self.debug_dir.mkdir()
 
     def execute_cb(self, goal_handle):
+        with self.goal_id_lock:
+            self.goal_id += 1
+            goal_id = self.goal_id
         if self.node.robot_mode != 'manipulation':
             self.node.get_logger().warn('Only manipulation mode support currently. Use /switch_to_manipulation_mode service.')
 
@@ -76,10 +87,21 @@ class JointTrajectoryAction(Node):
         # update trajectory and publish feedback
         ts = self.node.get_clock().now()
         while rclpy.ok() and self.node.get_clock().now() - ts <= duration:
+            # self.node.get_logger().info(f"Cb {goal_id} trying to update")
+            
+            with self.goal_id_lock:
+                # self.node.get_logger().info(f"Cb {goal_id} acquired lock")
+                if goal_id != self.goal_id:
+                    # self.node.get_logger().info(f"Cb: {goal_id}: new ID {self.goal_id} received")
+                    return self.error_callback(goal_handle, -200, 'new trajectory received')
             self._update_trajectory_dynamixel()
+            # self.node.get_logger().info(f"Cb: {goal_id}: dynamixel updated")
             self._update_trajectory_non_dynamixel()
+            # self.node.get_logger().info(f"Cb: {goal_id}: non-dynamixel updated")
             self.feedback_callback(goal_handle, ts)
-            self.action_server_rate.sleep()
+            # self.node.get_logger().info(f"Cb: {goal_id}: feedback sent")
+            # self.action_server_rate.sleep()
+            time.sleep(0.01)
 
         time.sleep(0.1)
         self._update_trajectory_dynamixel()

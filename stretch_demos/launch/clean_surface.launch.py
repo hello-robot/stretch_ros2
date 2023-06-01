@@ -21,14 +21,11 @@ def generate_launch_description():
             get_package_share_directory('stretch_core'), 'launch'),
             '/d435i_high_resolution.launch.py']),
         )
-
-    d435i_configure = Node(
-        package='stretch_core',
-        executable='d435i_configure',
-        parameters=[
-            {'initial_mode': 'High Accuracy'}
-            ],
-        output='screen',
+    
+    rplidar = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory('stretch_core'), 'launch'),
+            '/rplidar.launch.py']),
         )
 
     joint_state_publisher = Node(package='joint_state_publisher',
@@ -66,17 +63,28 @@ def generate_launch_description():
                           parameters=stretch_driver_params)
 
     clean_surface = Node(
-        package='stretch_demos',
-        executable='clean_surface',
-        parameters=[],
-        output='screen',
-        )
+            package='stretch_demos',
+            executable='clean_surface',
+            parameters=[],
+            output='screen',
+    )
+
+    keyboard_teleop = Node(
+            package='stretch_core',
+            executable='keyboard_teleop',
+            output='screen',
+            prefix='xterm -e'
+    )
+
+    # robot_localization
 
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
         d435i_high_res_launch,
-        # d435i_configure, // Uncomment when node is merged
+        rplidar,
+        # d435i_configure, #// Uncomment when node is merged
         joint_state_publisher,
         robot_state_publisher,
         stretch_driver,
+        keyboard_teleop,
         clean_surface
         ])

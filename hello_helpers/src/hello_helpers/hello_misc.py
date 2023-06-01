@@ -7,6 +7,9 @@ import glob
 import math
 
 import rclpy
+from rclpy.duration import Duration
+from rclpy.time import Time
+from rclpy.clock import Clock
 from rclpy.node import Node
 import tf2_ros
 # import ros_numpy  TODO(dlu): Fix https://github.com/eric-wieser/ros_numpy/issues/20
@@ -80,10 +83,10 @@ class HelloNode(Node):
     def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
         joint_names = [key for key in pose]
         point = JointTrajectoryPoint()
-        point.time_from_start = rospy.Duration(0.0)
+        point.time_from_start = Duration(seconds=0)
 
-        trajectory_goal = FollowJointTrajectoryGoal()
-        trajectory_goal.goal_time_tolerance = rospy.Time(1.0)
+        trajectory_goal = FollowJointTrajectory.Goal()
+        trajectory_goal.goal_time_tolerance = Duration(seconds=1.0)
         trajectory_goal.trajectory.joint_names = joint_names
         if not custom_contact_thresholds: 
             joint_positions = [pose[key] for key in joint_names]
@@ -92,14 +95,14 @@ class HelloNode(Node):
         else:
             pose_correct = all([len(pose[key])==2 for key in joint_names])
             if not pose_correct:
-                rospy.logerr("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
+                self.get_logger().error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
                 return
             joint_positions = [pose[key][0] for key in joint_names]
             joint_efforts = [pose[key][1] for key in joint_names]
             point.positions = joint_positions
             point.effort = joint_efforts
             trajectory_goal.trajectory.points = [point]
-        trajectory_goal.trajectory.header.stamp = rospy.Time.now()
+        trajectory_goal.trajectory.header.stamp = self.get_clock().now()
         self.trajectory_client.send_goal(trajectory_goal)
         if not return_before_done: 
             self.trajectory_client.wait_for_result()

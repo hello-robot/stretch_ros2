@@ -16,7 +16,9 @@ def generate_launch_description():
     keyboard_teleop = Node(
             package='stretch_core',
             executable='keyboard_teleop',
-            output='screen'
+            output='screen',
+            # arguments=['--clean_surface_on'],
+            prefix='xterm -e',
             )
 
     return LaunchDescription([

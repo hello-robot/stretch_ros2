@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 
+from functools import partial
 import math
+import sys
+
 from .keyboard import KBHit
 import argparse as ap
 
 import rclpy
+from rclpy.action import ActionClient
+from rclpy.service import Service
+from rclpy.node import Node
 from rclpy.time import Time
 from rclpy.duration import Duration
 from std_srvs.srv import Trigger
@@ -84,6 +90,12 @@ class GetKeyboardCommands:
         print('              q QUIT                       ')
         print('                                           ')
         print('-------------------------------------------')
+
+    def done_callback(self, future):
+        try:
+            response = future.result()
+        except Exception as e:
+            print("Service call failed: %r" % (e,))
 
     def get_command(self, node):
         command = None
@@ -179,8 +191,9 @@ class GetKeyboardCommands:
         # Trigger clean surface demo
         if ((c == '/') or (c == '?')) and self.clean_surface_on:
             trigger_request = Trigger.Request() 
-            trigger_result = node.trigger_clean_surface_service(trigger_request)
-            node.get_logger().info('trigger_result = {0}'.format(trigger_result))
+            future = node.trigger_clean_surface_service.call_async(trigger_request)
+            node.get_logger().info('trigger_result = {0}'.format(future))
+            future.add_done_callback(partial(self.done_callback))
             
         # Trigger grasp object demo    
         if ((c == '\'') or (c == '\"')) and self.grasp_object_on:
@@ -201,9 +214,11 @@ class GetKeyboardCommands:
         
         # 8 or up arrow
         if c == '8' or c == '\x1b[A':
+            print("Lift up")
             command = {'joint': 'joint_lift', 'delta': self.get_deltas()['translate']}
         # 2 or down arrow
         if c == '2' or c == '\x1b[B':
+            print("Lift down")
             command = {'joint': 'joint_lift', 'delta': -self.get_deltas()['translate']}
         if self.mode == 'manipulation':
             # 4 or left arrow
@@ -226,7 +241,7 @@ class GetKeyboardCommands:
             if c == '9' or c == '\x1b[5':
                 command = {'joint': 'rotate_mobile_base', 'inc': -self.get_deltas()['rad']}
         elif self.mode == 'navigation':
-            node.get_logger().info('ERROR: Navigation mode is not currently supported.')
+            print('ERROR: Navigation mode is not currently supported.')
 
         if c == 'w' or c == 'W':
             command = {'joint': 'wrist_extension', 'delta': self.get_deltas()['translate']}
@@ -251,27 +266,31 @@ class GetKeyboardCommands:
         if c == 'l' or c == 'L':
             command = {'joint': 'joint_head_pan', 'delta': -(2.0 * self.get_deltas()['rad'])}
         if c == 'b' or c == 'B':
-            node.get_logger().info('process_keyboard.py: changing to BIG step size')
+            print('process_keyboard.py: changing to BIG step size')
             self.step_size = 'big'
         if c == 'm' or c == 'M':
-            node.get_logger().info('process_keyboard.py: changing to MEDIUM step size')
+            print('process_keyboard.py: changing to MEDIUM step size')
             self.step_size = 'medium'
         if c == 's' or c == 'S':
-            node.get_logger().info('process_keyboard.py: changing to SMALL step size')
+            print('process_keyboard.py: changing to SMALL step size')
             self.step_size = 'small'
         if c == 'q' or c == 'Q':
-            node.get_logger().info('keyboard_teleop exiting...')
-            node.get_logger().info('Received quit character (q), so exiting')
+            print('keyboard_teleop exiting...')
+            print('Received quit character (q), so exiting')
+            rclpy.shutdown()
+            sys.exit(0)
 
         ####################################################
 
         return command
 
 
-class KeyboardTeleopNode(hm.HelloNode):
+class KeyboardTeleopNode(Node):
 
     def __init__(self, mapping_on=False, hello_world_on=False, open_drawer_on=False, clean_surface_on=False, grasp_object_on=False, deliver_object_on=False):
-        hm.HelloNode.__init__(self)
+        super().__init__('keyboard_teleop',
+                         allow_undeclared_parameters=True,
+                         automatically_declare_parameters_from_overrides=True)
         self.keys = GetKeyboardCommands(mapping_on, hello_world_on, open_drawer_on, clean_surface_on, grasp_object_on, deliver_object_on)
         self.mapping_on = mapping_on
         self.hello_world_on = hello_world_on
@@ -332,11 +351,12 @@ class KeyboardTeleopNode(hm.HelloNode):
                 trajectory_goal.trajectory.joint_names = [joint_name]
                 trajectory_goal.trajectory.points = [point1, point2]
                 trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
+                self.get_logger().info("Sending goal...")
                 self.trajectory_client.send_goal_async(trajectory_goal)
 
     def main(self):
-        rclpy.init()
-        hm.HelloNode.main(self, 'keyboard_teleop', 'keyboard_teleop', wait_for_first_pointcloud=False)
+        # rclpy.init()
+        # hm.HelloNode.main(self, 'keyboard_teleop', 'keyboard_teleop', wait_for_first_pointcloud=False)
 
         if self.mapping_on: 
             self.get_logger().info('Node ' + self.node_name + ' waiting to connect to /funmap/trigger_head_scan.')
@@ -391,9 +411,11 @@ class KeyboardTeleopNode(hm.HelloNode):
 
             
         if self.clean_surface_on:
-            rospy.wait_for_service('/clean_surface/trigger_clean_surface')
-            self.get_logger().info('Node ' + self.node_name + ' connected to /clean_surface/trigger_clean_surface.')
-            self.trigger_clean_surface_service = rospy.ServiceProxy('/clean_surface/trigger_clean_surface', Trigger)
+            self.trigger_clean_surface_service = self.create_client(Trigger,
+                                                                    '/clean_surface/trigger_clean_surface')
+            self.trigger_clean_surface_service.wait_for_service()
+            # rospy.wait_for_service('/clean_surface/trigger_clean_surface')
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /clean_surface/trigger_clean_surface.')
 
         if self.grasp_object_on:
             rospy.wait_for_service('/grasp_object/trigger_grasp_object')
@@ -407,6 +429,12 @@ class KeyboardTeleopNode(hm.HelloNode):
 
         self.subscription = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10)
         self.subscription
+
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
+        server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
+        if not server_reached:
+            self.get_logger().error('Unable to connect to joint_trajectory_server. Timeout exceeded.')
+            sys.exit()
 
         self.keys.print_commands()
         rclpy.spin(self)
@@ -428,10 +456,11 @@ def main():
         mapping_on = args.mapping_on
         hello_world_on = args.hello_world_on
         open_drawer_on = args.open_drawer_on
-        clean_surface_on = args.clean_surface_on
+        clean_surface_on = True #args.clean_surface_on
         grasp_object_on = args.grasp_object_on
         deliver_object_on = args.deliver_object_on
 
+        rclpy.init()
         node = KeyboardTeleopNode(mapping_on, hello_world_on, open_drawer_on, clean_surface_on, grasp_object_on, deliver_object_on)
         node.main()
     except KeyboardInterrupt:

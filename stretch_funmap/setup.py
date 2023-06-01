@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 from Cython.Build import cythonize
 from glob import glob
 
-package_name = 'stretch_demos'
-cython_files = [package_name+"/utils/cython_min_cost_path.pyx",]
+package_name = 'stretch_funmap'
+cython_files = [package_name+"cython_min_cost_path.pyx",]
 
 setup(
     name=package_name,
@@ -23,11 +23,11 @@ setup(
     license='Apache License 2.0',
     author='Hello Robot Inc.',
     author_email='support@hello-robot.com',
-    description='The stretch demos package',
+    description='The stretch funmap package',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'clean_surface = stretch_demos.clean_surface:main'
+            'funmap = stretch_funmap.funmap:main'
         ],
     },
 )
