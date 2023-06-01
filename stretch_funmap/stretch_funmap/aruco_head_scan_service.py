@@ -119,30 +119,41 @@ class ArucoHeadScan(hm.HelloNode):
 
             if not self.aruco_found:
                 self.feedback.pan_angle = pan_angle
-                self.server.publish_feedback(self.feedback)
-
-                scan_point.time_from_start = rospy.Duration(3.0)
+                goal_handle.publish_feedback(self.feedback)
+                duration1 = Duration(seconds=0.0)
+                duration2 = Duration(seconds=3.0)
+                start_point.time_from_start = duration1.to_msg()
+                scan_point.time_from_start = duration2.to_msg()
+                start_point.positions = [self.joint_state[7], self.joint_state[6]] # [joint_head_tilt, joint_head_pan]
                 scan_point.positions = [self.tilt_angle, pan_angle]
-                trajectory_goal.trajectory.points = [scan_point]
+                trajectory_goal.trajectory.points = [start_point, scan_point]
                 trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
                 trajectory_goal.trajectory.header.frame_id = 'base_link'
 
-                self.trajectory_client.send_goal(trajectory_goal)
-                self.trajectory_client.wait_for_result()
+                self.trajectory_client.send_goal_async(trajectory_goal)
             else:
                 break
         
         time.sleep(2.0)    
-        self.result_cb(self.aruco_found, "after headscan")
+        self.result_cb(goal_handle, self.aruco_found)
 
-    def result_cb(self, aruco_found, str=None):
+    def result_cb(self, goal_handle, aruco_found):
         self.result.aruco_found = aruco_found
+        result = FollowJointTrajectory.Result()
         if aruco_found:    
-            self.get_logger().info("Aruco marker found")
-            self.server.set_succeeded(self.result)
+            success_str = "Aruco marker found"
+            self.get_logger().info(success_str)
+            goal_handle.succeed()
+            result.error_code = result.SUCCESSFUL
+            result.error_string = success_str
+            return result
         else:
-            self.get_logger().info("Could not find aruco marker {}".format(str))
-            self.server.set_aborted(self.result)
+            error_str = "Could not find aruco marker"
+            self.get_logger().info(error_str)
+            result.error_code = -1
+            result.error_string = error_str
+            goal_handle.abort()
+            return result
 
     def broadcast_tf(self, trans, name, ref):
         t = TransformStamped()
@@ -156,9 +167,6 @@ class ArucoHeadScan(hm.HelloNode):
         self.markers = msg.markers
 
     def main(self):
-        self.rate = 5.0
-        rate = rospy.Rate(self.rate)
-        
         self.tf2_buffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tf2_buffer)
         self.tf2_broadcaster = tf2_ros.TransformBroadcaster()
@@ -190,14 +198,14 @@ class ArucoHeadScan(hm.HelloNode):
                     self.predock_pose_pub.publish(predock_pose)
             except AttributeError:
                 pass
-            rate.sleep()
+            time.sleep(0.2)
 
 
 def main():
     try:
         node = ArucoHeadScan()
         node.main()
-        rospy.spin()
+        rclpy.spin(node)
     except KeyboardInterrupt:
         print('interrupt received, so shutting down')
 
