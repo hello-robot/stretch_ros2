@@ -15,6 +15,7 @@ import tf2_ros
 # import ros_numpy  TODO(dlu): Fix https://github.com/eric-wieser/ros_numpy/issues/20
 import numpy as np
 import cv2
+import ros2_numpy
 
 import pyquaternion
 
@@ -219,16 +220,16 @@ def get_p1_to_p2_matrix(p1_frame_id, p2_frame_id, tf2_buffer, lookup_time=None, 
     # points in the p1_frame_id frame to points in the p2_frame_id.
     try:
         if lookup_time is None:
-            lookup_time = rospy.Time(0) # return most recent transform
+            lookup_time = Time(seconds=0) # return most recent transform
         if timeout_s is None:
-            timeout_ros = rospy.Duration(0.1)
+            timeout_ros = Duration(seconds=0.1)
         else:
-            timeout_ros = rospy.Duration(timeout_s)
+            timeout_ros = Duration(seconds=timeout_s)
         stamped_transform =  tf2_buffer.lookup_transform(p2_frame_id, p1_frame_id, lookup_time, timeout_ros)
 
         # http://docs.ros.org/melodic/api/geometry_msgs/html/msg/TransformStamped.html
 
-        p1_to_p2_mat = ros_numpy.numpify(stamped_transform.transform)
+        p1_to_p2_mat = ros2_numpy.numpify(stamped_transform.transform)
         return p1_to_p2_mat, stamped_transform.header.stamp
     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
         print('WARNING: get_p1_to_p2_matrix failed to lookup transform from p1_frame_id =', p1_frame_id, ' to p2_frame_id =', p2_frame_id)

@@ -86,6 +86,7 @@ class JointTrajectoryAction(Node):
 
         # update trajectory and publish feedback
         ts = self.node.get_clock().now()
+        duration = Duration(seconds=0.01)
         while rclpy.ok() and self.node.get_clock().now() - ts <= duration:
             # self.node.get_logger().info(f"Cb {goal_id} trying to update")
             

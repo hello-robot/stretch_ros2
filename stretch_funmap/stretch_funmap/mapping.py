@@ -330,7 +330,7 @@ class HeadScan:
         
         node.move_to_pose(pose)
         duration = Duration(seconds=head_settle_time)
-        self.clock.sleep_for(duration)
+        time.sleep(head_settle_time)
         settle_time = self.clock.now()
         prev_cloud_time = None
         num_point_clouds = 0
@@ -357,7 +357,7 @@ class HeadScan:
                 prev_cloud_time = cloud_time
             not_finished = num_point_clouds < num_point_clouds_per_pan_ang
             if not_finished: 
-                self.clock.sleep_for(duration)
+                time.sleep(time_between_point_clouds)
 
 
     def execute(self, head_tilt, far_left_pan, far_right_pan, num_pan_steps, capture_params, node, look_at_self=True):

@@ -3,6 +3,7 @@
 import cv2
 import numpy as np
 import os
+import time
 
 import ros2_numpy as rn
 from control_msgs.msg import FollowJointTrajectory
@@ -222,9 +223,7 @@ class MoveBase():
         if state == GoalStatus.SUCCEEDED:
             self.logger.info('Move succeeded!')
             # wait for the motion to come to a complete stop
-            # rospy.sleep(0.5)
-            duration = Duration(seconds=0.5)
-            self.clock.sleep_for(duration)
+            time.sleep(0.5)
             at_goal = True
         elif state in self.unsuccessful_status:
             self.logger.info('Move action terminated without success (state = {0}).'.format(state))
@@ -334,10 +333,9 @@ class MoveBase():
             self.node.move_to_pose(pose, return_before_done=True)
             at_goal = False
             unsuccessful_action = False
-            duration = Duration(seconds=0.01)
             while (not at_goal) and (not unsuccessful_action):
                 at_goal, unsuccessful_action = self.check_move_state(self.node.trajectory_client)
-                self.clock.sleep_for(duration)
+                time.sleep(0.01)
 
             # obtain the new angle of the robot
             xya, timestamp = self.node.get_robot_floor_pose_xya()

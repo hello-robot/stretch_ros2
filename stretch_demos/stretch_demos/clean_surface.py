@@ -65,7 +65,7 @@ class CleanSurfaceNode(Node):
         point.time_from_start = Duration(0.0)
 
         trajectory_goal = FollowJointTrajectory().Goal()
-        trajectory_goal.goal_time_tolerance = Time(1.0)
+        trajectory_goal.goal_time_tolerance = Duration(seconds=1.0)
         trajectory_goal.trajectory.joint_names = joint_names
         if not custom_contact_thresholds: 
             joint_positions = [pose[key] for key in joint_names]
@@ -82,7 +82,7 @@ class CleanSurfaceNode(Node):
             point.effort = joint_efforts
             trajectory_goal.trajectory.points = [point]
         trajectory_goal.trajectory.header.stamp = self.get_clock().now()
-        self.trajectory_client.send_goal(trajectory_goal)
+        self.trajectory_client.send_goal_async(trajectory_goal)
         # if not _async: 
         #     self.trajectory_client.wait_for_result()
 
