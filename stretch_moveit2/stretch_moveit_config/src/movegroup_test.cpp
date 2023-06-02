@@ -538,7 +538,7 @@ int main(int argc, char** argv)
   // Visualize the plan in RViz:
   visual_tools.deleteAllMarkers();
   visual_tools.publishText(text_pose, "Joint_Space_Goal", rvt::WHITE, rvt::XLARGE);
-  visual_tools.publishTrajectoryLine(my_plan.trajectory, ee_parent_link, joint_model_group);
+  visual_tools.publishTrajectoryLine(my_plan.trajectory_, ee_parent_link, joint_model_group);
   visual_tools.trigger();
   visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue the demo");
 
