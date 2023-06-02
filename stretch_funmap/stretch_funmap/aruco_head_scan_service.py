@@ -41,7 +41,6 @@ class ArucoHeadScan(hm.HelloNode):
 
     def scan_and_detect(self, goal_handle):
         self.aruco_tf = None
-        self.predock_tf = None
         pan_angle = -3.69
         
         markers = []
@@ -84,38 +83,6 @@ class ArucoHeadScan(hm.HelloNode):
                             trans = self.tf2_buffer.lookup_transform('map', self.aruco_name, 0)
                             self.aruco_tf = self.broadcast_tf(trans.transform, self.aruco_name, 'map')
                             self.get_logger().info("{} pose published to tf".format(self.aruco_name))
-                            if self.aruco_name == 'docking_station':
-                                # Transform the docking station frame such that x-axis points out of the aruco plane and 0.5 m in the front of the dock
-                                # This facilitates passing the goal pose as this predock frame so that the robot can back up into the dock
-                                saved_pose = Transform()
-                                saved_pose.translation.x = 0.0
-                                saved_pose.translation.y = -0.45
-                                saved_pose.translation.z = 0.47
-                                saved_pose.rotation.x = -0.382
-                                saved_pose.rotation.y = -0.352
-                                saved_pose.rotation.z = -0.604
-                                saved_pose.rotation.w = 0.604
-                                tran = self.broadcast_tf(saved_pose, 'predock_pose', 'docking_station')
-                                self.tf2_broadcaster.sendTransform(tran)
-                                try:
-                                    trans = self.tf2_buffer.lookup_transform('map', 'predock_pose', 0, rospy.Duration(1.0))
-                                    # Bring predock_frame at base_link level
-                                    angles = euler_from_quaternion([trans.transform.rotation.x,
-                                                                    trans.transform.rotation.y,
-                                                                    trans.transform.rotation.z,
-                                                                    trans.transform.rotation.w])
-                                    q = quaternion_from_euler(0, 0, angles[2])
-                                    trans.transform.translation.z = 0
-                                    trans.transform.rotation.x = q[0]
-                                    trans.transform.rotation.y = q[1]
-                                    trans.transform.rotation.z = q[2]
-                                    trans.transform.rotation.w = q[3]
-                                    trans.header.stamp = self.get_clock().now().to_msg()
-                                    self.predock_tf = trans
-                                    self.get_logger().info("Published predock pose")
-                                except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-                                    self.get_logger().info("Could not publish pose to tf")
-                                    pass
 
             if not self.aruco_found:
                 self.feedback.pan_angle = pan_angle
@@ -176,26 +143,7 @@ class ArucoHeadScan(hm.HelloNode):
         while rclpy.ok():
             try:
                 self.aruco_tf.header.stamp = self.get_clock().now().to_msg()
-                self.predock_tf.header.stamp = self.get_clock().now().to_msg()
                 self.tf2_broadcaster.sendTransform(self.aruco_tf)
-                if self.aruco_name == 'docking_station':
-                    dock_pose.position.x = self.aruco_tf.transform.translation.x
-                    dock_pose.position.y = self.aruco_tf.transform.translation.y
-                    dock_pose.position.z = self.aruco_tf.transform.translation.z
-                    dock_pose.orientation.x = self.aruco_tf.transform.rotation.x
-                    dock_pose.orientation.y = self.aruco_tf.transform.rotation.y
-                    dock_pose.orientation.z = self.aruco_tf.transform.rotation.z
-                    dock_pose.orientation.w = self.aruco_tf.transform.rotation.w
-                    self.dock_pose_pub.publish(dock_pose)
-                    self.tf2_broadcaster.sendTransform(self.predock_tf)
-                    predock_pose.position.x = self.predock_tf.transform.translation.x
-                    predock_pose.position.y = self.predock_tf.transform.translation.y
-                    predock_pose.position.z = self.predock_tf.transform.translation.z
-                    predock_pose.orientation.x = self.predock_tf.transform.rotation.x
-                    predock_pose.orientation.y = self.predock_tf.transform.rotation.y
-                    predock_pose.orientation.z = self.predock_tf.transform.rotation.z
-                    predock_pose.orientation.w = self.predock_tf.transform.rotation.w
-                    self.predock_pose_pub.publish(predock_pose)
             except AttributeError:
                 pass
             time.sleep(0.2)
