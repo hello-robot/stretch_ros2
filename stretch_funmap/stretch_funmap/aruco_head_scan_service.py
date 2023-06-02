@@ -102,23 +102,19 @@ class ArucoHeadScan(hm.HelloNode):
                 break
         
         time.sleep(2.0)    
-        self.result_cb(goal_handle, self.aruco_found)
+        self.result_cb(goal_handle)
 
-    def result_cb(self, goal_handle, aruco_found):
-        self.result.aruco_found = aruco_found
-        result = FollowJointTrajectory.Result()
-        if aruco_found:    
+    def result_cb(self, goal_handle):
+        result = ArucoHeadScan.Result()
+        result.aruco_found = self.aruco_found
+        if self.aruco_found:
             success_str = "Aruco marker found"
             self.get_logger().info(success_str)
             goal_handle.succeed()
-            result.error_code = result.SUCCESSFUL
-            result.error_string = success_str
             return result
         else:
             error_str = "Could not find aruco marker"
             self.get_logger().info(error_str)
-            result.error_code = -1
-            result.error_string = error_str
             goal_handle.abort()
             return result
 
