@@ -11,11 +11,12 @@ from hello_helpers.hello_misc import *
 from .trajectory_components import get_trajectory_components
 
 import threading
-from rclpy.callback_groups import ReentrantCallbackGroup
 
-from rclpy.node import Node
-from rclpy.duration import Duration
+import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.duration import Duration
+from rclpy.node import Node
 
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
@@ -24,6 +25,8 @@ from .command_groups import HeadPanCommandGroup, HeadTiltCommandGroup, \
                            WristYawCommandGroup, GripperCommandGroup, \
                            ArmCommandGroup, LiftCommandGroup, \
                            MobileBaseCommandGroup
+
+import hello_helpers.hello_misc as hm
 
 class JointTrajectoryAction(Node):
 
@@ -75,6 +78,8 @@ class JointTrajectoryAction(Node):
         self.timeout = 0.2 # seconds
         self.last_goal_time = self.get_clock().now().to_msg()
 
+        self.latest_goal_id = 0
+
     def goal_cb(self, goal_request):
         """Accept or reject a client request to begin an action."""
         self.get_logger().info('Received goal request')
@@ -93,7 +98,7 @@ class JointTrajectoryAction(Node):
             if self._goal_handle is not None and self._goal_handle.is_active:
                 self.get_logger().info('Aborting previous goal')
                 # Abort the existing goal
-                self._goal_handle.abort()
+                # self._goal_handle.abort() \TODO(@hello-atharva): This is causing state transition issues.
             self._goal_handle = goal_handle
 
         goal_handle.execute()
@@ -104,6 +109,10 @@ class JointTrajectoryAction(Node):
         goal_fpath = self.debug_dir / f'goal_{hu.create_time_string()}.pickle'
         with goal_fpath.open('wb') as s:
             pickle.dump(goal, s)
+
+        # Register this goal's ID
+        goal_id = self.latest_goal_id + 1
+        self.latest_goal_id += 1
         
         with self.node.robot_stop_lock:
             # Escape stopped mode to execute trajectory
@@ -193,14 +202,14 @@ class JointTrajectoryAction(Node):
                         self.node.robot_mode_rwlock.release_read()
                         return self.error_callback(goal_handle, FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED, err_str)
                     
-                    # TODO: Handle preemption in ROS 2
                     # Check if a premption request has been received.
                     with self.node.robot_stop_lock:
-                        if self.node.stop_the_robot:
+                        if self.node.stop_the_robot or goal_id != self.latest_goal_id:
                             self.node.get_logger().info("{0} joint_traj action: PREEMPTION REQUESTED, but not stopping current motions to allow smooth interpolation between old and new commands.".format(self.node.node_name))
                             self.node.stop_the_robot = False
                             self.node.robot_mode_rwlock.release_read()
-                            return self.error_callback(goal_handle, 100, "preemption requested")
+                            goal_handle.abort()
+                            return FollowJointTrajectory.Result()
 
                     robot_status = self.node.robot.get_status()
                     named_errors = [c.update_execution(robot_status, contact_detected_callback=self.contact_detected_callback)
@@ -233,10 +242,10 @@ class JointTrajectoryAction(Node):
         elif self.node.robot_mode == 'trajectory':
              # pre-process
             try:
-                goal.trajectory = merge_arm_joints(goal.trajectory)
-                goal.trajectory = preprocess_gripper_trajectory(goal.trajectory)
-            except FollowJointTrajectoryException as e:
-                self.error_callback(goal_handle, e.CODE, str(e))
+                goal.trajectory = hm.merge_arm_joints(goal.trajectory)
+                goal.trajectory = hm.preprocess_gripper_trajectory(goal.trajectory)
+            except Exception as e:
+                self.error_callback(goal_handle, 100, str(e))
             path_tolerance_dict = {tol.name: tol for tol in goal.path_tolerance}
             goal_tolerance_dict = {tol.name: tol for tol in goal.goal_tolerance}
 
@@ -247,7 +256,7 @@ class JointTrajectoryAction(Node):
                 return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_JOINTS, 'no trajectory in goal contains enough waypoints')
             n_points = max([len(trajectory.points) for trajectory in trajectories])
             duration = max([Duration.from_msg(trajectory.points[-1].time_from_start) for trajectory in trajectories])
-            self.node.get_logger().info(f"{self.node.node_name} joint_traj action: new traj with {n_points} points over {to_sec(duration.to_msg())} seconds")
+            self.node.get_logger().info(f"{self.node.node_name} joint_traj action: new traj with {n_points} points over {round(duration.nanoseconds()/1e9, 2)} seconds")
             self.node.robot.stop_trajectory()
             for joint in self.joints:
                 self.joints[joint].trajectory_manager.trajectory.clear()
@@ -264,6 +273,15 @@ class JointTrajectoryAction(Node):
             # update trajectory and publish feedback
             ts = self.node.get_clock().now()
             while rclpy.ok() and self.node.get_clock().now() - ts <= duration:
+                # Check if a premption request has been received.
+                with self.node.robot_stop_lock:
+                    if self.node.stop_the_robot or goal_id != self.latest_goal_id:
+                        self.node.get_logger().info("{0} joint_traj action: PREEMPTION REQUESTED, but not stopping current motions to allow smooth interpolation between old and new commands.".format(self.node.node_name))
+                        self.node.stop_the_robot = False
+                        self.node.robot_mode_rwlock.release_read()
+                        goal_handle.abort()
+                        return FollowJointTrajectory.Result()
+
                 self._update_trajectory_dynamixel()
                 self._update_trajectory_non_dynamixel()
                 self.feedback_callback(goal_handle, start_time=ts)
