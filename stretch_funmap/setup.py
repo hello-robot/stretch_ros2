@@ -3,7 +3,7 @@ from Cython.Build import cythonize
 from glob import glob
 
 package_name = 'stretch_funmap'
-cython_files = [package_name+"cython_min_cost_path.pyx",]
+cython_files = [package_name+"/cython_min_cost_path.pyx",]
 
 setup(
     name=package_name,
