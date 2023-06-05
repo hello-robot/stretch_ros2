@@ -424,8 +424,8 @@ class StretchDriver(Node):
             return True, 'Now in position mode.'
         return self.change_mode('position', code_to_run)
 
-    def turn_on_manipulation_mode(self):
-        # Manipulation mode is able to execute plans from
+    def turn_on_trajectory_mode(self):
+        # Trajectory mode is able to execute plans from
         # high level planners like MoveIt2. These planners
         # send whole robot waypoint trajectories to the
         # joint trajectory action server, and the underlying
@@ -440,8 +440,8 @@ class StretchDriver(Node):
                 return False, str(e)
             self.robot.base.first_step = True
             self.robot.base.pull_status()
-            return True, 'Now in manipulation mode.'
-        return self.change_mode('manipulation', code_to_run)
+            return True, 'Now in trajectory mode.'
+        return self.change_mode('trajectory', code_to_run)
 
     # SERVICE CALLBACKS ##############
 
@@ -485,8 +485,8 @@ class StretchDriver(Node):
         response.message = message
         return response
 
-    def manipulation_mode_service_callback(self, request, response):
-        success, message = self.turn_on_manipulation_mode()
+    def trajectory_mode_service_callback(self, request, response):
+        success, message = self.turn_on_trajectory_mode()
         response.success = success
         response.message = message
         return response
@@ -537,8 +537,8 @@ class StretchDriver(Node):
             self.turn_on_position_mode()
         elif mode == "navigation":
             self.turn_on_navigation_mode()
-        elif mode == "manipulation":
-            self.turn_on_manipulation_mode()
+        elif mode == "trajectory":
+            self.turn_on_trajectory_mode()
 
         self.declare_parameter('broadcast_odom_tf', False)
         self.broadcast_odom_tf = self.get_parameter('broadcast_odom_tf').value
@@ -552,25 +552,25 @@ class StretchDriver(Node):
         filename = self.get_parameter('controller_calibration_file').value
         self.get_logger().info('Loading controller calibration parameters for the head from YAML file named {0}'.format(filename))
         with open(filename, 'r') as fid:
-            controller_parameters = yaml.safe_load(fid)
+            self.controller_parameters = yaml.safe_load(fid)
 
-            self.get_logger().info('controller parameters loaded = {0}'.format(controller_parameters))
+            self.get_logger().info('controller parameters loaded = {0}'.format(self.controller_parameters))
 
-            self.head_tilt_calibrated_offset_rad = controller_parameters['tilt_angle_offset']
+            self.head_tilt_calibrated_offset_rad = self.controller_parameters['tilt_angle_offset']
             ang = self.head_tilt_calibrated_offset_rad
             if (abs(ang) > large_ang):
                 self.get_logger().warn('self.head_tilt_calibrated_offset_rad HAS AN UNUSUALLY LARGE MAGNITUDE')
             self.get_logger().info('self.head_tilt_calibrated_offset_rad in degrees ='
                                    ' {0}'.format(np.degrees(self.head_tilt_calibrated_offset_rad)))
 
-            self.head_pan_calibrated_offset_rad = controller_parameters['pan_angle_offset']
+            self.head_pan_calibrated_offset_rad = self.controller_parameters['pan_angle_offset']
             ang = self.head_pan_calibrated_offset_rad
             if (abs(ang) > large_ang):
                 self.get_logger().warn('self.head_pan_calibrated_offset_rad HAS AN UNUSUALLY LARGE MAGNITUDE')
             self.get_logger().info('self.head_pan_calibrated_offset_rad in degrees ='
                                    ' {0}'.format(np.degrees(self.head_pan_calibrated_offset_rad)))
 
-            self.head_pan_calibrated_looked_left_offset_rad = controller_parameters['pan_looked_left_offset']
+            self.head_pan_calibrated_looked_left_offset_rad = self.controller_parameters['pan_looked_left_offset']
             ang = self.head_pan_calibrated_looked_left_offset_rad
             if (abs(ang) > large_ang):
                 self.get_logger().warn('self.head_pan_calibrated_looked_left_offset_rad HAS AN UNUSUALLY LARGE MAGNITUDE')
@@ -578,12 +578,12 @@ class StretchDriver(Node):
                 'self.head_pan_calibrated_looked_left_offset_rad in degrees = {0}'.format(
                     np.degrees(self.head_pan_calibrated_looked_left_offset_rad)))
 
-            self.head_tilt_backlash_transition_angle_rad = controller_parameters['tilt_angle_backlash_transition']
+            self.head_tilt_backlash_transition_angle_rad = self.controller_parameters['tilt_angle_backlash_transition']
             self.get_logger().info(
                 'self.head_tilt_backlash_transition_angle_rad in degrees = {0}'.format(
                     np.degrees(self.head_tilt_backlash_transition_angle_rad)))
 
-            self.head_tilt_calibrated_looking_up_offset_rad = controller_parameters['tilt_looking_up_offset']
+            self.head_tilt_calibrated_looking_up_offset_rad = self.controller_parameters['tilt_looking_up_offset']
             ang = self.head_tilt_calibrated_looking_up_offset_rad
             if (abs(ang) > large_ang):
                 self.get_logger().warn('self.head_tilt_calibrated_looking_up_offset_rad HAS AN UNUSUALLY LARGE MAGNITUDE')
@@ -591,7 +591,7 @@ class StretchDriver(Node):
                 'self.head_tilt_calibrated_looking_up_offset_rad in degrees = {0}'.format(
                     np.degrees(self.head_tilt_calibrated_looking_up_offset_rad)))
 
-            self.wrist_extension_calibrated_retracted_offset_m = controller_parameters['arm_retracted_offset']
+            self.wrist_extension_calibrated_retracted_offset_m = self.controller_parameters['arm_retracted_offset']
             m = self.wrist_extension_calibrated_retracted_offset_m
             if (abs(m) > 0.05):
                 self.get_logger().warn('self.wrist_extension_calibrated_retracted_offset_m HAS AN UNUSUALLY LARGE MAGNITUDE')
@@ -639,6 +639,9 @@ class StretchDriver(Node):
         self.last_twist_time = self.get_clock().now()
 
         # start action server for joint trajectories
+        self.declare_parameter('fail_out_of_range_goal', True)
+        self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
+        
         self.declare_parameter('action_server_rate', 15.0)
         self.action_server_rate = self.get_parameter('action_server_rate').value
 
@@ -652,9 +655,9 @@ class StretchDriver(Node):
                                                                    '/switch_to_position_mode',
                                                                    self.position_mode_service_callback)
 
-        self.switch_to_manipulation_mode_service = self.create_service(Trigger,
-                                                                       '/switch_to_manipulation_mode',
-                                                                       self.manipulation_mode_service_callback)
+        self.switch_to_trajectory_mode_service = self.create_service(Trigger,
+                                                                       '/switch_to_trajectory_mode',
+                                                                       self.trajectory_mode_service_callback)
 
         self.stop_the_robot_service = self.create_service(Trigger,
                                                           '/stop_the_robot',

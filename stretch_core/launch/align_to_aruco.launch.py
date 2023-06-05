@@ -11,7 +11,7 @@ def generate_launch_description():
 
     stretch_driver = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([str(stretch_core_path), '/launch/stretch_driver.launch.py']),
-        launch_arguments={'mode': 'manipulation', 'broadcast_odom_tf': 'False', 'fail_out_of_range_goal': 'True'}.items(),
+        launch_arguments={'mode': 'trajectory', 'broadcast_odom_tf': 'False', 'fail_out_of_range_goal': 'True'}.items(),
     )
 
     d435i_launch = IncludeLaunchDescription(
