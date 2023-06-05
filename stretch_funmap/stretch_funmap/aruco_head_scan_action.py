@@ -11,9 +11,8 @@ import time
 from rclpy.duration import Duration
 from rclpy.action import ActionServer
 from control_msgs.action import FollowJointTrajectory
-from stretch_funmap.msg import ArucoHeadScan
+from stretch_funmap.action import ArucoHeadScan
 from trajectory_msgs.msg import JointTrajectoryPoint
-from control_msgs.msg import FollowJointTrajectoryGoal
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
 from sensor_msgs.msg import JointState
@@ -22,6 +21,7 @@ import hello_helpers.hello_misc as hm
 
 class ArucoHeadScan(hm.HelloNode):
     def __init__(self):
+        rclpy.init()
         hm.HelloNode.__init__(self)
         hm.HelloNode.main(self, 'aruco_head_scan', 'aruco_head_scan', wait_for_first_pointcloud=True)
         self.server = ActionServer(self, ArucoHeadScan, 'ArucoHeadScan', self.execute_cb)
