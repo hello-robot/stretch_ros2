@@ -6,7 +6,7 @@ import os
 import time
 
 import ros2_numpy as rn
-from control_msgs.msg import FollowJointTrajectory
+from control_msgs.action import FollowJointTrajectory
 from actionlib_msgs.msg import GoalStatus
 import rclpy
 from rclpy.duration import Duration

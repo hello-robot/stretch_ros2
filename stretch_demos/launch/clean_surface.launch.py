@@ -46,11 +46,19 @@ def generate_launch_description():
                                             #   'robot_description': LaunchConfiguration('uncalibrated_urdf_file'), // Raises empty file error with URDF parser
                                               'publish_frequency': 15.0}])
 
+    stretch_description = IncludeLaunchDescription(
+          PythonLaunchDescriptionSource([os.path.join(
+               get_package_share_directory('stretch_description'), 'launch'),
+               '/display.launch.py'])
+            #    launch_arguments={'broadcast_odom_tf': 'True'}.items()
+          )
+
     stretch_driver_params = [
         {'rate': 25.0,
          'timeout': 0.5,
          'controller_calibration_file': LaunchConfiguration('uncalibrated_controller_yaml_file'),
-         'fail_out_of_range_goal': 'False'
+         'fail_out_of_range_goal': 'False',
+         'broadcast_odom_tf': True
          }
     ]
 
@@ -76,7 +84,11 @@ def generate_launch_description():
             prefix='xterm -e'
     )
 
-    # robot_localization
+    stretch_funmap = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory('stretch_funmap'), 'launch'),
+            '/funmap.launch.py']),
+        )
 
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
         d435i_high_res_launch,
@@ -85,6 +97,8 @@ def generate_launch_description():
         joint_state_publisher,
         robot_state_publisher,
         stretch_driver,
+        # stretch_description,
+        stretch_funmap,
         keyboard_teleop,
         clean_surface
         ])

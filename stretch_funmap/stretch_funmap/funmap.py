@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rclpy
-from rclpy import Node
+from rclpy.node import Node
 from rclpy.action import ActionClient, ActionServer
 import rclpy.logging
 from rclpy.client import Client
@@ -52,7 +52,7 @@ from . import segment_max_height_image as sm
 from . import navigation_planning as na
 from . import manipulation_planning as mp
 
-
+# Timestamp as a argument since we can't access clock outside of a node
 def create_map_to_odom_transform(t_mat, timestamp):
     t = TransformStamped()
     t.header.stamp = timestamp
@@ -308,10 +308,12 @@ class FunmapNode(Node):
     def publish_map_point_cloud(self):
         if self.merged_map is not None:
             max_height_point_cloud = self.merged_map.max_height_im.to_point_cloud()
+            self.get_logger().info("Publishing pointcloud...")
             self.point_cloud_pub.publish(max_height_point_cloud)
 
             pub_voi = True
             if pub_voi:
+                self.get_logger().info("Publishing voi markers...")
                 marker = self.merged_map.max_height_im.voi.get_ros_marker(
                     duration=1000.0)
                 self.voi_marker_pub.publish(marker)
@@ -393,6 +395,7 @@ class FunmapNode(Node):
         )
 
     def point_cloud_callback(self, point_cloud):
+        # self.get_logger().info("Point cloud received!")
         self.point_cloud = point_cloud
 
     def joint_states_callback(self, joint_states):
@@ -1368,10 +1371,10 @@ class FunmapNode(Node):
 
         ###########################
         # Related to move_base API
-        self.navigate_to_goal_action_server = ActionServer(NavigateToPose,
+        self.navigate_to_goal_action_server = ActionServer(self,
+                                                           NavigateToPose,
                                                            '/move_base',
-                                                           execute_cb=self.navigate_to_goal_action_callback,
-                                                           auto_start=False)
+                                                           execute_callback=self.navigate_to_goal_action_callback)
         # self.navigate_to_goal_action_server.start()
 
         self.navigation_goal_subscriber = self.create_subscription(PoseStamped,
@@ -1380,8 +1383,9 @@ class FunmapNode(Node):
                                                                    1)
 
         self.set_robot_pose_subscriber = self.create_subscription(PoseWithCovarianceStamped,
-                                                                '/initialpose',
-                                                                self.set_robot_pose_callback)
+                                                                   '/initialpose',
+                                                                   self.set_robot_pose_callback,
+                                                                   1)
 
         self.get_plan_service = self.create_service(GetPlan,
                                                     '/make_plan',
@@ -1414,7 +1418,7 @@ class FunmapNode(Node):
                                                                  self.trigger_lower_until_contact_service_callback)
 
         self.reach_to_click_subscriber = self.create_subscription(
-            PointStamped, '/clicked_point', self.reach_to_click_callback)
+            PointStamped, '/clicked_point', self.reach_to_click_callback, 1)
 
         # default_service = '/camera/switch_to_default_mode'
         # high_accuracy_service = '/camera/switch_to_high_accuracy_mode'
@@ -1431,21 +1435,21 @@ class FunmapNode(Node):
         # self.trigger_d435i_high_accuracy_mode_service = rospy.ServiceProxy(
         #     high_accuracy_service, Trigger)
 
-        self.tf2_broadcaster = tf2_ros.TransformBroadcaster()
+        self.tf2_broadcaster = tf2_ros.TransformBroadcaster(self)
 
         self.point_cloud_pub = self.create_publisher(
-            PointCloud2, '/funmap/point_cloud2')
+            PointCloud2, '/funmap/point_cloud2', 1)
         self.voi_marker_pub = self.create_publisher(
-            Marker, '/funmap/voi_marker')
+            Marker, '/funmap/voi_marker', 1)
         self.marker_array_pub = self.create_publisher(
-            MarkerArray, '/funmap/marker_array')
+            MarkerArray, '/funmap/marker_array', 1)
         self.navigation_plan_markers_pub = self.create_publisher(
-            MarkerArray, '/funmap/navigation_plan_markers')
+            MarkerArray, '/funmap/navigation_plan_markers', 1)
         self.obstacle_point_cloud_pub = self.create_publisher(
-            PointCloud2, '/funmap/obstacle_point_cloud2')
+            PointCloud2, '/funmap/obstacle_point_cloud2', 1)
 
         self.joint_states_subscriber = self.create_subscription(
-            JointState, '/stretch/joint_states', self.joint_states_callback)
+            JointState, '/stretch/joint_states', self.joint_states_callback, 1)
 
         self.move_base = nv.MoveBase(self, self.debug_directory)
         
@@ -1458,22 +1462,24 @@ class FunmapNode(Node):
         self.tf2_buffer = tf2_ros.Buffer()
         self.tf2_listener = tf2_ros.TransformListener(self.tf2_buffer, self)
 
-        self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 10)
-        self.point_cloud_pub = self.create_publisher(PointCloud2, '/funmap/point_cloud2', 10)
+        self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 1)
+        # self.point_cloud_pub = self.create_publisher(PointCloud2, '/funmap/point_cloud2', 1)
 
-        self.stop_the_robot_client = self.create_client(Trigger, '/stop_the_robot')
-        while not self.stop_the_robot_client.wait_for_service(timeout_sec=2.0):
+        self.stop_the_robot_service = self.create_client(Trigger, '/stop_the_robot')
+        while not self.stop_the_robot_service.wait_for_service(timeout_sec=2.0):
             self.get_logger().info("Waiting on '/stop_the_robot' service...")
         self.logger.info('Node ' + self.get_name() + ' connected to /stop_the_robot service.')
 
         hz = 5.0
-        self.rate = self.create_rate(hz)
+        self.rate = self.create_rate(hz, self.get_clock())
 
         # Do not start until a point cloud has been received
         point_cloud_msg = self.point_cloud
         self.get_logger().info('Node ' + self.get_name() + ' waiting to receive first point cloud.')
         while point_cloud_msg is None:
-            self.rate.sleep()
+            # self.rate.sleep()
+            time.sleep(0.2)
+            # self.get_logger().info("Spinning...")
             rclpy.spin_once(self)
             point_cloud_msg = self.point_cloud
         self.get_logger().info('Node ' + self.get_name() + ' received first point cloud, so continuing.')
@@ -1481,10 +1487,12 @@ class FunmapNode(Node):
         self.map_to_odom_transform_mat = np.identity(4)
         while rclpy.ok():
             self.tf2_broadcaster.sendTransform(
-                create_map_to_odom_transform(self.map_to_odom_transform_mat))
+                create_map_to_odom_transform(self.map_to_odom_transform_mat, self.get_clock().now().to_msg()))
             self.publish_map_point_cloud()
+            # self.get_logger().info("Spinning...")
             rclpy.spin_once(self)
-            self.rate.sleep()
+            # self.rate.sleep()
+            time.sleep(0.2)
             # rate.sleep()
 
 def main():
@@ -1495,6 +1503,7 @@ def main():
                             help='Provide directory from which to load a map.')
         args, unknown = parser.parse_known_args()
         map_filename = args.load_map if args.load_map else None
+        rclpy.init()
         node = FunmapNode(map_filename)
         node.main()
         # rospy.spin()

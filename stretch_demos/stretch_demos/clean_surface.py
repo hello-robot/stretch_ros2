@@ -30,7 +30,7 @@ import argparse as ap
 
 import hello_helpers.hello_misc as hm
 # import stretch_funmap.navigate as nv
-import stretch_demos.utils.manipulation_planning as mp
+import stretch_funmap.manipulation_planning as mp
 
 
 # class CleanSurfaceNode(hm.HelloNode):

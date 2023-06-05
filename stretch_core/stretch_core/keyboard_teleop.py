@@ -351,7 +351,7 @@ class KeyboardTeleopNode(Node):
                 trajectory_goal.trajectory.joint_names = [joint_name]
                 trajectory_goal.trajectory.points = [point1, point2]
                 trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
-                self.get_logger().info("Sending goal...")
+                # self.get_logger().info("Sending goal...")
                 self.trajectory_client.send_goal_async(trajectory_goal)
 
     def main(self):
