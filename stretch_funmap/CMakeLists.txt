@@ -43,6 +43,7 @@ install(DIRECTORY stretch_funmap DESTINATION share/${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
   stretch_funmap/aruco_head_scan_action.py
+  stretch_funmap/reach_to_aruco.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
