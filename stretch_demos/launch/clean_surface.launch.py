@@ -53,22 +53,12 @@ def generate_launch_description():
             #    launch_arguments={'broadcast_odom_tf': 'True'}.items()
           )
 
-    stretch_driver_params = [
-        {'rate': 25.0,
-         'timeout': 0.5,
-         'controller_calibration_file': LaunchConfiguration('uncalibrated_controller_yaml_file'),
-         'fail_out_of_range_goal': False,
-         'broadcast_odom_tf': True
-         }
-    ]
-
-    stretch_driver = Node(package='stretch_core',
-                          executable='stretch_driver',
-                          emulate_tty=True,
-                          output='screen',
-                          remappings=[('cmd_vel', '/stretch/cmd_vel'),
-                                      ('joint_states', '/stretch/joint_states')],
-                          parameters=stretch_driver_params)
+    stretch_driver = IncludeLaunchDescription(
+          PythonLaunchDescriptionSource([os.path.join(
+               get_package_share_directory('stretch_core'), 'launch'),
+               '/stretch_driver.launch.py']),
+               launch_arguments={'broadcast_odom_tf': 'True'}.items()
+          )
 
     clean_surface_params = [
         {'clean_surface_on': True,

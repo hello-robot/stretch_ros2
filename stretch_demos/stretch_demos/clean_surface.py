@@ -41,6 +41,7 @@ class CleanSurfaceNode(Node):
         self.rate = 10.0
         self.joint_states = None
         self.joint_states_lock = threading.Lock()
+        self.point_cloud = None
         # self.move_base = nv.MoveBase(self)
         self.letter_height_m = 0.2
         self.wrist_position = None
@@ -48,6 +49,7 @@ class CleanSurfaceNode(Node):
         self.manipulation_view = None
         self.debug_directory = None
         self.tf2_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.transform_listener.TransformListener(self.tf2_buffer, self)
         self.log = self.get_logger()
         
     def joint_states_callback(self, joint_states):
@@ -58,14 +60,17 @@ class CleanSurfaceNode(Node):
         lift_position, lift_velocity, lift_effort = hm.get_lift_state(joint_states)
         self.lift_position = lift_position
 
+    def point_cloud_callback(self, point_cloud):
+        self.point_cloud = point_cloud
+
     # @staticmethod
     def move_to_pose(self, pose, _async=False, custom_contact_thresholds=False):
         joint_names = [key for key in pose]
         point = JointTrajectoryPoint()
-        point.time_from_start = Duration(0.0)
+        point.time_from_start = Duration(seconds=0.0).to_msg()
 
-        trajectory_goal = FollowJointTrajectory().Goal()
-        trajectory_goal.goal_time_tolerance = Duration(seconds=1.0)
+        trajectory_goal = FollowJointTrajectory.Goal()
+        trajectory_goal.goal_time_tolerance = Duration(seconds=1.0).to_msg()
         trajectory_goal.trajectory.joint_names = joint_names
         if not custom_contact_thresholds: 
             joint_positions = [pose[key] for key in joint_names]
@@ -81,7 +86,7 @@ class CleanSurfaceNode(Node):
             point.positions = joint_positions
             point.effort = joint_efforts
             trajectory_goal.trajectory.points = [point]
-        trajectory_goal.trajectory.header.stamp = self.get_clock().now()
+        trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
         self.trajectory_client.send_goal_async(trajectory_goal)
         # if not _async: 
         #     self.trajectory_client.wait_for_result()
@@ -109,6 +114,10 @@ class CleanSurfaceNode(Node):
             return False
 
     def look_at_surface(self):
+        lookup_time = Time(seconds=0) # return most recent transform
+        timeout_ros = Duration(seconds=10)
+
+        stamped_transform =  self.tf2_buffer.lookup_transform('odom', 'map', lookup_time, timeout_ros)
         self.manipulation_view = mp.ManipulationView(self.tf2_buffer, self.debug_directory)
         manip = self.manipulation_view
         manip.move_head(self.move_to_pose)
@@ -134,6 +143,7 @@ class CleanSurfaceNode(Node):
         
         self.look_at_surface()
         strokes, simple_plan, lift_to_surface_m = self.manipulation_view.get_surface_wiping_plan(self.tf2_buffer, tool_width_m, tool_length_m, step_size_m)
+        self.log.info("Plan:" + str(simple_plan))
 
         print('********* lift_to_surface_m = {0} **************'.format(lift_to_surface_m))
 
@@ -238,7 +248,9 @@ class CleanSurfaceNode(Node):
         self.log.info('Using the following directory for debugging files: {0}'.format(self.debug_directory))
 
         self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10)
-        
+
+        self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 10)
+
         self.trigger_clean_surface_service = self.create_service(Trigger,
                                                                 '/clean_surface/trigger_clean_surface',
                                                                 self.trigger_clean_surface_callback)

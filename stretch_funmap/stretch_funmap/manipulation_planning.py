@@ -2,6 +2,8 @@
 
 from __future__ import print_function
 
+import rclpy.logging
+
 import numpy as np
 import scipy.ndimage as nd
 import scipy.signal as si
@@ -245,7 +247,12 @@ class ManipulationView():
         # Convert the VOI to the map frame to handle mobile base changes
         new_frame_id = 'map'
         lookup_time = Time(seconds=0) # return most recent transform
-        timeout_ros = Duration(seconds=0.1)
+        timeout_ros = Duration(seconds=10)
+        
+        # self.logger = rclpy.logging.get_logger('manipulation_planning')
+
+        # self.logger.info(f"Fetching TF between target frame <{new_frame_id}> and source frame <{old_frame_id}>.")
+
         stamped_transform =  tf2_buffer.lookup_transform(new_frame_id, old_frame_id, lookup_time, timeout_ros)
         points_in_old_frame_to_new_frame_mat = rn.numpify(stamped_transform.transform)
         voi.change_frame(points_in_old_frame_to_new_frame_mat, new_frame_id)
@@ -683,6 +690,8 @@ class ManipulationView():
         strokes = None
         movements = None
         surface_height_m = None
+        simple_plan = None
+        lift_to_surface_m = None
         if self.updated:
             h = self.max_height_im
             h_image = h.image
@@ -871,7 +880,7 @@ class ManipulationView():
         only_xyz = False
         if only_xyz:
             xyz = rn.point_cloud2.get_xyz_points(point_cloud)
-            self.max_height_im.from_points_with_tf2(xyz, cloud_frame, tf2_buffer, cloud_time)
+            self.max_height_im.from_points_with_tf2(xyz, cloud_frame, tf2_buffer)
         else: 
             rgb_points = rn.point_cloud2.split_rgb_field(point_cloud)
             self.max_height_im.from_rgb_points_with_tf2(rgb_points, cloud_frame, tf2_buffer)
