@@ -17,8 +17,7 @@ def generate_launch_description():
             package='stretch_core',
             executable='keyboard_teleop',
             output='screen',
-            # arguments=['--clean_surface_on'],
-            prefix='xterm -e',
+            prefix='xterm -e'
             )
 
     return LaunchDescription([

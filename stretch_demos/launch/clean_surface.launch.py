@@ -57,7 +57,7 @@ def generate_launch_description():
         {'rate': 25.0,
          'timeout': 0.5,
          'controller_calibration_file': LaunchConfiguration('uncalibrated_controller_yaml_file'),
-         'fail_out_of_range_goal': 'False',
+         'fail_out_of_range_goal': False,
          'broadcast_odom_tf': True
          }
     ]
@@ -70,11 +70,16 @@ def generate_launch_description():
                                       ('joint_states', '/stretch/joint_states')],
                           parameters=stretch_driver_params)
 
+    clean_surface_params = [
+        {'clean_surface_on': True,
+        }
+    ]
+
     clean_surface = Node(
             package='stretch_demos',
             executable='clean_surface',
-            parameters=[],
             output='screen',
+            parameters=clean_surface_params
     )
 
     keyboard_teleop = Node(
