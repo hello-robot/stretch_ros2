@@ -19,13 +19,13 @@ from sensor_msgs.msg import JointState
 from sensor_msgs.msg import PointCloud2
 import hello_helpers.hello_misc as hm
 
-class ArucoHeadScan(hm.HelloNode):
+class ArucoHeadScanClass(hm.HelloNode):
     def __init__(self):
         rclpy.init()
         hm.HelloNode.__init__(self)
         hm.HelloNode.main(self, 'aruco_head_scan', 'aruco_head_scan', wait_for_first_pointcloud=True)
-        self.server = ActionServer(self, ArucoHeadScan, 'ArucoHeadScan', self.execute_cb)
-        self.aruco_marker_array = self.create_subscription(MarkerArray, 'aruco/marker_array', self.aruco_callback)
+        self.server = ActionServer(self, ArucoHeadScan, 'aruco_head_scan', self.execute_cb)
+        self.aruco_marker_array = self.create_subscription(MarkerArray, 'aruco/marker_array', self.aruco_callback, 10)
         self.aruco_id = 1000 # Placeholder value
         self.aruco_found = False
         self.markers = MarkerArray().markers
@@ -131,11 +131,9 @@ class ArucoHeadScan(hm.HelloNode):
 
     def main(self):
         self.tf2_buffer = tf2_ros.Buffer()
-        self.listener = tf2_ros.TransformListener(self.tf2_buffer)
-        self.tf2_broadcaster = tf2_ros.TransformBroadcaster()
+        self.listener = tf2_ros.TransformListener(self.tf2_buffer, self)
+        self.tf2_broadcaster = tf2_ros.TransformBroadcaster(self)
 
-        dock_pose = Pose()
-        predock_pose = Pose()
         while rclpy.ok():
             try:
                 self.aruco_tf.header.stamp = self.get_clock().now().to_msg()
@@ -147,7 +145,7 @@ class ArucoHeadScan(hm.HelloNode):
 
 def main():
     try:
-        node = ArucoHeadScan()
+        node = ArucoHeadScanClass()
         node.main()
         rclpy.spin(node)
     except KeyboardInterrupt:
