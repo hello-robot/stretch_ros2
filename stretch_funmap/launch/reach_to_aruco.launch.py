@@ -10,14 +10,10 @@ from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
-    stretch_core_path = get_package_share_directory('stretch_core')
+    stretch_funmap_path = get_package_share_directory('stretch_funmap')
 
-    stretch_driver_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([stretch_core_path, '/launch/stretch_driver.launch.py']),
-        launch_arguments={'mode': 'trajectory', 'broadcast_odom_tf': 'True'}.items())
-
-    d435i_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([stretch_core_path, '/launch/d435i_high_resolution.launch.py']))
+    stretch_funmap_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([stretch_funmap_path, '/launch/stretch_funmap.launch.py']))
     
     aruco_head_scan_server = Node(
         package='stretch_funmap',
@@ -33,8 +29,7 @@ def generate_launch_description():
     
 
     return LaunchDescription([
-        stretch_driver_launch,
-        d435i_launch,
+        stretch_funmap_launch,
         aruco_head_scan_server,
         reach_to_aruco,
     ])
