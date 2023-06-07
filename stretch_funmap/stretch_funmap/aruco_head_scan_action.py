@@ -49,8 +49,8 @@ class ArucoHeadScanClass(hm.HelloNode):
     def scan_and_detect(self, goal_handle):
         self.get_logger().info("Sending scan goal to head pan and tilt joints")
         self.aruco_tf = None
-        pan_angle = -3.69
-        
+        pan_angle = -3.14
+   
         markers = []
         scan_point = JointTrajectoryPoint()
         start_point = JointTrajectoryPoint()
@@ -73,15 +73,15 @@ class ArucoHeadScanClass(hm.HelloNode):
         self.feedback.pan_angle = pan_angle
         goal_handle.publish_feedback(self.feedback)
 
-        for pan_angle in np.arange(-3.69, 1.66, 0.7):
-            time.sleep(3.0)
+        for pan_angle in np.arange(-3.14, 1.39, 0.7):
+            time.sleep(5.0)
             for i in range(20):
                 if self.markers:
                     markers = self.markers
                     break
 
             self.get_logger().info("Markers found: {}".format(markers))
-            
+
             if markers != []:
                 for marker in markers:
                     if marker.id == self.aruco_id:
@@ -108,8 +108,8 @@ class ArucoHeadScanClass(hm.HelloNode):
                 self.trajectory_client.send_goal_async(trajectory_goal)
             else:
                 break
-        
-        time.sleep(2.0)    
+
+        time.sleep(2.0)
         self.result_cb(goal_handle)
 
     def result_cb(self, goal_handle):
