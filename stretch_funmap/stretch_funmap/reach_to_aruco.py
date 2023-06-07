@@ -7,12 +7,24 @@ from rclpy.node import Node
 from stretch_funmap.action import ArucoHeadScan
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
+from std_srvs.srv import Trigger
+
 class Reach2Aruco(Node):
     def __init__(self):
         super().__init__('head_scan_client')
         self._action_client = ActionClient(self, ArucoHeadScan, 'aruco_head_scan')
+        self._service_client = self.create_client(Trigger, 'switch_to_trajectory_mode')
+        while not self._service_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
+        self.req = Trigger.Request()
 
+    def switch_to_trajectory_mode(self):
+        self.future = self._service_client.call_async(self.req)
+        return self.future.result()
+    
     def send_head_scan_goal(self):
+        response = self.switch_to_trajectory_mode()
+
         goal_msg = ArucoHeadScan.Goal()
         
         goal_msg.aruco_id = 245
