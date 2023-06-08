@@ -36,16 +36,14 @@ def generate_launch_description():
     lidar_node = Node(
             package='sllidar_ros2',
             executable='sllidar_node',
-            name='sllidar_node',
             parameters=[set_configurable_parameters(configurable_parameters)],
             output='screen')
 
     laser_filters = Node(
             package='laser_filters',
             executable='scan_to_scan_filter_chain',
-            name='laser_filter',
-            parameters=[laser_filter_config]
-            )
+            parameters=[laser_filter_config],
+            output='screen')
 
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
         lidar_node,
