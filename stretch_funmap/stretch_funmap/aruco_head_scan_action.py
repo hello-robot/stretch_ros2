@@ -149,7 +149,6 @@ class ArucoHeadScanClass(hm.HelloNode):
 
         while rclpy.ok():
             try:
-                self.get_logger().info("To infinity and beyond")
                 self.aruco_tf.header.stamp = self.get_clock().now().to_msg()
                 self.tf2_broadcaster.sendTransform(self.aruco_tf)
             except AttributeError:
