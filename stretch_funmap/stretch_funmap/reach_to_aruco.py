@@ -28,7 +28,7 @@ class Reach2Aruco(Node):
         goal_msg = ArucoHeadScan.Goal()
         
         goal_msg.aruco_id = 245
-        goal_msg.tilt_angle = 0.0
+        goal_msg.tilt_angle = -0.85
         goal_msg.publish_to_map = True
         goal_msg.fill_in_blindspot_with_second_scan = False
         goal_msg.fast_scan = True
