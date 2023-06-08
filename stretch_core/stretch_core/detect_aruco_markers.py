@@ -628,7 +628,7 @@ class DetectArucoNode(Node):
 
         # Reading parameters from the stretch_marker_dict.yaml file and storing values
         # in a dictionary called marker_info
-        param_list = ['130', '131', '132', '133', '134', '246', '247', '248', '249', '10', '21', 'default']
+        param_list = ['130', '131', '132', '133', '134', '245', '246', '247', '248', '249', '10', '21', 'default']
         key_list = ['length_mm', 'use_rgb_only', 'name', 'link']
         dict = {}
         self.marker_info = {}
