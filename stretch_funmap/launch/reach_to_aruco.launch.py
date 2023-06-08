@@ -10,6 +10,7 @@ from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
+    stretch_core_path = get_package_share_directory('stretch_core')
     stretch_funmap_path = get_package_share_directory('stretch_funmap')
 
     stretch_funmap_launch = IncludeLaunchDescription(
@@ -21,15 +22,18 @@ def generate_launch_description():
         output='screen',
         )
     
+    aruco_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([stretch_core_path, '/launch/stretch_aruco.launch.py']))
+    
     reach_to_aruco = Node(
         package='stretch_funmap',
         executable='reach_to_aruco.py',
         output='screen',
         )
     
-
     return LaunchDescription([
         stretch_funmap_launch,
         aruco_head_scan_server,
+        aruco_launch,
         reach_to_aruco,
     ])
