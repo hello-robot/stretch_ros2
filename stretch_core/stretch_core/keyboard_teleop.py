@@ -104,7 +104,14 @@ class GetKeyboardCommands:
             trigger_request = Trigger.Request() 
             future = node.trigger_clean_surface_service.call_async(trigger_request)
             node.get_logger().info('trigger_result = {0}'.format(future))
-            future.add_done_callback(partial(self.done_callback))
+            # future.add_done_callback(partial(self.done_callback))
+
+        # Trigger grasp object demo
+        if ((c == '\\') or (c == '\"')) and self.grasp_object_on:
+            trigger_request = Trigger.Request() 
+            future = node.trigger_grasp_object_service.call_async(trigger_request)
+            node.get_logger().info('trigger_result = {0}'.format(future))
+            # future.add_done_callback(partial(self.done_callback))
 
         ####################################################
         ## BASIC KEYBOARD TELEOPERATION COMMANDS
@@ -190,10 +197,10 @@ class KeyboardTeleopNode(Node):
                                                 Parameter('hello_world', Parameter.Type.BOOL, False)).value
         self.open_drawer_on = self.get_parameter_or('open_drawer_on',
                                                 Parameter('open_drawer', Parameter.Type.BOOL, False)).value
-        self.clean_surface_on = self.get_parameter_or('~clean_surface_on',
-                                                Parameter('clean_surface', Parameter.Type.BOOL, True)).value
+        self.clean_surface_on = self.get_parameter_or('clean_surface_on',
+                                                Parameter('clean_surface', Parameter.Type.BOOL, False)).value
         self.grasp_object_on = self.get_parameter_or('grasp_object_on',
-                                                Parameter('grasp_object', Parameter.Type.BOOL, False)).value
+                                                Parameter('grasp_object', Parameter.Type.BOOL, True)).value
         self.deliver_object_on = self.get_parameter_or('deliver_object_on',
                                                 Parameter('deliver_object', Parameter.Type.BOOL, False)).value
 
@@ -313,8 +320,14 @@ class KeyboardTeleopNode(Node):
             self.trigger_clean_surface_service = self.create_client(Trigger,
                                                                     '/clean_surface/trigger_clean_surface')
             self.trigger_clean_surface_service.wait_for_service()
-            # rospy.wait_for_service('/clean_surface/trigger_clean_surface')
             self.get_logger().info('Node ' + self.get_name() + ' connected to /clean_surface/trigger_clean_surface.')
+
+        if self.grasp_object_on:
+            self.trigger_grasp_object_service = self.create_client(Trigger,
+                                                                    '/grasp_object/trigger_grasp_object')
+            self.get_logger().info("Waiting for /grasp_object/trigger_grasp_object' service")
+            self.trigger_grasp_object_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /grasp_object/trigger_grasp_object.')
         
         self.keys.print_commands()
         while rclpy.ok():

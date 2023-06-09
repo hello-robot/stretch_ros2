@@ -50,7 +50,6 @@ def generate_launch_description():
           PythonLaunchDescriptionSource([os.path.join(
                get_package_share_directory('stretch_description'), 'launch'),
                '/display.launch.py'])
-            #    launch_arguments={'broadcast_odom_tf': 'True'}.items()
           )
 
     stretch_driver = IncludeLaunchDescription(
@@ -61,7 +60,7 @@ def generate_launch_description():
           )
 
     keyboard_teleop_params = [
-        {'clean_surface_on': True,
+        {'grasp_object_on': True,
         }
     ]
 
@@ -78,10 +77,10 @@ def generate_launch_description():
             get_package_share_directory('stretch_funmap'), 'launch'),
             '/funmap.launch.py']),
         )
-    
-    clean_surface = Node(
+
+    grasp_object = Node(
             package='stretch_demos',
-            executable='clean_surface',
+            executable='grasp_object',
             output='screen',
     )
 
@@ -95,5 +94,5 @@ def generate_launch_description():
         # stretch_description,
         stretch_funmap,
         keyboard_teleop,
-        clean_surface
+        grasp_object
         ])

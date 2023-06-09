@@ -87,7 +87,7 @@ class CleanSurfaceNode(Node):
             point.effort = joint_efforts
             trajectory_goal.trajectory.points = [point]
         trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
-        self.trajectory_client.send_goal_async(trajectory_goal)
+        self.trajectory_client.send_goal(trajectory_goal)
         # if not _async: 
         #     self.trajectory_client.wait_for_result()
 
@@ -114,10 +114,6 @@ class CleanSurfaceNode(Node):
             return False
 
     def look_at_surface(self):
-        lookup_time = Time(seconds=0) # return most recent transform
-        timeout_ros = Duration(seconds=10)
-
-        stamped_transform =  self.tf2_buffer.lookup_transform('odom', 'map', lookup_time, timeout_ros)
         self.manipulation_view = mp.ManipulationView(self.tf2_buffer, self.debug_directory)
         manip = self.manipulation_view
         manip.move_head(self.move_to_pose)
@@ -173,20 +169,25 @@ class CleanSurfaceNode(Node):
                 self.log.info('Extend tool above surface.')
                 self.move_to_pose(pose)
 
-                lift_m = self.lift_position - (above_surface_m - 0.02)
-                lift_contact_effort = 20.0 #20.0 from funmap
-                extension_contact_effort = 40.0 #40.0 from funmap
-                pose = {'joint_lift': (lift_m, lift_contact_effort)}
-                self.move_to_pose(pose, custom_contact_thresholds=True)
+                use_old_code = False
+                if use_old_code: 
+                    self.lower_tool_until_contact()
+                else: 
+                    lift_m = self.lift_position - (above_surface_m - 0.02)
+                    lift_contact_effort = 33.7 #effort_pct #20.0 from funmap
+                    extension_contact_effort = 16.45 #effort_pct #40.0 from funmap
+                    pose = {'joint_lift': (lift_m, lift_contact_effort)}
+                    self.move_to_pose(pose, custom_contact_thresholds=True)
                     
-                use_correction = True
-                if use_correction:
-                    # raise due to drop down after contact detection
-                    time.sleep(0.2) # wait for new lift position
-                    lift_m = self.lift_position + 0.01 #0.015
-                    pose = {'joint_lift': lift_m}
-                    self.move_to_pose(pose)
-                    time.sleep(0.2) # wait for new lift position
+                    use_correction = True
+                    if use_correction:
+                        # raise due to drop down after contact detection
+                        #rospy.sleep(0.5) # wait for new lift position
+                        # rospy.sleep(0.2) # wait for new lift position
+                        lift_m = self.lift_position + 0.01 #0.015
+                        pose = {'joint_lift': lift_m}
+                        self.move_to_pose(pose)
+                        # rospy.sleep(0.2) # wait for new lift position
 
                 extension_m = start['end_wrist_extension_m']
                 #end_extension_m = initial_wrist_position + extension_m - (tool_length_m/2.0)
@@ -268,10 +269,8 @@ class CleanSurfaceNode(Node):
         self.log.info("Clean surface node is ready!")
 
 def main():
+    rclpy.init()
     try:
-        rclpy.init()
-        parser = ap.ArgumentParser(description='Clean Surface behavior for stretch.')
-        args, unknown = parser.parse_known_args()
         node = CleanSurfaceNode()
         node.main()
         rclpy.spin(node=node)

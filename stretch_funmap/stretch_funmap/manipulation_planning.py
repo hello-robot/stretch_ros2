@@ -215,9 +215,9 @@ class ManipulationView():
         # view.
         
         # How far to look ahead.
-        look_ahead_distance_m = 2.0
+        look_ahead_distance_m = 1.5
         # Robot's width plus a safety margin.
-        look_to_side_distance_m = 1.3
+        look_to_side_distance_m = 1
 
         m_per_pix = 0.006
         pixel_dtype = np.uint8 
@@ -249,7 +249,7 @@ class ManipulationView():
         lookup_time = Time(seconds=0) # return most recent transform
         timeout_ros = Duration(seconds=10)
         
-        # self.logger = rclpy.logging.get_logger('manipulation_planning')
+        self.logger = rclpy.logging.get_logger('stretch_funmap')
 
         # self.logger.info(f"Fetching TF between target frame <{new_frame_id}> and source frame <{old_frame_id}>.")
 
@@ -380,7 +380,10 @@ class ManipulationView():
     def get_grasp_target(self, tf2_buffer, max_object_planar_distance_m=1.0):
         grasp_target = sm.find_object_to_grasp(self.max_height_im, display_on=False)
         if grasp_target is None:
+            self.logger.error("No object found!")
             return None
+        
+        self.logger.info("Found a grasp target")
         
         h = self.max_height_im
         m_per_pix = h.m_per_pix
@@ -392,8 +395,8 @@ class ManipulationView():
             # Save the new scan to disk.
             dirname = self.debug_directory + 'get_grasp_target/'
             filename = 'grasp_target_' + hm.create_time_string() + '.png'
-            print('ManipulationView get_grasp_target : directory =', dirname)
-            print('ManipulationView get_grasp_target : filename =', filename)
+            self.logger.info(f'ManipulationView get_grasp_target : directory = {dirname}')
+            self.logger.info(f'ManipulationView get_grasp_target : filename = {filename}')
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
             cv2.imwrite(dirname + filename, rgb_image)
@@ -401,7 +404,7 @@ class ManipulationView():
         base_xy_pix = base_points_to_image_mat[:, 3][:2]
         grasp_xy_pix = grasp_target['location_xy_pix']
         object_planar_distance_m = m_per_pix * np.linalg.norm(base_xy_pix - grasp_xy_pix)
-        print('object_planar_distance_m =', object_planar_distance_m)
+        self.logger.info(f'object_planar_distance_m = {object_planar_distance_m}')
         if object_planar_distance_m >= max_object_planar_distance_m:
             return None
             

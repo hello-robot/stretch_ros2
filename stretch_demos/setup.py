@@ -26,7 +26,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'clean_surface = stretch_demos.clean_surface:main'
+            'clean_surface = stretch_demos.clean_surface:main',
+            'grasp_object = stretch_demos.grasp_object:main'
         ],
     },
 )

@@ -88,7 +88,7 @@ def find_object_to_grasp(height_image, display_on=False):
     # and other phenomena.
     kernel_width_pix = 5 #3
     iterations = 3 #5
-    kernel_radius_pix = (kernel_width_pix - 1) / 2
+    kernel_radius_pix = (kernel_width_pix - 1) // 2
     kernel = np.zeros((kernel_width_pix, kernel_width_pix), np.uint8)
     cv2.circle(kernel, (kernel_radius_pix, kernel_radius_pix), kernel_radius_pix, 255, -1)
     use_dilation = True
@@ -102,8 +102,8 @@ def find_object_to_grasp(height_image, display_on=False):
     # Process the candidate object points      
         
     # Treat connected components of candidate object points as objects. Fit ellipses to these segmented objects.
-    label_image, max_label_index = sk.measure.label(obstacles_on_surface, neighbors=8, background=0, return_num=True, connectivity=None)
-    region_properties = sk.measure.regionprops(label_image, intensity_image=None, cache=True, coordinates='xy')
+    label_image, max_label_index = sk.measure.label(obstacles_on_surface, background=0, return_num=True, connectivity=None)
+    region_properties = sk.measure.regionprops(label_image, intensity_image=None, cache=True)
     if display_on:
         rgb_image = height_image.rgb_image.copy()
         color_label_image = sk.color.label2rgb(label_image, image=rgb_image, colors=None, alpha=0.3, bg_label=0, bg_color=(0, 0, 0), image_alpha=1, kind='overlay')
@@ -256,11 +256,11 @@ def find_closest_flat_surface(height_image, robot_xy_pix, display_on=False):
     floor_id, floor_mask = find_floor(segment_info, segments_image, verbose=False)
     
     remove_floor = True
-    if remove_floor:
+    if remove_floor and floor_mask is not None:
         segments_image[floor_mask > 0] = 0
 
-    label_image, max_label_index = sk.measure.label(segments_image, neighbors=8, background=0, return_num=True, connectivity=None)
-    region_properties = sk.measure.regionprops(label_image, intensity_image=image, cache=True, coordinates='xy')
+    label_image, max_label_index = sk.measure.label(segments_image, background=0, return_num=True, connectivity=None)
+    region_properties = sk.measure.regionprops(label_image, intensity_image=image, cache=True)
     if display_on: 
         color_label_image = sk.color.label2rgb(label_image, image=image_rgb, colors=None, alpha=0.3, bg_label=0, bg_color=(0, 0, 0), image_alpha=1, kind='overlay')
 
@@ -693,7 +693,7 @@ def histogram_segment(segments_image, image,
         if max_value <= epsilon:
             if verbose:
                 print('zero encountered')
-            max_bin = (left_bin + right_bin) / 2
+            max_bin = (left_bin + right_bin) // 2
 
             # Find heights associated with the left of the min bin, the
             # right of the max bin, and center of the most heavily

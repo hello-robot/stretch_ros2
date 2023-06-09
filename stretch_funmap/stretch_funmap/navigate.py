@@ -216,19 +216,40 @@ class MoveBase():
         pose = {'joint_head_pan': 0.1, 'joint_head_tilt': -1.1}
         self.node.move_to_pose(pose)
 
-    def check_move_state(self, trajectory_client):
-        at_goal = False
-        unsuccessful_action = False
-        state = trajectory_client.get_state()
-        if state == GoalStatus.SUCCEEDED:
-            self.logger.info('Move succeeded!')
-            # wait for the motion to come to a complete stop
-            time.sleep(0.5)
-            at_goal = True
-        elif state in self.unsuccessful_status:
-            self.logger.info('Move action terminated without success (state = {0}).'.format(state))
-            unsuccessful_action = True
+    def check_move_state(self, result_future):
+        at_goal = None
+        unsuccessful_action = None
+        # state = trajectory_client.get_state()
+        # if state == GoalStatus.SUCCEEDED:
+        #     self.logger.info('Move succeeded!')
+        #     # wait for the motion to come to a complete stop
+        #     time.sleep(0.5)
+        #     at_goal = True
+        # elif state in self.unsuccessful_status:
+        #     self.logger.info('Move action terminated without success (state = {0}).'.format(state))
+        #     unsuccessful_action = True
+        # return at_goal, unsuccessful_action
+    
+        if result_future:
+                # task was cancelled or completed
+                at_goal = True
+                unsuccessful_action = False
+        elif self.result_future.result():
+                self.status = self.result_future.result().status
+                if self.status in [GoalStatus.SUCCEEDED, GoalStatus.ABORTED, GoalStatus.PREEMPTED]:
+                    self.logger.info("Check  move state: Succeeded!")
+                    at_goal = True
+                    unsuccessful_action = False
+                else:
+                    self.logger.error(f'Task with failed with status code: {self.status}')
+                    at_goal = False
+                    unsuccessful_action = True
+        else:
+            # Timed out, still processing, not complete yet
+            at_goal = False
+            unsuccessful_action = False
         return at_goal, unsuccessful_action
+    
     
     def local_plan(self, end_xyz, end_frame_id):
         self.local_planner.update(self.node.point_cloud, self.node.tf2_buffer)
@@ -252,7 +273,7 @@ class MoveBase():
         # correct before proceeding
         
         # obtain the initial position of the robot
-        xya, timestamp = self.node.get_robot_floor_pose_xya()
+        xya, timestamp = hm.get_robot_floor_pose_xya(self.node.tf2_buffer)
         start_position_m = xya[:2]
         start_angle_rad = xya[2]
         start_direction = np.array([np.cos(start_angle_rad), np.sin(start_angle_rad)])
@@ -273,6 +294,7 @@ class MoveBase():
         forward_distance_m = distance_m
 
         # Make at least one move if no obtacle was detected.
+        self.logger.info("###########################################TURN CALLED##################################################")
         while (not obstacle_detected) and (((forward_attempts <= 0) or
                                             ((forward_distance_m > tolerance_distance_m) and
                                              (forward_attempts < max_forward_attempts)))):
@@ -280,9 +302,10 @@ class MoveBase():
             trigger_request = Trigger.Request() 
 
             pose = {'translate_mobile_base': forward_distance_m}
-            self.node.move_to_pose(pose, return_before_done=True)
+            self.node.move_to_pose(pose)
 
             while (not at_goal) and (not obstacle_detected) and (not unsuccessful_action):
+                self.logger.info("Not at goal, checking again...")
                 if detect_obstacles: 
                     obstacle_detected = self.forward_obstacle_detector.detect(self.node.point_cloud, self.node.tf2_buffer)
                     if obstacle_detected:
@@ -294,7 +317,7 @@ class MoveBase():
                 at_goal, unsuccessful_action = self.check_move_state(self.node.trajectory_client)
 
             # obtain the new position of the robot
-            xya, timestamp = self.node.get_robot_floor_pose_xya()
+            xya, timestamp = hm.get_robot_floor_pose_xya(self.node.tf2_buffer)
             end_position_m = xya[:2]
             end_angle_rad = xya[2]
             end_direction = np.array([np.cos(end_angle_rad), np.sin(end_angle_rad)])
@@ -317,7 +340,7 @@ class MoveBase():
     
     def turn(self, angle_rad, publish_visualizations=True, tolerance_angle_rad=0.1, max_turn_attempts=6):
         # obtain the initial angle of the robot
-        xya, timestamp = self.node.get_robot_floor_pose_xya()
+        xya, timestamp = hm.get_robot_floor_pose_xya(self.node.tf2_buffer)
         start_angle_rad = xya[2]
         target_angle_rad = start_angle_rad + angle_rad
 
@@ -338,7 +361,7 @@ class MoveBase():
                 time.sleep(0.01)
 
             # obtain the new angle of the robot
-            xya, timestamp = self.node.get_robot_floor_pose_xya()
+            xya, timestamp = hm.get_robot_floor_pose_xya(self.node.tf2_buffer)
             end_angle_rad = xya[2]
 
             # Find the angle that the robot should turn in order
