@@ -5,6 +5,7 @@ import ros2_numpy as rn
 import stretch_funmap.ros_max_height_image as rm
 from actionlib_msgs.msg import GoalStatus
 import rclpy
+import rclpy.time
 from rclpy.clock import Clock
 from rclpy.duration import Duration
 import rclpy.logging
@@ -305,7 +306,6 @@ class HeadScan:
             
         self.max_height_im.print_info()
 
-        self.clock = Clock()
         self.logger = rclpy.logging.get_logger('stretch_funmap')
 
         
@@ -329,7 +329,6 @@ class HeadScan:
             time_between_point_clouds = time_between_point_clouds
         
         node.move_to_pose(pose)
-        duration = Duration(seconds=head_settle_time)
         time.sleep(head_settle_time)
         settle_time = self.clock.now()
         prev_cloud_time = None
@@ -340,12 +339,11 @@ class HeadScan:
         # needs time to mechanically settle in addition to sensor
         # timing considerations.
         not_finished = num_point_clouds < num_point_clouds_per_pan_ang
-        duration = Duration(seconds=time_between_point_clouds)
         while not_finished:
             cloud_time = node.point_cloud.header.stamp
             cloud_frame = node.point_cloud.header.frame_id
             point_cloud = rn.numpify(node.point_cloud)
-            if (cloud_time is not None) and (cloud_time != prev_cloud_time) and (cloud_time >= settle_time): 
+            if (cloud_time is not None) and (cloud_time != prev_cloud_time): 
                 only_xyz = False
                 if only_xyz:
                     xyz = rn.point_cloud2.get_xyz_points(point_cloud)
@@ -497,7 +495,7 @@ class HeadScan:
 
         head_scan.robot_xy_pix = np.array(data['robot_xy_pix'])
         head_scan.robot_ang_rad = data['robot_ang_rad']
-        # head_scan.timestamp = rospy.Time()
+        head_scan.timestamp = rclpy.time.Time(seconds=data['timestamp']['secs'], nanoseconds=data['timestamp']['nsecs'])
         # head_scan.timestamp.set(data['timestamp']['secs'], data['timestamp']['nsecs'])
         head_scan.base_link_to_image_mat = np.array(data['base_link_to_image_mat'])
         head_scan.base_link_to_map_mat = np.array(data['base_link_to_map_mat']) 

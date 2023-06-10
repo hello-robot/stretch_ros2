@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 
@@ -106,7 +106,7 @@ def detect_cliff(image, m_per_pix, m_per_height_unit, robot_xy_pix, display_text
     if use_dilation:
         kernel_width_pix = 3
         iterations = 1
-        kernel_radius_pix = (kernel_width_pix - 1) / 2
+        kernel_radius_pix = (kernel_width_pix - 1) // 2
         kernel = np.zeros((kernel_width_pix, kernel_width_pix), np.uint8)
         cv2.circle(kernel, (kernel_radius_pix, kernel_radius_pix), kernel_radius_pix, 255, -1)
         canny_edges = cv2.dilate(canny_edges, kernel, iterations=iterations)
@@ -209,15 +209,16 @@ def detect_cliff(image, m_per_pix, m_per_height_unit, robot_xy_pix, display_text
 class ManipulationView():
     def __init__(self, tf2_buffer, debug_directory=None):
         self.debug_directory = debug_directory
-        print('ManipulationView __init__: self.debug_directory =', self.debug_directory)
+        self.logger = rclpy.logging.get_logger('stretch_funmap')
+        self.logger.info('ManipulationView __init__: self.debug_directory =', self.debug_directory)
         
         # Define the volume of interest for planning using the current
         # view.
         
         # How far to look ahead.
-        look_ahead_distance_m = 1.5
+        look_ahead_distance_m = 2.0
         # Robot's width plus a safety margin.
-        look_to_side_distance_m = 1
+        look_to_side_distance_m = 1.3
 
         m_per_pix = 0.006
         pixel_dtype = np.uint8 
@@ -247,9 +248,7 @@ class ManipulationView():
         # Convert the VOI to the map frame to handle mobile base changes
         new_frame_id = 'map'
         lookup_time = Time(seconds=0) # return most recent transform
-        timeout_ros = Duration(seconds=10)
-        
-        self.logger = rclpy.logging.get_logger('stretch_funmap')
+        timeout_ros = Duration(seconds=0.1)
 
         # self.logger.info(f"Fetching TF between target frame <{new_frame_id}> and source frame <{old_frame_id}>.")
 
@@ -314,27 +313,27 @@ class ManipulationView():
         if use_dilation:
             kernel_width_pix = 3
             iterations = 1
-            kernel_radius_pix = (kernel_width_pix - 1) / 2
+            kernel_radius_pix = (kernel_width_pix - 1) // 2
             kernel = np.zeros((kernel_width_pix, kernel_width_pix), np.uint8)
             cv2.circle(kernel, (kernel_radius_pix, kernel_radius_pix), kernel_radius_pix, 255, -1)
             mask_image = cv2.dilate(mask_image, kernel, iterations=iterations)
 
-        print('*************************************')
-        print('start_xy = {0}'.format(start_xy))
-        print('end_xy = {0}'.format(end_xy))
-        print('*************************************')
+        self.logger.info('*************************************')
+        self.logger.info('start_xy = {0}'.format(start_xy))
+        self.logger.info('end_xy = {0}'.format(end_xy))
+        self.logger.info('*************************************')
             
         contact_found, (contact_x, contact_y) = numba_find_contact_along_line_path(start_xy, end_xy, mask_image)
         if contact_found:
-            print('ManipulationView estimate_reach_to_contact_distance : contact detected!')
+            self.logger.info('ManipulationView estimate_reach_to_contact_distance : contact detected!')
             contact_xy = np.array([contact_x, contact_y])
             reach_m = np.linalg.norm(contact_xy - start_xy) * m_per_pix
         else:
-            print('ManipulationView estimate_reach_to_contact_distance : WARNING - NO CONTACT DETECTED')
+            self.logger.info('ManipulationView estimate_reach_to_contact_distance : WARNING - NO CONTACT DETECTED')
             reach_m = None
 
-        print('ManipulationView estimate_reach_to_contact_distance : self.debug_directory =', self.debug_directory)
-        print('ManipulationView estimate_reach_to_contact_distance : save_debugging_image =', save_debugging_images)
+        self.logger.info('ManipulationView estimate_reach_to_contact_distance : self.debug_directory =', self.debug_directory)
+        self.logger.info('ManipulationView estimate_reach_to_contact_distance : save_debugging_image =', save_debugging_images)
         if save_debugging_images and (self.debug_directory is not None):
             dirname = self.debug_directory + 'estimate_reach_to_contact_distance/'
             # If the directory does not already exist, create it.
@@ -372,7 +371,7 @@ class ManipulationView():
             cv2.imwrite(dirname + filename, rgb_image)
 
         else:
-            print('ManipulationView estimate_reach_to_contact_distance: No debug directory provided, so debugging data will not be saved.')
+            self.logger.info('ManipulationView estimate_reach_to_contact_distance: No debug directory provided, so debugging data will not be saved.')
 
             
         return reach_m
@@ -565,8 +564,8 @@ class ManipulationView():
             # Save the new scan to disk.
             dirname = self.debug_directory + 'get_pregrasp_planar_translation/'
             filename = 'pregrasp_planar_translation_' + hm.create_time_string() + '.png'
-            print('ManipulationView get_pregrasp_planar_translation : directory =', dirname)
-            print('ManipulationView get_pregrasp_planar_translation : filename =', filename)
+            self.logger.info('ManipulationView get_pregrasp_planar_translation : directory =', dirname)
+            self.logger.info('ManipulationView get_pregrasp_planar_translation : filename =', filename)
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
             cv2.imwrite(dirname + filename, rgb_image)
@@ -677,8 +676,8 @@ class ManipulationView():
             # Save the new scan to disk.
             dirname = self.debug_directory + 'get_grasp_from_pregrasp/'
             filename = 'grasp_from_pregrasp_' + hm.create_time_string() + '.png'
-            print('ManipulationView get_grasp_from_pregrasp : directory =', dirname)
-            print('ManipulationView get_grasp_from_pregrasp : filename =', filename)
+            self.logger.info('ManipulationView get_grasp_from_pregrasp : directory =', dirname)
+            self.logger.info('ManipulationView get_grasp_from_pregrasp : filename =', filename)
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
             cv2.imwrite(dirname + filename, rgb_image)
@@ -834,13 +833,13 @@ class ManipulationView():
                     # Save the new scan to disk.
                     dirname = self.debug_directory + 'get_surface_wiping_plan/'
                     filename = 'surface_wiping_plan_' + hm.create_time_string() + '.png'
-                    print('ManipulationView get_surface_wiping_plan : directory =', dirname)
-                    print('ManipulationView get_surface_wiping_plan : filename =', filename)
+                    self.logger.info('ManipulationView get_surface_wiping_plan : directory =', dirname)
+                    self.logger.info('ManipulationView get_surface_wiping_plan : filename =', filename)
                     if not os.path.exists(dirname):
                         os.makedirs(dirname)
                     cv2.imwrite(dirname + filename, rgb_image)
             else:
-                print('No elevated surface found.')
+                self.logger.info('No elevated surface found.')
             
         return strokes, simple_plan, lift_to_surface_m
 
@@ -1023,7 +1022,8 @@ class ManipulationPlanner:
         self.planar_model = PlanarRobotModel()
         # Region around the target over which collisions are ignored
         self.target_safe_radius_m = 0.1 # ignore 10cm radius around the target when reaching
-        
+        self.logger = rclpy.logging.get_logger('stretch_funmap')
+
     def base_pose(self, max_height_image, target_xyz_pix, robot_xya_pix, image_display_on=False):
         
         robot_xy_pix = np.int64(np.round(robot_xya_pix[:2]))
@@ -1045,7 +1045,7 @@ class ManipulationPlanner:
 
         target_z_m = target_z * m_per_height_unit
         if target_z_m > self.planar_model.max_gripper_height_at_fingers_m:
-            print('Target is too high for the fingertips to reach, so planning to reach as high as possible.')
+            self.logger.info('Target is too high for the fingertips to reach, so planning to reach as high as possible.')
             target_z_m = self.planar_model.max_gripper_height_at_fingers_m
         target_z_pix = target_z_m / m_per_height_unit
 
@@ -1075,10 +1075,10 @@ class ManipulationPlanner:
         reach_width_m = self.planar_model.gripper_and_arm_width_m + (2.0 * self.planar_model.gripper_and_arm_width_safety_margin_m)
         reach_width_pix = pix_per_m * reach_width_m
         # distance to dilate objects
-        print('reach_width_pix =', reach_width_pix)
+        self.logger.info('reach_width_pix =', reach_width_pix)
         reach_half_width_pix = int(round(reach_width_pix / 2.0))
         kernel_width_pix = 1 + (2 * reach_half_width_pix)
-        print('kernel_width = ', kernel_width_pix)
+        self.logger.info('kernel_width = ', kernel_width_pix)
         kernel = np.zeros((kernel_width_pix, kernel_width_pix), np.uint8)
         cv2.circle(kernel, (reach_half_width_pix, reach_half_width_pix), reach_half_width_pix, 255, -1)
         dilated_finger_obstacle_image = cv2.dilate(finger_obstacle_image, kernel)
@@ -1118,10 +1118,10 @@ class ManipulationPlanner:
 
         num_angles = int(np.ceil(num_angles))
         
-        print('num_angles =', num_angles)
+        self.logger.info('num_angles =', num_angles)
         obstacle_image = dilated_finger_obstacle_image[:]
-        print('pix_per_m =', pix_per_m)
-        print('max_arm_travel_m =', self.planar_model.max_arm_travel_m)
+        self.logger.info('pix_per_m =', pix_per_m)
+        self.logger.info('max_arm_travel_m =', self.planar_model.max_arm_travel_m)
         start_distance_m = reach_width_m / 2.0
         # pixel directions when the base is at 0 degrees (forward motion
         # of the base is to the right of the image)
@@ -1194,11 +1194,11 @@ class ManipulationPlanner:
         arm_reach_m = m_per_pix * arm_reach_pix
         base_ang_deg = 180.0 * (base_ang / np.pi)
         if max_val <= 0.0:
-            print('No valid base pose candidate found.')
+            self.logger.info('No valid base pose candidate found.')
             found = False
         else: 
-            print('Best best pose found: ({0}, {1}, {2:.2f}) = (x, y, theta_deg)'.format(base_x, base_y, base_ang_deg))
-            print('     reach length = {0:.2f} m'.format(arm_reach_m))
+            self.logger.info('Best best pose found: ({0}, {1}, {2:.2f}) = (x, y, theta_deg)'.format(base_x, base_y, base_ang_deg))
+            self.logger.info('     reach length = {0:.2f} m'.format(arm_reach_m))
             found = True
         
         if image_display_on:
@@ -1219,7 +1219,7 @@ class ManipulationPlanner:
                 cv2.imshow('color height image', color_height_image)
                 base_ang_image_uint8 = np.uint8(255.0 * ((base_ang_image - np.min(base_ang_image)) / (np.max(base_ang_image) - np.min(base_ang_image))))
 
-            print('Finished. Now displaying and waiting for user input to terminate.')
+            self.logger.info('Finished. Now displaying and waiting for user input to terminate.')
 
         if not found:
             return None, None, None, None

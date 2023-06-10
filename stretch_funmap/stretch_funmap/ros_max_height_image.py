@@ -30,6 +30,7 @@ from scipy.spatial.transform import Rotation
 from copy import deepcopy
 
 from .max_height_image import *
+from . import navigation_planning as na
     
 class ROSVolumeOfInterest(VolumeOfInterest):
     def __init__(self, frame_id, origin, axes, x_in_m, y_in_m, z_in_m):
@@ -57,7 +58,7 @@ class ROSVolumeOfInterest(VolumeOfInterest):
         # frame.
         try:
             if lookup_time is None:
-                lookup_time = Time() # return most recent transform
+                lookup_time = Time(seconds=0) # return most recent transform
             if timeout_s is None:
                 timeout_ros = Duration(seconds=0.1)
             else:
@@ -76,7 +77,7 @@ class ROSVolumeOfInterest(VolumeOfInterest):
         marker = Marker()
         marker.type = marker.CUBE
         marker.action = marker.ADD
-        marker.lifetime = Duration(duration)
+        marker.lifetime = Duration(seconds=duration)
         marker.text = 'volume of interest'
 
         marker.header.frame_id = self.frame_id
@@ -93,7 +94,7 @@ class ROSVolumeOfInterest(VolumeOfInterest):
         marker.color.r = r
         marker.color.g = g
         marker.color.b = b
-        marker.color.a = 0.25 #0.33 #0.25 #0.5
+        marker.color.a = 0.25
 
         # find the middle of the volume of interest
         center_vec = np.array([self.x_in_m/2.0, self.y_in_m/2.0, self.z_in_m/2.0])
@@ -102,7 +103,7 @@ class ROSVolumeOfInterest(VolumeOfInterest):
         marker.pose.position.y = center[1]
         marker.pose.position.z = center[2]
 
-        q = Rotation.from_dcm(self.axes).as_quat()
+        q = Rotation.from_matrix(self.axes).as_quat()
         marker.pose.orientation.x = q[0]
         marker.pose.orientation.y = q[1]
         marker.pose.orientation.z = q[2]
@@ -155,7 +156,7 @@ class ROSMaxHeightImage(MaxHeightImage):
                 voi_to_image_mat[2, 3] = 1.0
                 voi_to_image_mat[2, 2] = 1.0 / self.m_per_height_unit
             else:
-                self.logger.error('ros_max_height_image.py : ERROR: unsupported image type used for max_height_image, dtype =', dtype)
+                self.logger.error('ros_max_height_image.py : ERROR: unsupported image type used for max_height_image, dtype = {0}'.format(dtype))
                 assert(False)
 
             points_to_image_mat = np.matmul(voi_to_image_mat, points_to_voi_mat)
@@ -185,7 +186,7 @@ class ROSMaxHeightImage(MaxHeightImage):
                 image_to_voi_mat[2, 3] = image_to_voi_mat[2,3] - self.m_per_height_unit
                 image_to_voi_mat[2, 2] = self.m_per_height_unit
             else:
-                self.logger.error('ros_max_height_image.py : ERROR: unsupported image type used for max_height_image, dtype =', dtype)
+                self.logger.error('ros_max_height_image.py : ERROR: unsupported image type used for max_height_image, dtype = {0}'.format(dtype))
                 assert(False)
 
             points_in_image_to_frame_id_mat = np.matmul(voi_to_points_mat, image_to_voi_mat)
@@ -219,23 +220,22 @@ class ROSMaxHeightImage(MaxHeightImage):
         p = np.matmul(image_to_point_mat, np.array([xyz_pix[0], xyz_pix[1], xyz_pix[2], 1.0]))[:3]
         return p
     
-    # These two methods are not required for stretch_demos so removing them
-    # def make_robot_footprint_unobserved(self, robot_x_pix, robot_y_pix, robot_ang_rad):
-    #     # replace robot points with unobserved points
-    #     na.draw_robot_footprint_rectangle(robot_x_pix, robot_y_pix, robot_ang_rad, self.m_per_pix, self.image, value=0)
-    #     if self.camera_depth_image is not None: 
-    #         na.draw_robot_footprint_rectangle(robot_x_pix, robot_y_pix, robot_ang_rad, self.m_per_pix, self.camera_depth_image, value=0)
-    #     if self.rgb_image is not None: 
-    #         na.draw_robot_footprint_rectangle(robot_x_pix, robot_y_pix, robot_ang_rad, self.m_per_pix, self.rgb_image, value=0)
+    def make_robot_footprint_unobserved(self, robot_x_pix, robot_y_pix, robot_ang_rad):
+        # replace robot points with unobserved points
+        na.draw_robot_footprint_rectangle(robot_x_pix, robot_y_pix, robot_ang_rad, self.m_per_pix, self.image, value=0)
+        if self.camera_depth_image is not None: 
+            na.draw_robot_footprint_rectangle(robot_x_pix, robot_y_pix, robot_ang_rad, self.m_per_pix, self.camera_depth_image, value=0)
+        if self.rgb_image is not None: 
+            na.draw_robot_footprint_rectangle(robot_x_pix, robot_y_pix, robot_ang_rad, self.m_per_pix, self.rgb_image, value=0)
 
 
-    # def make_robot_mast_blind_spot_unobserved(self, robot_x_pix, robot_y_pix, robot_ang_rad):
-    #     # replace mast blind spot wedge points with unobserved points
-    #     na.draw_robot_mast_blind_spot_wedge(robot_x_pix, robot_y_pix, robot_ang_rad, self.m_per_pix, self.image, value=0)
-    #     if self.camera_depth_image is not None: 
-    #         na.draw_robot_mast_blind_spot_wedge(robot_x_pix, robot_y_pix, robot_ang_rad, self.m_per_pix, self.camera_depth_image, value=0)
-    #     if self.rgb_image is not None: 
-    #         na.draw_robot_mast_blind_spot_wedge(robot_x_pix, robot_y_pix, robot_ang_rad, self.m_per_pix, self.rgb_image, value=0)
+    def make_robot_mast_blind_spot_unobserved(self, robot_x_pix, robot_y_pix, robot_ang_rad):
+        # replace mast blind spot wedge points with unobserved points
+        na.draw_robot_mast_blind_spot_wedge(robot_x_pix, robot_y_pix, robot_ang_rad, self.m_per_pix, self.image, value=0)
+        if self.camera_depth_image is not None: 
+            na.draw_robot_mast_blind_spot_wedge(robot_x_pix, robot_y_pix, robot_ang_rad, self.m_per_pix, self.camera_depth_image, value=0)
+        if self.rgb_image is not None: 
+            na.draw_robot_mast_blind_spot_wedge(robot_x_pix, robot_y_pix, robot_ang_rad, self.m_per_pix, self.rgb_image, value=0)
     
     def from_points_with_tf2(self, points, points_frame_id, tf2_buffer, points_timestamp=None, timeout_s=None):
         # points should be a numpy array with shape = (N, 3) where N
@@ -243,16 +243,21 @@ class ROSMaxHeightImage(MaxHeightImage):
         # points = np.array([[x1,y1,z1], [x2,y2,z2]...]). The points
         # should be specified with respect to the coordinate system
         # defined by points_frame_id.
-
-        if points_timestamp != None:
-            points_timestamp = Time.from_msg(points_timestamp)
-        points_to_voi_mat, _ = self.voi.get_points_to_voi_matrix_with_tf2(points_frame_id, tf2_buffer, lookup_time=points_timestamp, timeout_s=timeout_s)
+        
+        points_to_voi_mat, timestamp = self.voi.get_points_to_voi_matrix_with_tf2(points_frame_id, tf2_buffer, lookup_time=points_timestamp, timeout_s=timeout_s)
 
         if points_to_voi_mat is not None: 
             self.from_points(points_to_voi_mat, points)
-            self.last_update_time = points_timestamp
+
+            if points_timestamp is None:
+                if timestamp is None: 
+                    self.last_update_time = Time().to_msg()
+                else:
+                    self.last_update_time = timestamp
+            else:
+                self.last_update_time = points_timestamp
         else:
-            self.logger.warn('WARNING: MaxHeightImage from_points failed to update the image likely due to a failure to lookup the transform using TF2')
+            self.logger.warn('ROSMaxHeightImage.from_points_with_tf2: failed to update the image likely due to a failure to lookup the transform using TF2. points_frame_id = {0}, points_timestamp = {1}, timeout_s = {2}'.format(points_frame_id, points_timestamp, timeout_s))
 
     def from_rgb_points_with_tf2(self, rgb_points, points_frame_id, tf2_buffer, points_timestamp=None, timeout_s=None):
         # points should be a numpy array with shape = (N, 3) where N
@@ -261,15 +266,20 @@ class ROSMaxHeightImage(MaxHeightImage):
         # should be specified with respect to the coordinate system
         # defined by points_frame_id.
 
-        if points_timestamp != None:
-            points_timestamp = Time.from_msg(points_timestamp)
         points_to_voi_mat, timestamp = self.voi.get_points_to_voi_matrix_with_tf2(points_frame_id, tf2_buffer, lookup_time=points_timestamp, timeout_s=timeout_s)
 
         if points_to_voi_mat is not None: 
             self.from_rgb_points(points_to_voi_mat, rgb_points)
-            self.last_update_time = points_timestamp
+
+            if points_timestamp is None:
+                if timestamp is None: 
+                    self.last_update_time = Time(seconds=0)
+                else:
+                    self.last_update_time = timestamp
+            else:
+                self.last_update_time = points_timestamp
         else:
-            self.logger.warn('WARNING: MaxHeightImage from_points failed to update the image likely due to a failure to lookup the transform using TF2')
+            self.logger.warn('ROSMaxHeightImage.from_rgb_points_with_tf2: failed to update the image likely due to a failure to lookup the transform using TF2. points_frame_id = {0}, points_timestamp = {1}, timeout_s = {2}'.format(points_frame_id, points_timestamp, timeout_s))
 
             
     def to_point_cloud(self, color_map=None):

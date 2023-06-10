@@ -77,7 +77,7 @@ class GraspObjectNode(Node):
         self.logger.info('Move to the initial configuration for drawer opening.')
         self.move_to_pose(initial_pose)
 
-    def move_to_pose(self, pose, _async=False, custom_contact_thresholds=False):
+    def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
         joint_names = [key for key in pose]
         point = JointTrajectoryPoint()
         point.time_from_start = Duration(seconds=0.0).to_msg()
@@ -102,8 +102,8 @@ class GraspObjectNode(Node):
         trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
         future = self.trajectory_client.send_goal_async(trajectory_goal)
         
-        if _async:
-            rclpy.spin_until_future_complete(self.trajectory_client, future)
+        if not return_before_done:
+            rclpy.spin_until_future_complete(self, future)
 
     def look_at_surface(self, scan_time_s=None):
         self.manipulation_view = mp.ManipulationView(self.tf2_buffer, self.debug_directory)
@@ -155,121 +155,123 @@ class GraspObjectNode(Node):
         
         grasp_target = self.manipulation_view.get_grasp_target(self.tf2_buffer)
 
+        if grasp_target is None:
+            self.logger.error('Failed to find grasp target!')
+            return Trigger.Response(
+                success=False,
+                message='Failed to find grasp target'
+            )
+
         self.logger.info(f"Got grasp target as {grasp_target}")
+
+        pregrasp_lift_m = self.manipulation_view.get_pregrasp_lift(grasp_target, self.tf2_buffer)
+
+        if (self.lift_position is None):
+            return Trigger.Response(
+                success=False,
+                message='Lift position unavailable'
+            )
         
-        if grasp_target is not None: 
-            pregrasp_lift_m = self.manipulation_view.get_pregrasp_lift(grasp_target, self.tf2_buffer)
+        if actually_move:
+            self.logger.info('Raise tool to pregrasp height.')
+            lift_to_pregrasp_m = max(self.lift_position + pregrasp_lift_m, 0.1)
+            lift_to_pregrasp_m = min(lift_to_pregrasp_m, max_lift_m)
+            pose = {'joint_lift': lift_to_pregrasp_m}
+            self.move_to_pose(pose)
+            time.sleep(5)
+        
+        pregrasp_yaw = self.manipulation_view.get_pregrasp_yaw(grasp_target, self.tf2_buffer)
+        self.logger.info('pregrasp_yaw = {0:.2f} rad'.format(pregrasp_yaw))
+        self.logger.info('pregrasp_yaw = {0:.2f} deg'.format(pregrasp_yaw * (180.0/np.pi)))
 
-            if (self.lift_position is None):
-                return Trigger.Response(
-                    success=False,
-                    message='lift position unavailable'
-                )
-
-            if actually_move:
-                self.logger.info('Raise tool to pregrasp height.')
-                lift_to_pregrasp_m = max(self.lift_position + pregrasp_lift_m, 0.1)
-                lift_to_pregrasp_m = min(lift_to_pregrasp_m, max_lift_m)
-                pose = {'joint_lift': lift_to_pregrasp_m}
-                self.move_to_pose(pose)
-                time.sleep(5)
-
-            pregrasp_yaw = self.manipulation_view.get_pregrasp_yaw(grasp_target, self.tf2_buffer)
-            self.logger.info('pregrasp_yaw = {0:.2f} rad'.format(pregrasp_yaw))
-            self.logger.info('pregrasp_yaw = {0:.2f} deg'.format(pregrasp_yaw * (180.0/np.pi)))
-
-            if actually_move:
-                self.logger.info('Rotate the gripper for grasping.')
-                pose = {'joint_wrist_yaw': pregrasp_yaw}
-                self.move_to_pose(pose)
-                time.sleep(5)
-                
-                self.logger.info('Open the gripper.')
-                pose = {'gripper_aperture': 0.125}
-                self.move_to_pose(pose)
-                time.sleep(5)
-
-            pregrasp_mobile_base_m, pregrasp_wrist_extension_m = self.manipulation_view.get_pregrasp_planar_translation(grasp_target, self.tf2_buffer)
+        if actually_move:
+            self.logger.info('Rotate the gripper for grasping.')
+            pose = {'joint_wrist_yaw': pregrasp_yaw}
+            self.move_to_pose(pose)
+            time.sleep(5)
             
-            self.logger.info('pregrasp_mobile_base_m = {0:.3f} m'.format(pregrasp_mobile_base_m))
-            self.logger.info('pregrasp_wrist_extension_m = {0:.3f} m'.format(pregrasp_wrist_extension_m))
+            self.logger.info('Open the gripper.')
+            pose = {'gripper_aperture': 0.125}
+            self.move_to_pose(pose)
+            time.sleep(5)
 
-            if actually_move:
-                self.logger.info('Drive to pregrasp location.')
-                self.drive(pregrasp_mobile_base_m)
-                time.sleep(5)
+        pregrasp_mobile_base_m, pregrasp_wrist_extension_m = self.manipulation_view.get_pregrasp_planar_translation(grasp_target, self.tf2_buffer)
 
-                if pregrasp_wrist_extension_m > 0.0:
-                    extension_m = max(self.wrist_position + pregrasp_wrist_extension_m, min_extension_m)
-                    extension_m = min(extension_m, max_extension_m)
-                    self.logger.info('Extend tool above surface.')
-                    pose = {'wrist_extension': extension_m} 
-                    self.move_to_pose(pose)
-                    time.sleep(5)
-                else:
-                    self.logger.info('negative wrist extension for pregrasp, so not extending or retracting.')
+        self.logger.info('pregrasp_mobile_base_m = {0:.3f} m'.format(pregrasp_mobile_base_m))
+        self.logger.info('pregrasp_wrist_extension_m = {0:.3f} m'.format(pregrasp_wrist_extension_m))
 
-            grasp_mobile_base_m, grasp_lift_m, grasp_wrist_extension_m = self.manipulation_view.get_grasp_from_pregrasp(grasp_target, self.tf2_buffer)
-            self.logger.info('grasp_mobile_base_m = {0:3f} m, grasp_lift_m = {1:3f} m, grasp_wrist_extension_m = {2:3f} m'.format(grasp_mobile_base_m, grasp_lift_m, grasp_wrist_extension_m))
+        if actually_move:
+            self.logger.info('Drive to pregrasp location.')
+            self.drive(pregrasp_mobile_base_m)
 
-            if actually_move: 
-                self.logger.info('Move the grasp pose from the pregrasp pose.')
-
-                lift_m = max(self.lift_position + grasp_lift_m, 0.1)
-                lift_m = min(lift_m, max_lift_m)
-                
-                extension_m = max(self.wrist_position + grasp_wrist_extension_m, min_extension_m)
+            if pregrasp_wrist_extension_m > 0.0:
+                extension_m = max(self.wrist_position + pregrasp_wrist_extension_m, min_extension_m)
                 extension_m = min(extension_m, max_extension_m)
-                
-                pose = {'translate_mobile_base': grasp_mobile_base_m,
-                        'joint_lift': lift_m,  
-                        'wrist_extension': extension_m}
+                self.logger.info('Extend tool above surface.')
+                pose = {'wrist_extension': extension_m}
                 self.move_to_pose(pose)
                 time.sleep(5)
+            else:
+                self.logger.info('negative wrist extension for pregrasp, so not extending or retracting.')
 
-                self.logger.info('Attempt to close the gripper on the object.')
-                gripper_aperture_m = grasp_target['width_m'] - 0.18
-                pose = {'gripper_aperture': gripper_aperture_m}
-                self.move_to_pose(pose)
-                time.sleep(5)
-                
-                # Lifting appears to happen before the gripper has
-                # finished unless there is this sleep. Need to look
-                # into this issue.
-                time.sleep(3.0)
+        grasp_mobile_base_m, grasp_lift_m, grasp_wrist_extension_m = self.manipulation_view.get_grasp_from_pregrasp(grasp_target, self.tf2_buffer)
+        self.logger.info('grasp_mobile_base_m = {0:3f} m, grasp_lift_m = {1:3f} m, grasp_wrist_extension_m = {2:3f} m'.format(grasp_mobile_base_m, grasp_lift_m, grasp_wrist_extension_m))
 
-                self.logger.info('Attempt to lift the object.')
-                object_lift_height_m = 0.1
+        if actually_move:
+            self.logger.info('Move the grasp pose from the pregrasp pose.')
 
-                lift_m = max(self.lift_position + object_lift_height_m, 0.2)
-                lift_m = min(lift_m, max_lift_m)
-                
-                pose = {'joint_lift': lift_m}
-                self.move_to_pose(pose)
-                time.sleep(5)
+            lift_m = max(self.lift_position + grasp_lift_m, 0.1)
+            lift_m = min(lift_m, max_lift_m)
 
-                self.logger.info('Open the gripper a little to avoid overtorquing and overheating the gripper motor.')
-                pose = {'gripper_aperture': gripper_aperture_m + 0.005}
-                self.move_to_pose(pose)
-                time.sleep(5)
+            extension_m = max(self.wrist_position + grasp_wrist_extension_m, min_extension_m)
+            extension_m = min(extension_m, max_extension_m)
 
+            pose = {'translate_mobile_base': grasp_mobile_base_m,
+                    'joint_lift': lift_m,
+                    'wrist_extension': extension_m}
+            self.move_to_pose(pose)
+            time.sleep(5)
 
-            if actually_move:
-                self.logger.info('Retract the tool.')
-                pose = {'wrist_extension': 0.01}
-                self.move_to_pose(pose)
-                time.sleep(5)
+            self.logger.info('Attempt to close the gripper on the object.')
+            gripper_aperture_m = grasp_target['width_m'] - 0.18
+            pose = {'gripper_aperture': gripper_aperture_m}
+            self.move_to_pose(pose)
 
-                self.logger.info('Reorient the wrist.')
-                pose = {'joint_wrist_yaw': 0.0}
-                self.move_to_pose(pose)
-                time.sleep(5)
+            # Lifting appears to happen before the gripper has
+            # finished unless there is this sleep. Need to look
+            # into this issue.
+            time.sleep(5.0)
+
+            self.logger.info('Attempt to lift the object.')
+            object_lift_height_m = 0.1
+
+            lift_m = max(self.lift_position + object_lift_height_m, 0.2)
+            lift_m = min(lift_m, max_lift_m)
+
+            pose = {'joint_lift': lift_m}
+            self.move_to_pose(pose)
+            time.sleep(5)
+
+            self.logger.info('Open the gripper a little to avoid overtorquing and overheating the gripper motor.')
+            pose = {'gripper_aperture': gripper_aperture_m + 0.005}
+            self.move_to_pose(pose)
+            time.sleep(5)
+        
+        if actually_move:
+            self.logger.info('Retract the tool.')
+            pose = {'wrist_extension': 0.01}
+            self.move_to_pose(pose)
+            time.sleep(5)
+
+            self.logger.info('Reorient the wrist.')
+            pose = {'joint_wrist_yaw': 0.0}
+            self.move_to_pose(pose)
+            time.sleep(5)
 
         return Trigger.Response(
             success=True,
             message='Completed object grasp!'
-            )
-
+        )
     
     def main(self):
         # hm.HelloNode.main(self, 'grasp_object', 'grasp_object', wait_for_first_pointcloud=False)

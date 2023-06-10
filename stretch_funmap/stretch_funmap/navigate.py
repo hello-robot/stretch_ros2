@@ -11,7 +11,8 @@ from actionlib_msgs.msg import GoalStatus
 import rclpy
 from rclpy.duration import Duration
 from rclpy.clock import Clock, ClockType
-from rclpy import logging
+import rclpy.logging
+import rclpy.task
 from std_srvs.srv import Trigger
 import hello_helpers.hello_misc as hm
 
@@ -41,6 +42,7 @@ class ForwardMotionObstacleDetector():
         pixel_dtype = np.uint8
         self.max_height_im = rm.ROSMaxHeightImage(self.voi, m_per_pix, pixel_dtype)
         self.max_height_im.print_info()
+        self.logger = rclpy.logging.get_logger('stretch_funmap')
 
     def detect(self, point_cloud_msg, tf2_buffer):
         return (self.count_obstacle_pixels(point_cloud_msg, tf2_buffer) > self.obstacle_pixel_thresh)
@@ -59,7 +61,7 @@ class ForwardMotionObstacleDetector():
             self.max_height_im.from_rgb_points_with_tf2(rgb_points, cloud_frame, tf2_buffer)
         obstacle_im = self.max_height_im.image == 0
         num_obstacle_pix = np.sum(obstacle_im)
-        print('num_obstacle_pix =', num_obstacle_pix)
+        self.logger.info('num_obstacle_pix =', num_obstacle_pix)
         return num_obstacle_pix
 
     def publish_visualizations(self, voi_marker_pub, point_cloud_pub):
@@ -71,9 +73,10 @@ class ForwardMotionObstacleDetector():
 
 class FastSingleViewPlanner():
     def __init__(self, debug_directory=None):
+        self.logger = rclpy.logging.get_logger('stretch_funmap')
         if debug_directory is not None: 
             self.debug_directory = debug_directory + 'fast_single_view_planner/'
-            print('MoveBase __init__: self.debug_directory =', self.debug_directory)
+            self.logger.info('MoveBase __init__: self.debug_directory =', self.debug_directory)
         else:
             self.debug_directory = debug_directory
         
@@ -103,8 +106,6 @@ class FastSingleViewPlanner():
         self.max_height_im.print_info()
         self.updated = False
 
-        self.logger = logging.get_logger('stretch_funmap')
-
     def check_line_path(self, end_xyz, end_frame_id, tf2_buffer, floor_mask=None):
         if self.updated: 
             robot_xy_pix, robot_ang_rad, timestamp = self.max_height_im.get_robot_pose_in_image(tf2_buffer)        
@@ -116,8 +117,8 @@ class FastSingleViewPlanner():
                 # Save the new scan to disk.
                 dirname = self.debug_directory + 'check_line_path/'
                 filename = 'check_line_path_' + hm.create_time_string()
-                print('FastSingleViewPlanner check_line_path : directory =', dirname)
-                print('FastSingleViewPlanner check_line_path : filename =', filename)
+                self.logger.info('FastSingleViewPlanner check_line_path : directory =', dirname)
+                self.logger.info('FastSingleViewPlanner check_line_path : filename =', filename)
                 if not os.path.exists(dirname):
                     os.makedirs(dirname)
                 self.max_height_im.save(dirname + filename)
@@ -126,7 +127,7 @@ class FastSingleViewPlanner():
                 radius = 20
                 color = 255
                 cv2.circle(im, tuple(rpix[:2]), radius, color, 2)
-                rclpy.get('end_xy_pix = {0}'.format(end_xy_pix))
+                self.logger.info('end_xy_pix = {0}'.format(end_xy_pix))
                 epix = np.int64(np.round(end_xy_pix))
                 cv2.circle(im, tuple(epix), radius, color, 2)
                 cv2.imwrite(dirname + filename + '_with_start_and_end.png', im)
@@ -147,8 +148,8 @@ class FastSingleViewPlanner():
                 # Save the new scan to disk.
                 dirname = self.debug_directory + 'plan_a_path/'
                 filename = 'plan_a_path_' + hm.create_time_string()
-                print('FastSingleViewPlanner plan_a_path : directory =', dirname)
-                print('FastSingleViewPlanner plan_a_path : filename =', filename)
+                self.logger.info('FastSingleViewPlanner plan_a_path : directory =', dirname)
+                self.logger.info('FastSingleViewPlanner plan_a_path : filename =', filename)
                 if not os.path.exists(dirname):
                     os.makedirs(dirname)
                 self.save_scan(dirname + filename)
@@ -200,15 +201,14 @@ class FastSingleViewPlanner():
 
 class MoveBase():
     def __init__(self, node, debug_directory=None):
+        self.logger = rclpy.logging.get_logger('stretch_funmap')
         self.debug_directory = debug_directory
-        print('MoveBase __init__: self.debug_directory =', self.debug_directory)
+        self.logger.info('MoveBase __init__: self.debug_directory =', self.debug_directory)
  
         self.forward_obstacle_detector = ForwardMotionObstacleDetector()
         self.local_planner = FastSingleViewPlanner()
         self.node = node
         self.unsuccessful_status = [GoalStatus.PREEMPTED, GoalStatus.ABORTED, GoalStatus.REJECTED, GoalStatus.RECALLED, GoalStatus.LOST]  
-        self.logger = logging.get_logger('stretch_funmap')
-        self.clock = Clock()
 
     def head_to_forward_motion_pose(self):
         # Move head to navigation pose.
@@ -216,40 +216,18 @@ class MoveBase():
         pose = {'joint_head_pan': 0.1, 'joint_head_tilt': -1.1}
         self.node.move_to_pose(pose)
 
-    def check_move_state(self, result_future):
-        at_goal = None
-        unsuccessful_action = None
-        # state = trajectory_client.get_state()
-        # if state == GoalStatus.SUCCEEDED:
-        #     self.logger.info('Move succeeded!')
-        #     # wait for the motion to come to a complete stop
-        #     time.sleep(0.5)
-        #     at_goal = True
-        # elif state in self.unsuccessful_status:
-        #     self.logger.info('Move action terminated without success (state = {0}).'.format(state))
-        #     unsuccessful_action = True
-        # return at_goal, unsuccessful_action
-    
-        if result_future:
-                # task was cancelled or completed
-                at_goal = True
-                unsuccessful_action = False
-        elif self.result_future.result():
-                self.status = self.result_future.result().status
-                if self.status in [GoalStatus.SUCCEEDED, GoalStatus.ABORTED, GoalStatus.PREEMPTED]:
-                    self.logger.info("Check  move state: Succeeded!")
-                    at_goal = True
-                    unsuccessful_action = False
-                else:
-                    self.logger.error(f'Task with failed with status code: {self.status}')
-                    at_goal = False
-                    unsuccessful_action = True
-        else:
-            # Timed out, still processing, not complete yet
-            at_goal = False
-            unsuccessful_action = False
+    def check_move_state(self, result_future: rclpy.task.Future):
+        at_goal = False
+        unsuccessful_action = False
+        if result_future.done():
+            self.logger.info('Move succeeded!')
+            # wait for the motion to come to a complete stop
+            time.sleep(0.5)
+            at_goal = True
+        elif result_future.cancelled() or result_future.exception():
+            self.logger.info('Move action terminated without success.')
+            unsuccessful_action = True
         return at_goal, unsuccessful_action
-    
     
     def local_plan(self, end_xyz, end_frame_id):
         self.local_planner.update(self.node.point_cloud, self.node.tf2_buffer)
@@ -302,7 +280,7 @@ class MoveBase():
             trigger_request = Trigger.Request() 
 
             pose = {'translate_mobile_base': forward_distance_m}
-            self.node.move_to_pose(pose)
+            self.node.move_to_pose(pose, return_before_done=True)
 
             while (not at_goal) and (not obstacle_detected) and (not unsuccessful_action):
                 self.logger.info("Not at goal, checking again...")
