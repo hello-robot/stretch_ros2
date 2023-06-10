@@ -384,18 +384,18 @@ class ArucoMarker:
     def broadcast_tf(self, tf_broadcaster, force_redundant=False):
         # Create TF frame for the marker. By default, only broadcast a
         # single time after an update.
-        transform_stamped = TransformStamped()
-        transform_stamped.header.stamp = self.timestamp
-        transform_stamped.header.frame_id = self.frame_id
-        transform_stamped.child_frame_id = self.marker.text
-        transform_stamped.transform.translation.x = self.marker_position[0]
-        transform_stamped.transform.translation.y = self.marker_position[1]
-        transform_stamped.transform.translation.z = self.marker_position[2]
-        transform_stamped.transform.rotation.x = self.marker_quaternion[0]
-        transform_stamped.transform.rotation.y = self.marker_quaternion[1]
-        transform_stamped.transform.rotation.z = self.marker_quaternion[2]
-        transform_stamped.transform.rotation.w = self.marker_quaternion[3]
         if (not self.broadcasted) or force_redundant: 
+            transform_stamped = TransformStamped()
+            transform_stamped.header.stamp = self.timestamp
+            transform_stamped.header.frame_id = self.frame_id
+            transform_stamped.child_frame_id = self.marker.text
+            transform_stamped.transform.translation.x = self.marker_position[0]
+            transform_stamped.transform.translation.y = self.marker_position[1]
+            transform_stamped.transform.translation.z = self.marker_position[2]
+            transform_stamped.transform.rotation.x = self.marker_quaternion[0]
+            transform_stamped.transform.rotation.y = self.marker_quaternion[1]
+            transform_stamped.transform.rotation.z = self.marker_quaternion[2]
+            transform_stamped.transform.rotation.w = self.marker_quaternion[3]
             tf_broadcaster.sendTransform(transform_stamped)
             self.broadcasted = True
         
@@ -533,7 +533,7 @@ class ArucoMarkerCollection:
         
         self.marker_info = marker_info
         self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
-        self.aruco_detection_parameters =  aruco.DetectorParameters()
+        self.aruco_detection_parameters = aruco.DetectorParameters()
         # Apparently available in OpenCV 3.4.1, but not OpenCV 3.2.0.
         self.aruco_detection_parameters.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
         self.aruco_detection_parameters.cornerRefinementWinSize = 2
