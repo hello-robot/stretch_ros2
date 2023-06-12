@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import cv2
+from functools import partial
 import numpy as np
 import os
 import time
@@ -203,12 +204,14 @@ class MoveBase():
     def __init__(self, node, debug_directory=None):
         self.logger = rclpy.logging.get_logger('stretch_funmap')
         self.debug_directory = debug_directory
-        self.logger.info('MoveBase __init__: self.debug_directory =', self.debug_directory)
+        self.logger.info(f"MoveBase __init__: self.debug_directory = {str(self.debug_directory)}")
  
         self.forward_obstacle_detector = ForwardMotionObstacleDetector()
         self.local_planner = FastSingleViewPlanner()
         self.node = node
-        self.unsuccessful_status = [GoalStatus.PREEMPTED, GoalStatus.ABORTED, GoalStatus.REJECTED, GoalStatus.RECALLED, GoalStatus.LOST]  
+        self.unsuccessful_status = [-100, 100, FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.INVALID_JOINTS, FollowJointTrajectory.Result.INVALID_GOAL, FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.OLD_HEADER_TIMESTAMP]  
+        self.at_goal = False
+        self.unsuccessful_action = False
 
     def head_to_forward_motion_pose(self):
         # Move head to navigation pose.
@@ -216,18 +219,48 @@ class MoveBase():
         pose = {'joint_head_pan': 0.1, 'joint_head_tilt': -1.1}
         self.node.move_to_pose(pose)
 
-    def check_move_state(self, result_future: rclpy.task.Future):
-        at_goal = False
-        unsuccessful_action = False
-        if result_future.done():
-            self.logger.info('Move succeeded!')
-            # wait for the motion to come to a complete stop
-            time.sleep(0.5)
-            at_goal = True
-        elif result_future.cancelled() or result_future.exception():
-            self.logger.info('Move action terminated without success.')
-            unsuccessful_action = True
-        return at_goal, unsuccessful_action
+    def goal_response_callback(self, future):
+        self.logger.inf("+++++++++CHECKING GOAL HANDLE++++++++++")
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.logger.info('Goal rejected :(')
+            return
+
+        self.logger.info('Goal accepted :)')
+
+        self._get_result_future = goal_handle.get_result_async()
+        self._get_result_future.add_done_callback(self.get_result_callback)
+
+    def get_result_callback(self, future):
+        result = future.result().result
+        error_code = result.error_code
+        self.logger.info('The Action Server has finished, it returned: "%s"' % str(error_code))
+
+        if (error_code == FollowJointTrajectory.Result.SUCCESSFUL):
+            self.at_goal = True
+            self.unsuccessful_action = False
+            self.logger.info("Goal point reached.")
+        elif (error_code in self.unsuccessful_actions):
+            self.at_goal = False
+            self.unsuccessful_action = True
+            self.logger.info("Goal unsuccessful.")
+        else:
+            self.at_goal = False
+            self.unsuccessful_action = False
+            self.logger.info("Goal aborted.")
+
+    # def check_move_state(self, result_future: rclpy.task.Future):
+    #     at_goal = False
+    #     unsuccessful_action = False
+    #     if result_future.done():
+    #         self.logger.info('Move succeeded!')
+    #         # wait for the motion to come to a complete stop
+    #         time.sleep(0.5)
+    #         at_goal = True
+    #     elif result_future.cancelled() or result_future.exception():
+    #         self.logger.info('Move action terminated without success.')
+    #         unsuccessful_action = True
+    #     return at_goal, unsuccessful_action
     
     def local_plan(self, end_xyz, end_frame_id):
         self.local_planner.update(self.node.point_cloud, self.node.tf2_buffer)
@@ -280,10 +313,13 @@ class MoveBase():
             trigger_request = Trigger.Request() 
 
             pose = {'translate_mobile_base': forward_distance_m}
-            self.node.move_to_pose(pose, return_before_done=True)
+            self.at_goal = False
+            self.unsuccessful_action = False
+            self._future_goal = self.node.move_to_pose(pose, return_before_done=True, goal_cb=self.goal_response_callback)
+            # future_goal.add_done_callback(self.goal_response_callback)
 
-            while (not at_goal) and (not obstacle_detected) and (not unsuccessful_action):
-                self.logger.info("Not at goal, checking again...")
+            while (not self.at_goal) and (not obstacle_detected) and (not self.unsuccessful_action):
+                # self.logger.info("Not at goal, checking again...")
                 if detect_obstacles: 
                     obstacle_detected = self.forward_obstacle_detector.detect(self.node.point_cloud, self.node.tf2_buffer)
                     if obstacle_detected:
@@ -292,7 +328,7 @@ class MoveBase():
                         self.logger.info('Obstacle detected near the front of the robot, so stopping!')
                     if publish_visualizations: 
                         self.forward_obstacle_detector.publish_visualizations(self.node.voi_marker_pub, self.node.obstacle_point_cloud_pub)
-                at_goal, unsuccessful_action = self.check_move_state(self.node.trajectory_client)
+                # at_goal, unsuccessful_action = self.check_move_state(future_goal)
 
             # obtain the new position of the robot
             xya, timestamp = hm.get_robot_floor_pose_xya(self.node.tf2_buffer)

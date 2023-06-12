@@ -210,7 +210,7 @@ class ManipulationView():
     def __init__(self, tf2_buffer, debug_directory=None):
         self.debug_directory = debug_directory
         self.logger = rclpy.logging.get_logger('stretch_funmap')
-        self.logger.info('ManipulationView __init__: self.debug_directory =', self.debug_directory)
+        self.logger.info(f"ManipulationView __init__: self.debug_directory = {str(self.debug_directory)}")
         
         # Define the volume of interest for planning using the current
         # view.
@@ -564,8 +564,8 @@ class ManipulationView():
             # Save the new scan to disk.
             dirname = self.debug_directory + 'get_pregrasp_planar_translation/'
             filename = 'pregrasp_planar_translation_' + hm.create_time_string() + '.png'
-            self.logger.info('ManipulationView get_pregrasp_planar_translation : directory =', dirname)
-            self.logger.info('ManipulationView get_pregrasp_planar_translation : filename =', filename)
+            self.logger.info(f"ManipulationView get_pregrasp_planar_translation : directory = {dirname}")
+            self.logger.info(f"ManipulationView get_pregrasp_planar_translation : filename = {filename}")
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
             cv2.imwrite(dirname + filename, rgb_image)
@@ -676,8 +676,8 @@ class ManipulationView():
             # Save the new scan to disk.
             dirname = self.debug_directory + 'get_grasp_from_pregrasp/'
             filename = 'grasp_from_pregrasp_' + hm.create_time_string() + '.png'
-            self.logger.info('ManipulationView get_grasp_from_pregrasp : directory =', dirname)
-            self.logger.info('ManipulationView get_grasp_from_pregrasp : filename =', filename)
+            self.logger.info(f"ManipulationView get_grasp_from_pregrasp : directory = {dirname}")
+            self.logger.info(f"ManipulationView get_grasp_from_pregrasp : filename = {filename}")
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
             cv2.imwrite(dirname + filename, rgb_image)

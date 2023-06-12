@@ -52,7 +52,7 @@ from . import segment_max_height_image as sm
 from . import navigation_planning as na
 from . import manipulation_planning as mp
 
-# Timestamp as a argument since we can't access clock outside of a node
+# Timestamp as an argument since we can't access clock outside of a node
 def create_map_to_odom_transform(t_mat, timestamp):
     t = TransformStamped()
     t.header.stamp = timestamp
@@ -85,7 +85,6 @@ class ContactDetector():
         self.move_increment = move_increment
 
         self.logger = rclpy.logging.get_logger('stretch_funmap')
-        self.clock = Clock()
 
     def set_regulate_contact(self):
         with self.contact_mode_lock:
@@ -250,7 +249,7 @@ class FunmapNode(Node):
         self.use_hook = False  # True #False
 
         self.logger = self.get_logger()
-        self.clock = Clock()
+        self.clock = self.get_clock()
 
         if self.use_hook:
             def extension_contact_func(effort, av_effort):
@@ -308,12 +307,10 @@ class FunmapNode(Node):
     def publish_map_point_cloud(self):
         if self.merged_map is not None:
             max_height_point_cloud = self.merged_map.max_height_im.to_point_cloud()
-            self.get_logger().info("Publishing pointcloud...")
             self.point_cloud_pub.publish(max_height_point_cloud)
 
             pub_voi = True
             if pub_voi:
-                self.get_logger().info("Publishing voi markers...")
                 marker = self.merged_map.max_height_im.voi.get_ros_marker(
                     duration=1000.0)
                 self.voi_marker_pub.publish(marker)
@@ -407,67 +404,6 @@ class FunmapNode(Node):
         self.lift_down_contact_detector.update(
             joint_states, self.stop_the_robot_service)
         self.lift_position = self.lift_down_contact_detector.get_position()
-
-    def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
-        joint_names = [key for key in pose]
-        point = JointTrajectoryPoint()
-        point.time_from_start = Duration(seconds=0)
-
-        trajectory_goal = FollowJointTrajectory.Goal()
-        trajectory_goal.goal_time_tolerance = Duration(seconds=1.0)
-        trajectory_goal.trajectory.joint_names = joint_names
-        if not custom_contact_thresholds: 
-            joint_positions = [pose[key] for key in joint_names]
-            point.positions = joint_positions
-            trajectory_goal.trajectory.points = [point]
-        else:
-            pose_correct = all([len(pose[key])==2 for key in joint_names])
-            if not pose_correct:
-                self.logger.error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
-                return
-            joint_positions = [pose[key][0] for key in joint_names]
-            joint_efforts = [pose[key][1] for key in joint_names]
-            point.positions = joint_positions
-            point.effort = joint_efforts
-            trajectory_goal.trajectory.points = [point]
-        trajectory_goal.trajectory.header.stamp = self.get_clock().now()
-        self.trajectory_client.send_goal_async(trajectory_goal)
-        # if not return_before_done: 
-            # self.trajectory_client.wait_for_result()
-            #print('Received the following result:')
-            #print(self.trajectory_client.get_result())
-
-    def get_robot_floor_pose_xya(self, floor_frame='odom'):
-        # Returns the current estimated x, y position and angle of the
-        # robot on the floor. This is typically called with respect to
-        # the odom frame or the map frame. x and y are in meters and
-        # the angle is in radians.
-        
-        # Navigation planning is performed with respect to a height of
-        # 0.0, so the heights of transformed points are 0.0. The
-        # simple method of handling the heights below assumes that the
-        # frame is aligned such that the z axis is normal to the
-        # floor, so that ignoring the z coordinate is approximately
-        # equivalent to projecting a point onto the floor.
-        
-        # Query TF2 to obtain the current estimated transformation
-        # from the robot's base_link frame to the frame.
-        robot_to_odom_mat, timestamp = hm.get_p1_to_p2_matrix('base_link', floor_frame, self.tf2_buffer)
-        print('robot_to_odom_mat =', robot_to_odom_mat)
-        print('timestamp =', timestamp)
-
-        # Find the robot's current location in the frame.
-        r0 = np.array([0.0, 0.0, 0.0, 1.0])
-        print('r0 =', r0)
-        r0 = np.matmul(robot_to_odom_mat, r0)[:2]
-
-        # Find the current angle of the robot in the frame.
-        r1 = np.array([1.0, 0.0, 0.0, 1.0])
-        r1 = np.matmul(robot_to_odom_mat, r1)[:2]
-        robot_forward = r1 - r0
-        r_ang = np.arctan2(robot_forward[1], robot_forward[0])
-
-        return [r0[0], r0[1], r_ang], timestamp
 
     def trigger_reach_until_contact_service_callback(self, request, response):
         manip = mp.ManipulationView(self.tf2_buffer, self.debug_directory)
@@ -1356,6 +1292,65 @@ class FunmapNode(Node):
         else:
             self.logger.error(message)
         return result
+    
+    def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
+        joint_names = [key for key in pose]
+        point = JointTrajectoryPoint()
+        point.time_from_start = Duration(seconds=0)
+
+        trajectory_goal = FollowJointTrajectory.Goal()
+        trajectory_goal.goal_time_tolerance = Duration(seconds=1.0)
+        trajectory_goal.trajectory.joint_names = joint_names
+        if not custom_contact_thresholds: 
+            joint_positions = [pose[key] for key in joint_names]
+            point.positions = joint_positions
+            trajectory_goal.trajectory.points = [point]
+        else:
+            pose_correct = all([len(pose[key])==2 for key in joint_names])
+            if not pose_correct:
+                self.logger.error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
+                return
+            joint_positions = [pose[key][0] for key in joint_names]
+            joint_efforts = [pose[key][1] for key in joint_names]
+            point.positions = joint_positions
+            point.effort = joint_efforts
+            trajectory_goal.trajectory.points = [point]
+        trajectory_goal.trajectory.header.stamp = self.get_clock().now()
+        result_future = self.trajectory_client.send_goal_async(trajectory_goal)
+        if return_before_done: 
+            rclpy.spin_until_future_complete(self, result_future)
+
+    def get_robot_floor_pose_xya(self, floor_frame='odom'):
+        # Returns the current estimated x, y position and angle of the
+        # robot on the floor. This is typically called with respect to
+        # the odom frame or the map frame. x and y are in meters and
+        # the angle is in radians.
+        
+        # Navigation planning is performed with respect to a height of
+        # 0.0, so the heights of transformed points are 0.0. The
+        # simple method of handling the heights below assumes that the
+        # frame is aligned such that the z axis is normal to the
+        # floor, so that ignoring the z coordinate is approximately
+        # equivalent to projecting a point onto the floor.
+        
+        # Query TF2 to obtain the current estimated transformation
+        # from the robot's base_link frame to the frame.
+        robot_to_odom_mat, timestamp = hm.get_p1_to_p2_matrix('base_link', floor_frame, self.tf2_buffer)
+        print('robot_to_odom_mat =', robot_to_odom_mat)
+        print('timestamp =', timestamp)
+
+        # Find the robot's current location in the frame.
+        r0 = np.array([0.0, 0.0, 0.0, 1.0])
+        print('r0 =', r0)
+        r0 = np.matmul(robot_to_odom_mat, r0)[:2]
+
+        # Find the current angle of the robot in the frame.
+        r1 = np.array([1.0, 0.0, 0.0, 1.0])
+        r1 = np.matmul(robot_to_odom_mat, r1)[:2]
+        robot_forward = r1 - r0
+        r_ang = np.arctan2(robot_forward[1], robot_forward[0])
+
+        return [r0[0], r0[1], r_ang], timestamp
 
     def main(self):
         # hm.HelloNode.main(self, 'funmap', 'funmap')

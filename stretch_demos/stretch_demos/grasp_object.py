@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-from __future__ import print_function
+#!/usr/bin/env python3
 
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Twist
@@ -77,7 +75,7 @@ class GraspObjectNode(Node):
         self.logger.info('Move to the initial configuration for drawer opening.')
         self.move_to_pose(initial_pose)
 
-    def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
+    def move_to_pose(self, pose, return_before_done=True, custom_contact_thresholds=False, goal_cb=None):
         joint_names = [key for key in pose]
         point = JointTrajectoryPoint()
         point.time_from_start = Duration(seconds=0.0).to_msg()
@@ -100,10 +98,16 @@ class GraspObjectNode(Node):
             point.effort = joint_efforts
             trajectory_goal.trajectory.points = [point]
         trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
-        future = self.trajectory_client.send_goal_async(trajectory_goal)
+        self._send_goal_future = self.trajectory_client.send_goal_async(trajectory_goal)
+
+        if goal_cb != None:
+            self.logger.info("Added callback")
+            self._send_goal_future.add_done_callback(goal_cb)
         
         if not return_before_done:
-            rclpy.spin_until_future_complete(self, future)
+            rclpy.spin_until_future_complete(self, self._send_goal_future)
+        
+        return self._send_goal_future
 
     def look_at_surface(self, scan_time_s=None):
         self.manipulation_view = mp.ManipulationView(self.tf2_buffer, self.debug_directory)
@@ -145,11 +149,13 @@ class GraspObjectNode(Node):
             pose = {'wrist_extension': 0.01}
             self.move_to_pose(pose)
             time.sleep(5)
+            self.logger.info("Tool retracted!")
 
             self.logger.info('Reorient the wrist.')
             pose = {'joint_wrist_yaw': 0.0}
             self.move_to_pose(pose)
             time.sleep(5)
+            self.logger.info("Wrist reoriented")
             
         self.look_at_surface(scan_time_s = 3.0)
         
