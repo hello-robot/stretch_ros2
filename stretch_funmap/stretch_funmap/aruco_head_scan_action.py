@@ -5,7 +5,10 @@ from visualization_msgs.msg import MarkerArray
 from geometry_msgs.msg import Transform, TransformStamped, Pose
 import ros2_numpy
 import numpy as np
-import tf2_ros
+from tf2_ros import TransformException
+from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
+from tf2_ros.transform_listener import TransformListener
+from tf2_ros.buffer import Buffer
 import time
 
 from rclpy.duration import Duration
@@ -19,18 +22,22 @@ from sensor_msgs.msg import JointState
 from sensor_msgs.msg import PointCloud2
 import hello_helpers.hello_misc as hm
 
+from rclpy.executors import MultiThreadedExecutor
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
+
 class ArucoHeadScanClass(hm.HelloNode):
     def __init__(self):
-        rclpy.init()
         # TODO: remove the dependency on HelloNode
         hm.HelloNode.__init__(self)
         hm.HelloNode.main(self, 'aruco_head_scan', 'aruco_head_scan', wait_for_first_pointcloud=True)
         self.get_logger().info("Initializing aruco head scan action server")
-        self.server = ActionServer(self, ArucoHeadScan, 'aruco_head_scan', self.execute_cb)
-        self.aruco_marker_array = self.create_subscription(MarkerArray, 'aruco/marker_array', self.aruco_callback, 10)
+        self.cb_group = ReentrantCallbackGroup()
+        self.server = ActionServer(self, ArucoHeadScan, 'aruco_head_scan', self.execute_cb, callback_group=self.cb_group)
+        self.aruco_marker_array = self.create_subscription(MarkerArray, 'aruco/marker_array', self.aruco_callback, 10, callback_group=self.cb_group)
         self.aruco_id = 1000 # Placeholder value
         self.aruco_found = False
-        self.markers = MarkerArray().markers
+        self.marker_array = MarkerArray()
+        self.markers = []
         self.joint_state = JointState()
 
     def joint_states_callback(self, joint_state):
@@ -75,12 +82,10 @@ class ArucoHeadScanClass(hm.HelloNode):
 
         for pan_angle in np.arange(-3.14, 1.39, 0.7):
             time.sleep(5.0)
-            for i in range(20):
-                if self.markers:
-                    markers = self.markers
-                    break
-
-            self.get_logger().info("Markers found: {}".format(markers))
+            
+            rclpy.spin_once(self)
+            if self.markers:
+                markers = self.markers
 
             if markers != []:
                 for marker in markers:
@@ -88,9 +93,12 @@ class ArucoHeadScanClass(hm.HelloNode):
                         self.aruco_found = True
                         self.aruco_name = marker.text
                         if self.publish_to_map:
-                            trans = self.tf2_buffer.lookup_transform('map', self.aruco_name, 0)
-                            self.aruco_tf = self.broadcast_tf(trans.transform, self.aruco_name, 'map')
-                            self.get_logger().info("{} pose published to tf".format(self.aruco_name))
+                            try:
+                                trans = self.tf2_buffer.lookup_transform('map', self.aruco_name, rclpy.time.Time())
+                                self.aruco_tf = self.broadcast_tf(trans.transform, 'static_{}'.format(self.aruco_name), 'map')
+                                self.get_logger().info("{} pose published to tf".format(self.aruco_name))
+                            except TransformException as ex:
+                                pass
 
             if not self.aruco_found:
                 self.feedback.pan_angle = pan_angle
@@ -136,13 +144,14 @@ class ArucoHeadScanClass(hm.HelloNode):
         return t
 
     def aruco_callback(self, msg):
-        self.markers = msg.markers
+        self.marker_array = msg
+        self.markers = self.marker_array.markers
 
     def main(self):
         self.get_logger().info("Initializing the tf buffer, listener and broadcaster")
-        self.tf2_buffer = tf2_ros.Buffer()
-        self.listener = tf2_ros.TransformListener(self.tf2_buffer, self)
-        self.tf2_broadcaster = tf2_ros.TransformBroadcaster(self)
+        self.tf2_buffer = Buffer()
+        self.listener = TransformListener(self.tf2_buffer, self)
+        self.tf2_static_broadcaster = StaticTransformBroadcaster(self)
 
         self.joint_states_sub = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 1)
         self.joint_states_sub
@@ -159,8 +168,11 @@ class ArucoHeadScanClass(hm.HelloNode):
 
 def main():
     try:
+        rclpy.init()
+        executor = MultiThreadedExecutor()
         node = ArucoHeadScanClass()
         node.main()
+        executor.add_node(node)
     except KeyboardInterrupt:
         print('interrupt received, so shutting down')
 
