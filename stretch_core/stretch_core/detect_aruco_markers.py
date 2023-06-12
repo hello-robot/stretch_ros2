@@ -25,7 +25,7 @@ from geometry_msgs.msg import Point
 
 from cv_bridge import CvBridge, CvBridgeError
 
-from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
+from tf2_ros.transform_broadcaster import TransformBroadcaster
 from tf_transformations import quaternion_from_matrix
 from hello_helpers.hello_misc import compare_versions
 
@@ -661,7 +661,7 @@ class DetectArucoNode(Node):
         self.wrist_top_marker_pub = self.create_publisher(Marker, '/aruco/wrist_top', 1)
         self.wrist_inside_marker_pub = self.create_publisher(Marker, '/aruco/wrist_inside', 1)
 
-        self.tf_broadcaster = StaticTransformBroadcaster(self)
+        self.tf_broadcaster = TransformBroadcaster(self)
 
     def image_callback(self, ros_rgb_image, ros_depth_image, rgb_camera_info):
         try:
