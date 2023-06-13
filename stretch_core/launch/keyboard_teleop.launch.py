@@ -10,13 +10,14 @@ def generate_launch_description():
 
     stretch_driver = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([str(stretch_core_path), '/launch/stretch_driver.launch.py']),
-        launch_arguments={'mode': 'trajectory', 'broadcast_odom_tf': 'True', 'fail_out_of_range_goal': 'False'}.items(),
+        launch_arguments={'mode': 'position', 'broadcast_odom_tf': 'True', 'fail_out_of_range_goal': 'False'}.items(),
     )
 
     keyboard_teleop = Node(
             package='stretch_core',
             executable='keyboard_teleop',
-            output='screen'
+            output='screen',
+            prefix='xterm -e'
             )
 
     return LaunchDescription([
