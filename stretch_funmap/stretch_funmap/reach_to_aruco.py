@@ -7,6 +7,7 @@ import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.duration import Duration
+from rclpy.logging import get_logger
 
 from stretch_funmap.action import ArucoHeadScan
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
@@ -14,6 +15,45 @@ from tf_transformations import euler_from_quaternion, quaternion_from_euler
 from std_srvs.srv import Trigger
 from geometry_msgs.msg import PoseStamped
 from stretch_nav2.robot_navigator import BasicNavigator, TaskResult
+
+# moveit python library
+from moveit.core.robot_state import RobotState
+from moveit.core.kinematic_constraints import construct_joint_constraint
+from moveit.planning import (
+    MoveItPy,
+)
+
+def plan_and_execute(
+    robot,
+    planning_component,
+    logger,
+    single_plan_parameters=None,
+    multi_plan_parameters=None,
+    sleep_time=0.0,
+):
+    """Helper function to plan and execute a motion."""
+    # plan to goal
+    logger.info("Planning trajectory")
+    if multi_plan_parameters is not None:
+        plan_result = planning_component.plan(
+            multi_plan_parameters=multi_plan_parameters
+        )
+    elif single_plan_parameters is not None:
+        plan_result = planning_component.plan(
+            single_plan_parameters=single_plan_parameters
+        )
+    else:
+        plan_result = planning_component.plan()
+
+    # execute the plan
+    if plan_result:
+        logger.info("Executing plan")
+        robot_trajectory = plan_result.trajectory
+        robot.execute(robot_trajectory, blocking=True, controllers=[])
+    else:
+        logger.error("Planning failed")
+
+    time.sleep(sleep_time)
 
 
 class Reach2Aruco(Node):
@@ -87,9 +127,31 @@ class Reach2Aruco(Node):
         else:
             print('Goal has an invalid return status!')
 
-    def move_to_pose(self):
+    def move_to_pose(self, x=0.0, y=0.0, z=0.45):
         response = self.switch_to_trajectory_mode()
-        pass
+        
+        # set plan start state to current state
+        self.stretch_arm.set_start_state_to_current_state()
+
+        joint_values = {
+            "joint_lift": z,
+            "joint_arm_l3": y/4,
+            "joint_arm_l2": y/4,
+            "joint_arm_l1": y/4,
+            "joint_arm_l0": y/4,
+            "joint_wrist_yaw": 0.0,
+            "joint_wrist_pitch": 0.0,
+            "joint_wrist_roll": 0.0,
+        }
+        self.robot_state.joint_positions = joint_values
+        joint_constraint = construct_joint_constraint(
+            robot_state=self.robot_state,
+            joint_model_group=self.stretch.get_robot_model().get_joint_model_group("stretch_arm"),
+        )
+        self.stretch_arm.set_goal_state(motion_plan_constraints=[joint_constraint])
+
+        # plan to goal
+        plan_and_execute(self.stretch, self.stretch_arm, self.logger, sleep_time=3.0)
 
     def main(self):
         while not self.switch_to_trajectory_mode_service_client.wait_for_service(timeout_sec=1.0):
@@ -113,6 +175,14 @@ class Reach2Aruco(Node):
 
         # Wait for navigation to fully activate
         self.navigator.waitUntilNav2Active()
+
+        # instantiate MoveItPy instance and get planning component
+        self.stretch = MoveItPy(node_name="moveit_py_commander")
+        self.stretch_arm = self.stretch.get_planning_component("stretch_arm")
+
+        # instantiate a RobotState instance using the current robot model
+        robot_model = self.stretch.get_robot_model()
+        self.robot_state = RobotState(robot_model)
 
 def main(args=None):
     rclpy.init(args=args)
