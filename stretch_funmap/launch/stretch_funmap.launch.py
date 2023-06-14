@@ -24,10 +24,10 @@ def generate_launch_description():
         'rviz_config',
         default_value=os.path.join(stretch_funmap_path, 'rviz/stretch_funmap.rviz'),
         description='Full path to the map yaml file to use for navigation')
-
+    
     stretch_driver_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_core_path, '/launch/stretch_driver.launch.py']),
-        launch_arguments={'mode': 'navigation', 'broadcast_odom_tf': 'True'}.items())
+        launch_arguments={'mode': 'trajectory', 'broadcast_odom_tf': 'True'}.items())
 
     d435i_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_core_path, '/launch/d435i_high_resolution.launch.py']))
