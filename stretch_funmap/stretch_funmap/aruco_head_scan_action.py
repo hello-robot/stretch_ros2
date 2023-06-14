@@ -51,7 +51,7 @@ class ArucoHeadScanClass(hm.HelloNode):
         self.fill_in_blindspot_with_second_scan = goal.fill_in_blindspot_with_second_scan
         self.fast_scan = goal.fast_scan
         self.publish_to_map = goal.publish_to_map
-        self.scan_and_detect(goal_handle)
+        return self.scan_and_detect(goal_handle)
 
     def scan_and_detect(self, goal_handle):
         self.get_logger().info("Sending scan goal to head pan and tilt joints")
@@ -120,7 +120,7 @@ class ArucoHeadScanClass(hm.HelloNode):
                 break
 
         time.sleep(2.0)
-        self.result_cb(goal_handle)
+        return self.result_cb(goal_handle)
 
     def result_cb(self, goal_handle):
         self.get_logger().info("Finished performing aruco head scan")
