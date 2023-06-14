@@ -83,9 +83,11 @@ class ArucoHeadScanClass(hm.HelloNode):
         for pan_angle in np.arange(-3.14, 1.39, 0.7):
             time.sleep(5.0)
             
-            rclpy.spin_once(self)
-            if self.markers:
-                markers = self.markers
+            for i in range(1, 20):
+                rclpy.spin_once(self)
+                if self.markers:
+                    markers = self.markers
+                    break
 
             if markers != []:
                 for marker in markers:
@@ -122,18 +124,17 @@ class ArucoHeadScanClass(hm.HelloNode):
 
     def result_cb(self, goal_handle):
         self.get_logger().info("Finished performing aruco head scan")
-        result = ArucoHeadScan.Result()
-        result.aruco_found = self.aruco_found
         if self.aruco_found:
             success_str = "Aruco marker found"
             self.get_logger().info(success_str)
             goal_handle.succeed()
-            return result
         else:
             error_str = "Could not find aruco marker"
             self.get_logger().info(error_str)
             goal_handle.abort()
-            return result
+        result = ArucoHeadScan.Result()
+        result.aruco_found = self.aruco_found
+        return result
 
     def broadcast_tf(self, trans, name, ref):
         t = TransformStamped()
