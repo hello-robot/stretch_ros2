@@ -1,31 +1,28 @@
 #!/usr/bin/env python3
 
-import sys
 import rclpy
-import rclpy.logging
 from rclpy.duration import Duration
+import rclpy.logging
 from rclpy.time import Time
+
+from geometry_msgs.msg import Transform, Pose, Vector3, Quaternion, Point
+from nav_msgs.msg import OccupancyGrid, MapMetaData
+import ros2_numpy
+from sensor_msgs.msg import PointCloud2
+from std_msgs.msg import Header
+import tf2_ros
+from visualization_msgs.msg import Marker, MarkerArray
+
+from collections import deque
+from copy import deepcopy
+import math
+import struct
+import sys
+import threading
+
 import cv2
 import numpy as np
-import math
-
-from std_msgs.msg import Header
-from sensor_msgs.msg import PointCloud2
-from visualization_msgs.msg import Marker
-from visualization_msgs.msg import MarkerArray
-from nav_msgs.msg import OccupancyGrid, MapMetaData
-from geometry_msgs.msg import Transform, Pose, Vector3, Quaternion, Point
-
-import ros2_numpy
-
-import struct
-import threading
-from collections import deque
-        
-import tf2_ros
 from scipy.spatial.transform import Rotation
-
-from copy import deepcopy
 
 from .max_height_image import *
 from . import navigation_planning as na

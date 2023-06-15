@@ -1,6 +1,5 @@
 from numba import jit, njit
 
-
 @njit(fastmath=True)
 def numba_compare_images_2(image_to_warp, target_image, target_image_not_smoothed, affine_matrix, m_per_height_unit, match_threshold_m=0.07, weight_by_height=True):
     target_image_not_smoothed_height, target_image_not_smoothed_width = target_image_not_smoothed.shape

@@ -1,5 +1,4 @@
 from numba import jit, njit
-
 import numpy as np
 
 @njit(fastmath=True)

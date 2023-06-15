@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 
-from . import max_height_image as mh
+import hello_helpers.fit_plane as fp
+import hello_helpers.hello_misc as hm
+
+import math
+
+import cv2
 import numpy as np
 import scipy.ndimage as nd
 import scipy.signal as si
-import cv2
 import skimage as sk
 from skimage.morphology import convex_hull_image
-import math
-import hello_helpers.hello_misc as hm
+
+from . import max_height_image as mh
 from . import navigation_planning as na
-
 from .numba_height_image import numba_create_segment_image_uint8
-import hello_helpers.fit_plane as fp
-
 
 def find_object_to_grasp(height_image, display_on=False):
     h_image = height_image.image

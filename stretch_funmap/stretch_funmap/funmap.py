@@ -1,54 +1,50 @@
 #!/usr/bin/env python3
 
 import rclpy
-from rclpy.node import Node
 from rclpy.action import ActionClient, ActionServer
-import rclpy.logging
 from rclpy.client import Client
 from rclpy.clock import Clock
 from rclpy.duration import Duration
+import rclpy.logging
+from rclpy.node import Node
 from rclpy.time import Time
 
 from control_msgs.action import FollowJointTrajectory
-from trajectory_msgs.msg import JointTrajectoryPoint
-from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Transform, TransformStamped, PoseWithCovarianceStamped, PoseStamped, Pose, PointStamped
 from nav_msgs.msg import Odometry
 from nav_msgs.srv import GetPlan
 from nav_msgs.msg import Path
 from nav2_msgs.action import NavigateToPose
-from sensor_msgs.msg import PointCloud2
-from visualization_msgs.msg import Marker, MarkerArray
+import ros2_numpy
+from sensor_msgs.msg import JointState, PointCloud2
 from std_srvs.srv import Trigger
 from tf_transformations import euler_from_quaternion
 from tf2_geometry_msgs import do_transform_pose
-
-import numpy as np
-import scipy.ndimage as nd
-import cv2
-import math
-import time
-import threading
-import sys
-import os
-import copy
-
-import tf_transformations
-import ros2_numpy
 import tf2_ros
-
-import argparse as ap
+from trajectory_msgs.msg import JointTrajectoryPoint
+from visualization_msgs.msg import Marker, MarkerArray
 
 import hello_helpers.hello_misc as hm
 import hello_helpers.hello_ros_viz as hr
 
+import argparse as ap
+import copy
+import math
+import os
+import sys
+import threading
+import time
+
+import cv2
+import numpy as np
+import scipy.ndimage as nd
+
+from . import mapping as ma
+from . import manipulation_planning as mp
 from . import merge_maps as mm
 from . import navigate as nv
-from . import mapping as ma
-
-from . import segment_max_height_image as sm
 from . import navigation_planning as na
-from . import manipulation_planning as mp
+from . import segment_max_height_image as sm
 
 # Timestamp as an argument since we can't access clock outside of a node
 def create_map_to_odom_transform(t_mat, timestamp = None):

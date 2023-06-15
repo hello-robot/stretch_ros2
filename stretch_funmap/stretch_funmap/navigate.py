@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 
-import cv2
-from functools import partial
-import numpy as np
-import os
-import time
-
-import ros2_numpy as rn
-from control_msgs.action import FollowJointTrajectory
-from actionlib_msgs.msg import GoalStatus
 import rclpy
 from rclpy.duration import Duration
 from rclpy.clock import Clock, ClockType
 import rclpy.logging
 import rclpy.task
+
+from control_msgs.action import FollowJointTrajectory
+import ros2_numpy as rn
 from std_srvs.srv import Trigger
+
 import hello_helpers.hello_misc as hm
+
+from functools import partial
+import os
+import time
+
+import cv2
+import numpy as np
 
 from . import navigation_planning as na
 from . import ros_max_height_image as rm

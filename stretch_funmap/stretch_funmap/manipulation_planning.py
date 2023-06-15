@@ -1,27 +1,28 @@
 #!/usr/bin/env python3
 
+import rclpy
+from rclpy.duration import Duration
 import rclpy.logging
+from rclpy.time import Time
 
-import numpy as np
-import scipy.ndimage as nd
-import scipy.signal as si
-import cv2
-import skimage as sk
-import math
 import hello_helpers.hello_misc as hm
 import ros2_numpy as rn
-import rclpy
-from rclpy.time import Time
-from rclpy.duration import Duration
 
+import math
 import os
 import time
 
+import cv2
+import numpy as np
+import scipy.ndimage as nd
+import scipy.signal as si
+import skimage as sk
+
 from . import max_height_image as mh
-from . import segment_max_height_image as sm
-from . import ros_max_height_image as rm
 from .numba_manipulation_planning import numba_find_base_poses_that_reach_target, numba_check_that_tool_can_deploy
 from .numba_check_line_path import numba_find_contact_along_line_path, numba_find_line_path_on_surface
+from . import ros_max_height_image as rm
+from . import segment_max_height_image as sm
 
 def plan_surface_coverage(tool_start_xy_pix, tool_end_xy_pix, tool_extension_direction_xy_pix, step_size_pix, max_extension_pix, surface_mask_image, obstacle_mask_image):
     # This was designed to be used when planning to clean a flat
