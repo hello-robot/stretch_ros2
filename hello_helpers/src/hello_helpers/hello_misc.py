@@ -7,11 +7,15 @@ import glob
 import math
 
 import rclpy
+from rclpy.duration import Duration
+from rclpy.time import Time
+from rclpy.clock import Clock
 from rclpy.node import Node
 import tf2_ros
 # import ros_numpy  TODO(dlu): Fix https://github.com/eric-wieser/ros_numpy/issues/20
 import numpy as np
 import cv2
+import ros2_numpy
 
 import pyquaternion
 
@@ -66,6 +70,38 @@ def get_left_finger_state(joint_states):
     left_finger_effort = joint_states.effort[i]
     return [left_finger_position, left_finger_velocity, left_finger_effort]
 
+def get_robot_floor_pose_xya(tf2_buffer, floor_frame='odom'):
+    # Returns the current estimated x, y position and angle of the
+    # robot on the floor. This is typically called with respect to
+    # the odom frame or the map frame. x and y are in meters and
+    # the angle is in radians.
+        
+    # Navigation planning is performed with respect to a height of
+    # 0.0, so the heights of transformed points are 0.0. The
+    # simple method of handling the heights below assumes that the
+    # frame is aligned such that the z axis is normal to the
+    # floor, so that ignoring the z coordinate is approximately
+    # equivalent to projecting a point onto the floor.
+        
+    # Query TF2 to obtain the current estimated transformation
+    # from the robot's base_link frame to the frame.
+    robot_to_odom_mat, timestamp = get_p1_to_p2_matrix('base_link', floor_frame, tf2_buffer)
+    print('robot_to_odom_mat =', robot_to_odom_mat)
+    print('timestamp =', timestamp)
+
+    # Find the robot's current location in the frame.
+    r0 = np.array([0.0, 0.0, 0.0, 1.0])
+    print('r0 =', r0)
+    r0 = np.matmul(robot_to_odom_mat, r0)[:2]
+
+    # Find the current angle of the robot in the frame.
+    r1 = np.array([1.0, 0.0, 0.0, 1.0])
+    r1 = np.matmul(robot_to_odom_mat, r1)[:2]
+    robot_forward = r1 - r0
+    r_ang = np.arctan2(robot_forward[1], robot_forward[0])
+
+    return [r0[0], r0[1], r_ang], timestamp
+
 class HelloNode(Node):
     def __init__(self):
         self.joint_state = None
@@ -80,10 +116,10 @@ class HelloNode(Node):
     def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
         joint_names = [key for key in pose]
         point = JointTrajectoryPoint()
-        point.time_from_start = rospy.Duration(0.0)
+        point.time_from_start = Duration(seconds=0).to_msg()
 
-        trajectory_goal = FollowJointTrajectoryGoal()
-        trajectory_goal.goal_time_tolerance = rospy.Time(1.0)
+        trajectory_goal = FollowJointTrajectory.Goal()
+        trajectory_goal.goal_time_tolerance = Duration(seconds=1.0).to_msg()
         trajectory_goal.trajectory.joint_names = joint_names
         if not custom_contact_thresholds: 
             joint_positions = [pose[key] for key in joint_names]
@@ -92,52 +128,19 @@ class HelloNode(Node):
         else:
             pose_correct = all([len(pose[key])==2 for key in joint_names])
             if not pose_correct:
-                rospy.logerr("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
+                self.get_logger().error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
                 return
             joint_positions = [pose[key][0] for key in joint_names]
             joint_efforts = [pose[key][1] for key in joint_names]
             point.positions = joint_positions
             point.effort = joint_efforts
             trajectory_goal.trajectory.points = [point]
-        trajectory_goal.trajectory.header.stamp = rospy.Time.now()
+        trajectory_goal.trajectory.header.stamp = self.get_clock().now()
         self.trajectory_client.send_goal(trajectory_goal)
         if not return_before_done: 
             self.trajectory_client.wait_for_result()
             #print('Received the following result:')
             #print(self.trajectory_client.get_result())
-
-    def get_robot_floor_pose_xya(self, floor_frame='odom'):
-        # Returns the current estimated x, y position and angle of the
-        # robot on the floor. This is typically called with respect to
-        # the odom frame or the map frame. x and y are in meters and
-        # the angle is in radians.
-        
-        # Navigation planning is performed with respect to a height of
-        # 0.0, so the heights of transformed points are 0.0. The
-        # simple method of handling the heights below assumes that the
-        # frame is aligned such that the z axis is normal to the
-        # floor, so that ignoring the z coordinate is approximately
-        # equivalent to projecting a point onto the floor.
-        
-        # Query TF2 to obtain the current estimated transformation
-        # from the robot's base_link frame to the frame.
-        robot_to_odom_mat, timestamp = get_p1_to_p2_matrix('base_link', floor_frame, self.tf2_buffer)
-        print('robot_to_odom_mat =', robot_to_odom_mat)
-        print('timestamp =', timestamp)
-
-        # Find the robot's current location in the frame.
-        r0 = np.array([0.0, 0.0, 0.0, 1.0])
-        print('r0 =', r0)
-        r0 = np.matmul(robot_to_odom_mat, r0)[:2]
-
-        # Find the current angle of the robot in the frame.
-        r1 = np.array([1.0, 0.0, 0.0, 1.0])
-        r1 = np.matmul(robot_to_odom_mat, r1)[:2]
-        robot_forward = r1 - r0
-        r_ang = np.arctan2(robot_forward[1], robot_forward[0])
-
-        return [r0[0], r0[1], r_ang], timestamp
-
 
     def main(self, node_name, node_topic_namespace, wait_for_first_pointcloud=True):
         super().__init__(node_name)
@@ -216,16 +219,16 @@ def get_p1_to_p2_matrix(p1_frame_id, p2_frame_id, tf2_buffer, lookup_time=None, 
     # points in the p1_frame_id frame to points in the p2_frame_id.
     try:
         if lookup_time is None:
-            lookup_time = rospy.Time(0) # return most recent transform
+            lookup_time = Time(seconds=0) # return most recent transform
         if timeout_s is None:
-            timeout_ros = rospy.Duration(0.1)
+            timeout_ros = Duration(seconds=0.1)
         else:
-            timeout_ros = rospy.Duration(timeout_s)
+            timeout_ros = Duration(seconds=timeout_s)
         stamped_transform =  tf2_buffer.lookup_transform(p2_frame_id, p1_frame_id, lookup_time, timeout_ros)
 
         # http://docs.ros.org/melodic/api/geometry_msgs/html/msg/TransformStamped.html
 
-        p1_to_p2_mat = ros_numpy.numpify(stamped_transform.transform)
+        p1_to_p2_mat = ros2_numpy.numpify(stamped_transform.transform)
         return p1_to_p2_mat, stamped_transform.header.stamp
     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
         print('WARNING: get_p1_to_p2_matrix failed to lookup transform from p1_frame_id =', p1_frame_id, ' to p2_frame_id =', p2_frame_id)
