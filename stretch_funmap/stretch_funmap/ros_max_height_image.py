@@ -59,7 +59,6 @@ class ROSVolumeOfInterest(VolumeOfInterest):
             else:
                 timeout_ros = Duration(seconds=timeout_s)
 
-            # self.logger.info(f'VOI looking up transform between <{self.frame_id}> and <{points_frame_id}>')
             stamped_transform =  tf2_buffer.lookup_transform(self.frame_id, points_frame_id, lookup_time, timeout_ros)
             points_to_frame_id_mat = ros2_numpy.numpify(stamped_transform.transform)
             points_to_voi_mat = self.get_points_to_voi_matrix(points_to_frame_id_mat)
@@ -72,7 +71,7 @@ class ROSVolumeOfInterest(VolumeOfInterest):
         marker = Marker()
         marker.type = marker.CUBE
         marker.action = marker.ADD
-        marker.lifetime = Duration(seconds=duration)
+        marker.lifetime = Duration(seconds=duration).to_msg()
         marker.text = 'volume of interest'
 
         marker.header.frame_id = self.frame_id
@@ -85,7 +84,7 @@ class ROSVolumeOfInterest(VolumeOfInterest):
         marker.scale.z = self.z_in_m
 
         # make as bright as possible
-        r, g, b = [0, 0, 255]
+        r, g, b = [0., 0., 255.]
         marker.color.r = r
         marker.color.g = g
         marker.color.b = b
@@ -110,7 +109,7 @@ class ROSVolumeOfInterest(VolumeOfInterest):
         
 class ROSMaxHeightImage(MaxHeightImage):
     def __init__(self, volume_of_interest, m_per_pix, pixel_dtype, m_per_height_unit=None, use_camera_depth_image=False, image=None, rgb_image=None, camera_depth_image=None):
-        super().__init__(volume_of_interest, m_per_pix, pixel_dtype, m_per_height_unit=None, use_camera_depth_image=False, image=None, rgb_image=None, camera_depth_image=None)
+        super().__init__(volume_of_interest, m_per_pix, pixel_dtype, m_per_height_unit, use_camera_depth_image, image, rgb_image, camera_depth_image)
         self.logger = rclpy.logging.get_logger('stretch_funmap')
 
     @classmethod

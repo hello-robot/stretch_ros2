@@ -307,8 +307,9 @@ class HeadScan:
             
         self.max_height_im.print_info()
 
-        self.logger = rclpy.logging.get_logger('stretch_funmap')
+        # self.logger = rclpy.logging.get_logger('stretch_funmap')
 
+    
         
     def make_robot_footprint_unobserved(self):
         # replace robot points with unobserved points
@@ -331,7 +332,6 @@ class HeadScan:
         
         node.move_to_pose(pose)
         time.sleep(head_settle_time)
-        settle_time = self.clock.now()
         prev_cloud_time = None
         num_point_clouds = 0
         # Consider using time stamps to make decisions, instead of
@@ -384,7 +384,7 @@ class HeadScan:
 
         scan_end_time = time.time()
         scan_duration = scan_end_time - scan_start_time
-        self.logger.info('The head scan took {0} seconds.'.format(scan_duration))
+        # self.logger.info('The head scan took {0} seconds.'.format(scan_duration))
             
         #####################################
         # record robot pose information and potentially useful transformations
@@ -459,7 +459,7 @@ class HeadScan:
         
         
     def save(self, base_filename, save_visualization=True ):
-        self.logger.info(f'HeadScan: Saving to base_filename = {str(base_filename)}')
+        # self.logger.info(f'HeadScan: Saving to base_filename = {str(base_filename)}')
         # save scan to disk
         max_height_image_base_filename = base_filename + '_mhi'
         self.max_height_im.save(max_height_image_base_filename)
@@ -481,11 +481,11 @@ class HeadScan:
         
         with open(base_filename + '.yaml', 'w') as fid:
             yaml.dump(data, fid)
-        self.logger.info('Finished saving.')
+        # self.logger.info('Finished saving.')
         
     @classmethod
     def from_file(self, base_filename):
-        self.logger.info(f'HeadScan.from_file: base_filename = {str(base_filename)}')
+        # self.logger.info(f'HeadScan.from_file: base_filename = {str(base_filename)}')
         with open(base_filename + '.yaml', 'r') as fid:
             data = yaml.load(fid, Loader=yaml.FullLoader)
 

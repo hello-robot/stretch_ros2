@@ -214,6 +214,7 @@ class MoveBase():
         self.unsuccessful_status = [-100, 100, FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.INVALID_JOINTS, FollowJointTrajectory.Result.INVALID_GOAL, FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.OLD_HEADER_TIMESTAMP]  
         self.at_goal = False
         self.unsuccessful_action = False
+        self._get_result_future = None
 
     def head_to_forward_motion_pose(self):
         # Move head to navigation pose.
@@ -245,7 +246,7 @@ class MoveBase():
             self.at_goal = True
             self.unsuccessful_action = False
             self.logger.info("Goal point reached.")
-        elif (error_code in self.unsuccessful_actions):
+        elif (error_code in self.unsuccessful_status):
             self.at_goal = False
             self.unsuccessful_action = True
             self.logger.info("Goal unsuccessful.")
@@ -331,10 +332,9 @@ class MoveBase():
 
             if not pose_sent or self._get_result_future == None:
                 self.logger.info("Failed to drive robot.")
-                return at_goal
+                return self.at_goal
 
             while (not self.at_goal) and (not obstacle_detected) and (not self.unsuccessful_action):
-                self.logger.info("Not at goal, checking again...")
                 if detect_obstacles: 
                     obstacle_detected = self.forward_obstacle_detector.detect(self.node.point_cloud, self.node.tf2_buffer)
                     if obstacle_detected:
@@ -360,11 +360,11 @@ class MoveBase():
             self.logger.info('Obstacle detected near the front of the robot, so not starting to move forward.')
 
         if abs(forward_distance_m) < tolerance_distance_m:
-            at_goal = True
+            self.at_goal = True
         else:
-            at_goal = False
+            self.at_goal = False
             
-        return at_goal
+        return self.at_goal
 
     
     def turn(self, angle_rad, publish_visualizations=True, tolerance_angle_rad=0.1, max_turn_attempts=6):
@@ -382,11 +382,25 @@ class MoveBase():
                 (turn_attempts < max_turn_attempts))):
 
             pose = {'rotate_mobile_base': turn_angle_error_rad}
-            self.node.move_to_pose(pose, return_before_done=True)
-            at_goal = False
-            unsuccessful_action = False
-            while (not at_goal) and (not unsuccessful_action):
-                at_goal, unsuccessful_action = self.check_move_state(self.node.trajectory_client)
+            self.at_goal = False
+            self.unsuccessful_action = False
+            self._future_goal = self.node.move_to_pose(pose, return_before_done=True)
+
+            # Check if goal has been successfully sent to the joint trajectory server
+            pose_sent = False
+            time_start = time.time()
+            timeout = 10
+
+            while not pose_sent and ((time.time() - time_start) < timeout):
+                pose_sent = self.goal_response(self._future_goal)
+
+            if not pose_sent or self._get_result_future == None:
+                self.logger.info("Failed to drive robot.")
+                return self.at_goal
+
+            while (not self.at_goal) and (not self.unsuccessful_action):
+                # at_goal, unsuccessful_action = self.check_move_state(self.node.trajectory_client)
+                self.get_result(self._get_result_future)
                 time.sleep(0.01)
 
             # obtain the new angle of the robot
@@ -399,8 +413,8 @@ class MoveBase():
             turn_attempts += 1
 
         if (abs(turn_angle_error_rad) < tolerance_angle_rad):
-            at_goal = True
+            self.at_goal = True
         else:
-            at_goal = False
+            self.at_goal = False
             
-        return at_goal
+        return self.at_goal
