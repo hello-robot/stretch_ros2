@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import rclpy
+from rclpy.node import Node
 from visualization_msgs.msg import MarkerArray
 from geometry_msgs.msg import Transform, TransformStamped, Pose
 import ros2_numpy
@@ -12,7 +13,7 @@ from tf2_ros.buffer import Buffer
 import time
 
 from rclpy.duration import Duration
-from rclpy.action import ActionServer
+from rclpy.action import ActionServer, ActionClient
 from control_msgs.action import FollowJointTrajectory
 from stretch_funmap.action import ArucoHeadScan
 from trajectory_msgs.msg import JointTrajectoryPoint
@@ -25,15 +26,19 @@ import hello_helpers.hello_misc as hm
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 
-class ArucoHeadScanClass(hm.HelloNode):
+class ArucoHeadScanClass(Node):
     def __init__(self):
-        # TODO: remove the dependency on HelloNode
-        hm.HelloNode.__init__(self)
-        hm.HelloNode.main(self, 'aruco_head_scan', 'aruco_head_scan', wait_for_first_pointcloud=True)
+        super().__init__('aruco_head_scan')
+        self.node_name = self.get_name()        
+        self.get_logger().info("{0} started".format(self.node_name))
+
         self.get_logger().info("Initializing aruco head scan action server")
         self.cb_group = ReentrantCallbackGroup()
         self.server = ActionServer(self, ArucoHeadScan, 'aruco_head_scan', self.execute_cb, callback_group=self.cb_group)
         self.aruco_marker_array = self.create_subscription(MarkerArray, 'aruco/marker_array', self.aruco_callback, 10, callback_group=self.cb_group)
+        self.joint_states_sub = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 1, callback_group=self.cb_group)
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory', callback_group=self.cb_group)
+        
         self.aruco_id = 1000 # Placeholder value
         self.aruco_found = False
         self.marker_array = MarkerArray()
@@ -42,6 +47,7 @@ class ArucoHeadScanClass(hm.HelloNode):
 
     def joint_states_callback(self, joint_state):
         self.joint_state = joint_state
+        self.get_logger().info("Joint states callback invoked")
 
     def execute_cb(self, goal_handle):
         self.get_logger().info("Received goal to perform aruco head scan")
@@ -154,9 +160,6 @@ class ArucoHeadScanClass(hm.HelloNode):
         self.listener = TransformListener(self.tf2_buffer, self)
         self.tf2_static_broadcaster = StaticTransformBroadcaster(self)
 
-        self.joint_states_sub = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 1)
-        self.joint_states_sub
-
         while rclpy.ok():
             try:
                 self.aruco_tf.header.stamp = self.get_clock().now().to_msg()
@@ -172,8 +175,9 @@ def main():
         rclpy.init()
         executor = MultiThreadedExecutor()
         node = ArucoHeadScanClass()
-        node.main()
         executor.add_node(node)
+        node.main()
+        
     except KeyboardInterrupt:
         print('interrupt received, so shutting down')
 
