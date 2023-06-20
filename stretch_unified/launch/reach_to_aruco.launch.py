@@ -25,13 +25,13 @@ def load_joint_limits_from_config(moveit_config_path, mode='default'):
 
 def generate_launch_description():
     stretch_core_path = get_package_share_directory('stretch_core')
-    stretch_funmap_path = get_package_share_directory('stretch_funmap')
+    stretch_unified_path = get_package_share_directory('stretch_unified')
 
-    stretch_funmap_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([stretch_funmap_path, '/launch/stretch_funmap.launch.py']))
+    stretch_unified_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([stretch_unified_path, '/launch/stretch_unified.launch.py']))
     
     aruco_head_scan_server = Node(
-        package='stretch_funmap',
+        package='stretch_unified',
         executable='aruco_head_scan_action.py',
         output='screen',
         )
@@ -102,13 +102,13 @@ def generate_launch_description():
     # ************************************************************************************************
 
     reach_to_aruco = Node(
-        package='stretch_funmap',
+        package='stretch_unified',
         executable='reach_to_aruco.py',
         parameters=[moveit_cpp_config] + move_group_params,
         output='screen',
         )
     
-    ld.add_action(stretch_funmap_launch)
+    ld.add_action(stretch_unified_launch)
     ld.add_action(aruco_head_scan_server)
     ld.add_action(aruco_launch)
     ld.add_action(reach_to_aruco)

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(stretch_funmap)
+project(stretch_unified)
 
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
@@ -29,7 +29,7 @@ include_directories(include)
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY rviz DESTINATION share/${PROJECT_NAME})
-install(DIRECTORY stretch_funmap DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY stretch_unified DESTINATION share/${PROJECT_NAME})
 
 # Install Cpp executables
 # install(TARGETS
@@ -42,8 +42,8 @@ install(DIRECTORY stretch_funmap DESTINATION share/${PROJECT_NAME})
 
 # Install Python executables
 install(PROGRAMS
-  stretch_funmap/aruco_head_scan_action.py
-  stretch_funmap/reach_to_aruco.py
+  stretch_unified/aruco_head_scan_action.py
+  stretch_unified/reach_to_aruco.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

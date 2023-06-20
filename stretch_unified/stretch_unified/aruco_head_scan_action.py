@@ -15,7 +15,7 @@ import time
 from rclpy.duration import Duration
 from rclpy.action import ActionServer, ActionClient
 from control_msgs.action import FollowJointTrajectory
-from stretch_funmap.action import ArucoHeadScan
+from stretch_unified.action import ArucoHeadScan
 from trajectory_msgs.msg import JointTrajectoryPoint
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 

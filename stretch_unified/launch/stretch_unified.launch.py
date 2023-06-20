@@ -11,7 +11,7 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     stretch_core_path = get_package_share_directory('stretch_core')
-    stretch_funmap_path = get_package_share_directory('stretch_funmap')
+    stretch_unified_path = get_package_share_directory('stretch_unified')
     stretch_navigation_path = get_package_share_directory('stretch_nav2')
 
     map_path = "{0}/maps/".format(os.getenv('HELLO_FLEET_PATH'))
@@ -22,7 +22,7 @@ def generate_launch_description():
     
     rviz_config = DeclareLaunchArgument(
         'rviz_config',
-        default_value=os.path.join(stretch_funmap_path, 'rviz/stretch_funmap.rviz'),
+        default_value=os.path.join(stretch_unified_path, 'rviz/stretch_unified.rviz'),
         description='Full path to the map yaml file to use for navigation')
     
     stretch_driver_launch = IncludeLaunchDescription(
@@ -36,14 +36,14 @@ def generate_launch_description():
         PythonLaunchDescriptionSource([stretch_core_path, '/launch/rplidar.launch.py']))
     
     manipulation_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([stretch_funmap_path, '/launch/manipulation.launch.py']))
+        PythonLaunchDescriptionSource([stretch_unified_path, '/launch/manipulation.launch.py']))
 
     navigation_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([stretch_funmap_path, '/launch/navigation.launch.py']),
+        PythonLaunchDescriptionSource([stretch_unified_path, '/launch/navigation.launch.py']),
         launch_arguments={'map': LaunchConfiguration('map')}.items())
     
     perception_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([stretch_funmap_path, '/launch/perception.launch.py']))
+        PythonLaunchDescriptionSource([stretch_unified_path, '/launch/perception.launch.py']))
     
     rviz_node = Node(package='rviz2', executable='rviz2',
                      output='log',

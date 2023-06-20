@@ -9,7 +9,7 @@ from rclpy.node import Node
 from rclpy.duration import Duration
 from rclpy.logging import get_logger
 
-from stretch_funmap.action import ArucoHeadScan
+from stretch_unified.action import ArucoHeadScan
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
 from std_srvs.srv import Trigger
