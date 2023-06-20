@@ -60,7 +60,7 @@ def generate_launch_description():
           )
 
     keyboard_teleop_params = [
-        {'grasp_object_on': True,
+        {'handover_object_on': True,
         }
     ]
 
@@ -78,9 +78,9 @@ def generate_launch_description():
             '/funmap.launch.py']),
         )
 
-    grasp_object = Node(
+    open_drawer = Node(
             package='stretch_demos',
-            executable='grasp_object',
+            executable='open_drawer',
             output='screen',
     )
 
@@ -94,5 +94,5 @@ def generate_launch_description():
         # stretch_description,
         stretch_funmap,
         keyboard_teleop,
-        grasp_object
+        open_drawer
         ])

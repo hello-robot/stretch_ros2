@@ -64,7 +64,8 @@ class CleanSurfaceNode(Node):
         self.point_cloud = point_cloud
 
     # @staticmethod
-    def move_to_pose(self, pose, _async=False, custom_contact_thresholds=False):
+    def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
+        self.move_to_pose_complete = False
         joint_names = [key for key in pose]
         point = JointTrajectoryPoint()
         point.time_from_start = Duration(seconds=0.0).to_msg()
@@ -79,7 +80,7 @@ class CleanSurfaceNode(Node):
         else:
             pose_correct = all([len(pose[key])==2 for key in joint_names])
             if not pose_correct:
-                self.log.error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
+                self.logger.error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
                 return
             joint_positions = [pose[key][0] for key in joint_names]
             joint_efforts = [pose[key][1] for key in joint_names]
@@ -87,9 +88,23 @@ class CleanSurfaceNode(Node):
             point.effort = joint_efforts
             trajectory_goal.trajectory.points = [point]
         trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
-        self.trajectory_client.send_goal(trajectory_goal)
-        # if not _async: 
-        #     self.trajectory_client.wait_for_result()
+        self._send_goal_future = self.trajectory_client.send_goal_async(trajectory_goal)
+
+        if not return_before_done:
+            time_start = time.time()
+            self._get_result_future = None
+
+            while self._get_result_future == None and (time.time() - time_start) < 10:
+                self.goal_response(self._send_goal_future)
+
+            if self._get_result_future == None:
+                return self._send_goal_future
+
+            time_start = time.time()
+            while not self.move_to_pose_complete and (time.time() - time_start) < 10:
+                self.get_result(self._get_result_future)
+        
+        return self._send_goal_future
 
     def wipe_in(self):
         self.log.info('wipe_in')

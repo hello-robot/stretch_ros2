@@ -8,6 +8,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient, ActionServer
 from rclpy.duration import Duration
+from rclpy.executors import MultiThreadedExecutor
 import rclpy.logging
 from rclpy.time import Time
 
@@ -75,7 +76,8 @@ class GraspObjectNode(Node):
         self.logger.info('Move to the initial configuration for drawer opening.')
         self.move_to_pose(initial_pose)
 
-    def move_to_pose(self, pose, return_before_done=True, custom_contact_thresholds=False, goal_cb=None):
+    def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
+        self.move_to_pose_complete = False
         joint_names = [key for key in pose]
         point = JointTrajectoryPoint()
         point.time_from_start = Duration(seconds=0.0).to_msg()
@@ -90,7 +92,7 @@ class GraspObjectNode(Node):
         else:
             pose_correct = all([len(pose[key])==2 for key in joint_names])
             if not pose_correct:
-                self.log.error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
+                self.logger.error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
                 return
             joint_positions = [pose[key][0] for key in joint_names]
             joint_efforts = [pose[key][1] for key in joint_names]
@@ -100,12 +102,19 @@ class GraspObjectNode(Node):
         trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
         self._send_goal_future = self.trajectory_client.send_goal_async(trajectory_goal)
 
-        if goal_cb != None:
-            self.logger.info("Added callback")
-            self._send_goal_future.add_done_callback(goal_cb)
-        
         if not return_before_done:
-            rclpy.spin_until_future_complete(self, self._send_goal_future)
+            time_start = time.time()
+            self._get_result_future = None
+
+            while self._get_result_future == None and (time.time() - time_start) < 10:
+                self.goal_response(self._send_goal_future)
+
+            if self._get_result_future == None:
+                return self._send_goal_future
+
+            time_start = time.time()
+            while not self.move_to_pose_complete and (time.time() - time_start) < 10:
+                self.get_result(self._get_result_future)
         
         return self._send_goal_future
 
@@ -144,6 +153,8 @@ class GraspObjectNode(Node):
         min_extension_m = 0.01
         max_extension_m = 0.5
 
+        self.logger.info(f"Lift position = {self.lift_position} m")
+
         if actually_move:
             self.logger.info('Retract the tool.')
             pose = {'wrist_extension': 0.01}
@@ -177,11 +188,13 @@ class GraspObjectNode(Node):
                 success=False,
                 message='Lift position unavailable'
             )
-        
+
+        lift_to_pregrasp_m = max(self.lift_position + pregrasp_lift_m, 0.1)
+        lift_to_pregrasp_m = min(lift_to_pregrasp_m, max_lift_m)
+        self.logger.info(f"lift_to_pregrasp_m = {lift_to_pregrasp_m} m")
+
         if actually_move:
             self.logger.info('Raise tool to pregrasp height.')
-            lift_to_pregrasp_m = max(self.lift_position + pregrasp_lift_m, 0.1)
-            lift_to_pregrasp_m = min(lift_to_pregrasp_m, max_lift_m)
             pose = {'joint_lift': lift_to_pregrasp_m}
             self.move_to_pose(pose)
             time.sleep(5)
@@ -319,8 +332,16 @@ def main():
         node = GraspObjectNode()
         node.main()
         rclpy.spin(node=node)
+        # executor = MultiThreadedExecutor(num_threads=6)
+        # executor.add_node(node=node)
+        # try:
+        #     executor.spin()
+        # finally:
+        #     executor.shutdown()
+        #     node.destroy_node()
+        #     rclpy.shutdown()
     except KeyboardInterrupt:
         rclpy.logging.get_logger('grasp_object').info('interrupt received, so shutting down')
-        
+
 if __name__ == '__main__':
     main()

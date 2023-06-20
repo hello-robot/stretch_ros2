@@ -15,24 +15,18 @@ configurable_parameters = [{'name': 'uncalibrated_controller_yaml_file',        
 def declare_configurable_parameters(parameters):
     return [DeclareLaunchArgument(param['name'], default_value=param['default'], description=param['description']) for param in parameters]
 
-def generate_launch_description():
-    d435i_high_res_launch = IncludeLaunchDescription(
+def generate_launch_description():   
+    rplidar = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory('stretch_core'), 'launch'),
-            '/d435i_high_resolution.launch.py']),
+            '/rplidar.launch.py']),
         )
-    
-    # rplidar = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource([os.path.join(
-    #         get_package_share_directory('stretch_core'), 'launch'),
-    #         '/rplidar.launch.py']),
-    #     )
 
-    # joint_state_publisher = Node(package='joint_state_publisher',
-    #                              executable='joint_state_publisher',
-    #                              output='log',
-    #                              parameters=[{'source_list': ['/stretch/joint_states']},
-    #                                          {'rate': 15}])
+    joint_state_publisher = Node(package='joint_state_publisher',
+                                 executable='joint_state_publisher',
+                                 output='log',
+                                 parameters=[{'source_list': ['/stretch/joint_states']},
+                                             {'rate': 15}])
 
     stretch_description_path = get_package_share_directory('stretch_description')
     robot_description_content = Command(
@@ -46,12 +40,6 @@ def generate_launch_description():
                                             #   'robot_description': LaunchConfiguration('uncalibrated_urdf_file'), // Raises empty file error with URDF parser
                                               'publish_frequency': 15.0}])
 
-    stretch_description = IncludeLaunchDescription(
-          PythonLaunchDescriptionSource([os.path.join(
-               get_package_share_directory('stretch_description'), 'launch'),
-               '/display.launch.py'])
-          )
-
     stretch_driver = IncludeLaunchDescription(
           PythonLaunchDescriptionSource([os.path.join(
                get_package_share_directory('stretch_core'), 'launch'),
@@ -64,35 +52,21 @@ def generate_launch_description():
         }
     ]
 
-    keyboard_teleop = Node(
-            package='stretch_core',
-            executable='keyboard_teleop',
-            output='screen',
-            prefix='xterm -e',
-            parameters=keyboard_teleop_params
-    )
-
-    stretch_funmap = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(
-            get_package_share_directory('stretch_funmap'), 'launch'),
-            '/funmap.launch.py']),
-        )
-
-    grasp_object = Node(
+    test_joints = Node(
             package='stretch_demos',
-            executable='grasp_object',
+            executable='test_joints',
             output='screen',
     )
 
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
-        d435i_high_res_launch,
-        # rplidar,
+        # d435i_high_res_launch,
+        rplidar,
         # d435i_configure, #// Uncomment when node is merged
-        # joint_state_publisher,
-        # robot_state_publisher,
+        joint_state_publisher,
+        robot_state_publisher,
         stretch_driver,
         # stretch_description,
-        stretch_funmap,
-        keyboard_teleop,
-        grasp_object
+        # stretch_funmap,
+        # keyboard_teleop,
+        # grasp_object
         ])
