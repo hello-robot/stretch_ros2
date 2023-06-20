@@ -105,7 +105,9 @@ In the images below, examples of good and bad fit between the point cloud and th
 1. Build the workspace and source environment variables
 
    `cd ~/ament_ws`
+   
    `colcon build`
+   
    `source install/setup.bash`
    
 1. Test the current head calibration
@@ -137,7 +139,9 @@ When a new calibration is performed, it is timestamped and added to the calibrat
 1. Build the workspace and source environment variables
 
    `cd ~/ament_ws`
+   
    `colcon build`
+   
    `source install/setup.bash`
 
 ## License
