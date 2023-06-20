@@ -101,6 +101,12 @@ In the images below, examples of good and bad fit between the point cloud and th
 1. Start using the newest head calibration
 
    `ros2 run stretch_calibration update_with_most_recent_calibration`
+
+1. Build the workspace and source environment variables
+
+   `cd ~/ament_ws`
+   `colcon build`
+   `source install/setup.bash`
    
 1. Test the current head calibration
 
@@ -127,6 +133,12 @@ When a new calibration is performed, it is timestamped and added to the calibrat
 1. Revert to the previous head calibration
 
    `ros2 run stretch_calibration revert_to_previous_calibration`
+
+1. Build the workspace and source environment variables
+
+   `cd ~/ament_ws`
+   `colcon build`
+   `source install/setup.bash`
 
 ## License
 
