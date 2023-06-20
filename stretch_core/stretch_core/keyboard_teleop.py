@@ -24,14 +24,14 @@ import hello_helpers.hello_misc as hm
 
 class GetKeyboardCommands:
 
-    def __init__(self, node, mapping_on=False, hello_world_on=False, open_drawer_on=False, clean_surface_on=False, grasp_object_on=False, deliver_object_on=False):
+    def __init__(self, node, mapping_on=False, hello_world_on=False, open_drawer_on=False, clean_surface_on=False, grasp_object_on=False, handover_object_on=False):
         self.kb = KBHit()
         self.mapping_on = mapping_on
         self.hello_world_on = hello_world_on
         self.open_drawer_on = open_drawer_on
         self.clean_surface_on = clean_surface_on
         self.grasp_object_on = grasp_object_on
-        self.deliver_object_on = deliver_object_on
+        self.handover_object_on = handover_object_on
         self.node = node
         self.step_size = 'medium'
         self.rad_per_deg = math.pi/180.0
@@ -95,6 +95,66 @@ class GetKeyboardCommands:
 
         if self.kb.kbhit(): # Returns True if any key pressed
             c = self.kb.getch()
+
+        ####################################################
+        ## MOSTLY MAPPING RELATED CAPABILITIES
+        ## (There are non-mapping outliers.)
+        ####################################################
+        # Sequential performs a fixed number of autonomus mapping iterations
+        if (c == '!') and self.mapping_on:
+            number_iterations = 4
+            for n in range(number_iterations):
+                # Trigger a 3D scan with the D435i
+                trigger_request = Trigger.Request() 
+                trigger_result = node.trigger_head_scan_service.call_async(trigger_request)
+                self.node.get_logger().info('trigger_result = {0}'.format(trigger_result))
+
+                # Trigger driving the robot to the estimated next best place to scan
+                trigger_request = Trigger.Request() 
+                trigger_result = node.trigger_drive_to_scan_service.call_async(trigger_request)
+                self.node.get_logger().info('trigger_result = {0}'.format(trigger_result))
+                
+        # Trigger localizing the robot to a new pose anywhere on the current map
+        if ((c == '+') or (c == '=')) and self.mapping_on:
+            trigger_request = Trigger.Request() 
+            trigger_result = node.trigger_global_localization_service.call_async(trigger_request)
+            self.node.get_logger().info('trigger_result = {0}'.format(trigger_result))
+
+        # Trigger localizing the robot to a new pose that is near its current pose on the map
+        if ((c == '-') or (c == '_')) and self.mapping_on:
+            trigger_request = Trigger.Request() 
+            trigger_result = node.trigger_local_localization_service.call_async(trigger_request)
+            self.node.get_logger().info('trigger_result = {0}'.format(trigger_result))
+
+        # Trigger driving the robot to the estimated next best place to perform a 3D scan
+        if ((c == '\\') or (c == '|')) and self.mapping_on:
+            trigger_request = Trigger.Request() 
+            trigger_result = node.trigger_drive_to_scan_service.call_async(trigger_request)
+            self.node.get_logger().info('trigger_result = {0}'.format(trigger_result))
+
+        # Trigger performing a 3D scan using the D435i
+        if (c == ' ') and self.mapping_on:
+            trigger_request = Trigger.Request() 
+            trigger_result = node.trigger_head_scan_service.call_async(trigger_request)
+            self.node.get_logger().info('trigger_result = {0}'.format(trigger_result))
+
+        # Trigger rotating the mobile base to align with the nearest 3D cliff detected visually
+        if ((c == '[') or (c == '{')) and self.mapping_on:
+            trigger_request = Trigger.Request() 
+            trigger_result = node.trigger_align_with_nearest_cliff_service.call_async(trigger_request)
+            self.node.get_logger().info('trigger_result = {0}'.format(trigger_result))
+
+        # DEPRECATED: Trigger extend arm until contact
+        if ((c == ']') or (c == '}')) and self.mapping_on:
+            trigger_request = Trigger.Request() 
+            trigger_result = node.trigger_reach_until_contact_service.call_async(trigger_request)
+            self.node.get_logger().info('trigger_result = {0}'.format(trigger_result))
+
+        # DEPRECATED: Trigger lower arm until contact
+        if ((c == ':') or (c == ';')) and self.mapping_on:
+            trigger_request = Trigger.Request() 
+            trigger_result = node.trigger_lower_until_contact_service.call_async(trigger_request)
+            self.node.get_logger().info('trigger_result = {0}'.format(trigger_result))
 
         ####################################################
         ## COMMANDS TO TRIGGER STRETCH DEMOS
@@ -190,19 +250,21 @@ class KeyboardTeleopNode(Node):
 
     def __init__(self):
         super().__init__('keyboard_teleop')
-        self.mapping_on = self.get_parameter_or('mapping_on',
-                                                Parameter('mapping', Parameter.Type.BOOL, False)).value
+        self.declare_parameter('mapping_on', False)
+        self.declare_parameter('hello_world_on', False)
+        self.declare_parameter('open_drawer_on', False)
+        self.declare_parameter('clean_surface_on', False)
+        self.declare_parameter('grasp_object_on', False)
+        self.declare_parameter('handover_object_on', False)
 
-        self.hello_world_on = self.get_parameter_or('hello_world_on',
-                                                Parameter('hello_world', Parameter.Type.BOOL, False)).value
-        self.open_drawer_on = self.get_parameter_or('open_drawer_on',
-                                                Parameter('open_drawer', Parameter.Type.BOOL, False)).value
-        self.clean_surface_on = self.get_parameter_or('clean_surface_on',
-                                                Parameter('clean_surface', Parameter.Type.BOOL, False)).value
-        self.grasp_object_on = self.get_parameter_or('grasp_object_on',
-                                                Parameter('grasp_object', Parameter.Type.BOOL, True)).value
-        self.deliver_object_on = self.get_parameter_or('deliver_object_on',
-                                                Parameter('deliver_object', Parameter.Type.BOOL, False)).value
+        self.mapping_on = self.get_parameter('mapping_on').value
+        self.hello_world_on = self.get_parameter('hello_world_on').value
+        self.open_drawer_on = self.get_parameter('open_drawer_on').value
+        self.clean_surface_on = self.get_parameter('clean_surface_on').value
+        self.grasp_object_on = self.get_parameter('grasp_object_on').value
+        self.handover_object_on = self.get_parameter('handover_object_on').value
+
+        self.get_logger().info(f"FUNMAP Mapping is set to : {str(self.mapping_on)}")
 
         self.keys = GetKeyboardCommands(self,
                                         self.mapping_on,
@@ -210,7 +272,7 @@ class KeyboardTeleopNode(Node):
                                         self.open_drawer_on,
                                         self.clean_surface_on,
                                         self.grasp_object_on,
-                                        self.deliver_object_on)
+                                        self.handover_object_on)
 
         self.joint_state = JointState()
         self.robot_mode = String()
@@ -315,6 +377,37 @@ class KeyboardTeleopNode(Node):
         if not server_reached:
             self.get_logger().error('Unable to connect to arm action server. Timeout exceeded.')
             sys.exit()
+
+        if self.mapping_on: 
+            self.get_logger().info('Node ' + self.get_name() + ' waiting to connect to /funmap/trigger_head_scan.')
+
+            self.trigger_head_scan_service = self.create_client(Trigger, '/funmap/trigger_head_scan')
+            self.trigger_head_scan_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /funmap/trigger_head_scan.')
+
+            self.trigger_drive_to_scan_service = self.create_client(Trigger, '/funmap/trigger_drive_to_scan')
+            self.trigger_drive_to_scan_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /funmap/trigger_drive_to_scan.')
+
+            self.trigger_global_localization_service = self.create_client(Trigger, '/funmap/trigger_global_localization')
+            self.trigger_global_localization_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /funmap/trigger_global_localization.')
+
+            self.trigger_local_localization_service = self.create_client(Trigger, '/funmap/trigger_local_localization')
+            self.trigger_local_localization_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /funmap/trigger_local_localization.')
+
+            self.trigger_align_with_nearest_cliff_service = self.create_client(Trigger, '/funmap/trigger_align_with_nearest_cliff')
+            self.trigger_align_with_nearest_cliff_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /funmap/trigger_align_with_nearest_cliff.')
+
+            self.trigger_reach_until_contact_service = self.create_client(Trigger, '/funmap/trigger_reach_until_contact')
+            self.trigger_reach_until_contact_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /funmap/trigger_reach_until_contact.')
+
+            self.trigger_lower_until_contact_service = self.create_client(Trigger, '/funmap/trigger_lower_until_contact')
+            self.trigger_lower_until_contact_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /funmap/trigger_lower_until_contact.')
 
         if self.clean_surface_on:
             self.trigger_clean_surface_service = self.create_client(Trigger,

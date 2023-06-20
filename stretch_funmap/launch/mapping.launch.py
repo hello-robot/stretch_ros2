@@ -30,14 +30,6 @@ def generate_launch_description():
                '/d435i_high_resolution.launch.py'])
           )
     
-    
-    stretch_driver = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(
-               get_package_share_directory('stretch_core'), 'launch'),
-               '/stretch_driver.launch.py']),
-        launch_arguments={'mode': 'manipulation', 'broadcast_odom_tf': 'True', 'fail_out_of_range_goal': 'False'}.items(),
-    )
-    
     stretch_description = IncludeLaunchDescription(
           PythonLaunchDescriptionSource([os.path.join(
                get_package_share_directory('stretch_description'), 'launch'),
@@ -48,18 +40,31 @@ def generate_launch_description():
     keyboard_teleop = IncludeLaunchDescription(
           PythonLaunchDescriptionSource([os.path.join(
                get_package_share_directory('stretch_core'), 'launch'),
-               '/keyboard_teleop.launch.py'])
+               '/keyboard_teleop.launch.py']),
+               launch_arguments={'mapping_on': 'True'}.items()
           )
 
     funmap = Node(package='stretch_funmap',
                   executable='funmap',
                   output='screen',
-                  parameters=funmap_params)
+                  parameters=funmap_params,
+                  remappings=[
+            ('/move_base_simple/goal', '/goal_pose'),
+        ])
+
+    rviz_config_path = os.path.join(get_package_share_directory('stretch_funmap'), 'rviz', 'stretch_mapping.rviz')
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        arguments=['-d', rviz_config_path],
+        output='screen',
+        )
 
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
         d435i_high_resolution,
-        stretch_driver,
         # stretch_description,
         keyboard_teleop,
         funmap,
+        rviz_node
     ])

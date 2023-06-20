@@ -1,27 +1,24 @@
 #!/usr/bin/env python3
 
-import stretch_funmap.max_height_image as mh
-import numpy as np
-import scipy.ndimage as nd
-import scipy.signal as si
-import cv2
-import math
-import hello_helpers.hello_misc as hm
-import stretch_funmap.navigation_planning as na
-import copy
-import time
-
-
-from scipy.optimize import minimize, minimize_scalar
-
-
-from .numba_compare_images import numba_compare_images_2
-from . import mapping as ma
-
 import tf_transformations
 
-import cma
+import hello_helpers.hello_misc as hm
 
+import copy
+import cv2
+import math
+import time
+
+import cma
+import numpy as np
+from scipy.optimize import minimize, minimize_scalar
+import scipy.ndimage as nd
+import scipy.signal as si
+
+from . import mapping as ma
+from . import max_height_image as mh
+from . import navigation_planning as na
+from .numba_compare_images import numba_compare_images_2
 
 def affine_transform_2d_point(affine_matrix, point):
     affine_point = np.ones(3)

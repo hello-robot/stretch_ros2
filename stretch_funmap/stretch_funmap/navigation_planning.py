@@ -1,12 +1,17 @@
+#!/usr/bin/env python3
+
+import hello_helpers.hello_misc as hm
+
 import copy
+
+import cv2
 import numpy as np
 import scipy.ndimage as nd
-import cv2
+
 from . import cython_min_cost_path as cm
 from .numba_check_line_path import numba_check_line_path
 from .numba_sample_ridge import numba_sample_ridge, numba_sample_ridge_list
 from . import segment_max_height_image as sm
-import hello_helpers.hello_misc as hm
 
 ####################################################
 # DISPLAY FUNCTIONS

@@ -27,7 +27,11 @@ setup(
     entry_points={
         'console_scripts': [
             'clean_surface = stretch_demos.clean_surface:main',
-            'grasp_object = stretch_demos.grasp_object:main'
+            'grasp_object = stretch_demos.grasp_object:main',
+            'handover_object = stretch_demos.handover_object:main',
+            'hello_world = stretch_demos.hello_world:main',
+            'open_drawer = stretch_demos.open_drawer:main',
+            'test_joints = stretch_demos.test_joints:main'
         ],
     },
 )

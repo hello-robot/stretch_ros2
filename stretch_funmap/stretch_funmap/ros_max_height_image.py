@@ -1,33 +1,28 @@
 #!/usr/bin/env python3
 
-from __future__ import print_function
-
-import sys
 import rclpy
-import rclpy.logging
 from rclpy.duration import Duration
+import rclpy.logging
 from rclpy.time import Time
+
+from geometry_msgs.msg import Transform, Pose, Vector3, Quaternion, Point
+from nav_msgs.msg import OccupancyGrid, MapMetaData
+import ros2_numpy
+from sensor_msgs.msg import PointCloud2
+from std_msgs.msg import Header
+import tf2_ros
+from visualization_msgs.msg import Marker, MarkerArray
+
+from collections import deque
+from copy import deepcopy
+import math
+import struct
+import sys
+import threading
+
 import cv2
 import numpy as np
-import math
-
-from std_msgs.msg import Header
-from sensor_msgs.msg import PointCloud2
-from visualization_msgs.msg import Marker
-from visualization_msgs.msg import MarkerArray
-from nav_msgs.msg import OccupancyGrid, MapMetaData
-from geometry_msgs.msg import Transform, Pose, Vector3, Quaternion, Point
-
-import ros2_numpy
-
-import struct
-import threading
-from collections import deque
-        
-import tf2_ros
 from scipy.spatial.transform import Rotation
-
-from copy import deepcopy
 
 from .max_height_image import *
 from . import navigation_planning as na
@@ -51,7 +46,7 @@ class ROSVolumeOfInterest(VolumeOfInterest):
             voi_to_points_mat = np.linalg.inv(points_to_voi_mat)
         return voi_to_points_mat, timestamp
     
-    def get_points_to_voi_matrix_with_tf2(self, points_frame_id, tf2_buffer, lookup_time=None, timeout_s=None):
+    def get_points_to_voi_matrix_with_tf2(self, points_frame_id: str, tf2_buffer: tf2_ros.Buffer, lookup_time: Time = None, timeout_s: int = None):
         # If the necessary TF2 transform is successfully looked up,
         # this returns a 4x4 affine transformation matrix that
         # transforms points in the points_frame_id frame to the voi
@@ -64,7 +59,6 @@ class ROSVolumeOfInterest(VolumeOfInterest):
             else:
                 timeout_ros = Duration(seconds=timeout_s)
 
-            self.logger.info(f'VOI looking up transform between <{self.frame_id}> and <{points_frame_id}>')
             stamped_transform =  tf2_buffer.lookup_transform(self.frame_id, points_frame_id, lookup_time, timeout_ros)
             points_to_frame_id_mat = ros2_numpy.numpify(stamped_transform.transform)
             points_to_voi_mat = self.get_points_to_voi_matrix(points_to_frame_id_mat)
@@ -73,15 +67,15 @@ class ROSVolumeOfInterest(VolumeOfInterest):
             self.logger.warn('WARNING: VolumeOfInterest failed to lookup transform. Message: ' + str(e))
             return None, None
         
-    def get_ros_marker(self, time_stamp, duration=0.2):
+    def get_ros_marker(self, time_stamp=None, duration=0.2):
         marker = Marker()
         marker.type = marker.CUBE
         marker.action = marker.ADD
-        marker.lifetime = Duration(seconds=duration)
+        marker.lifetime = Duration(seconds=duration).to_msg()
         marker.text = 'volume of interest'
 
         marker.header.frame_id = self.frame_id
-        marker.header.stamp = time_stamp
+        marker.header.stamp = time_stamp if time_stamp != None else Time(seconds=0).to_msg()
         marker.id = 0
 
         # scale of 1,1,1 would result in a 1m x 1m x 1m cube
@@ -90,7 +84,7 @@ class ROSVolumeOfInterest(VolumeOfInterest):
         marker.scale.z = self.z_in_m
 
         # make as bright as possible
-        r, g, b = [0, 0, 255]
+        r, g, b = [0., 0., 255.]
         marker.color.r = r
         marker.color.g = g
         marker.color.b = b
@@ -115,7 +109,7 @@ class ROSVolumeOfInterest(VolumeOfInterest):
         
 class ROSMaxHeightImage(MaxHeightImage):
     def __init__(self, volume_of_interest, m_per_pix, pixel_dtype, m_per_height_unit=None, use_camera_depth_image=False, image=None, rgb_image=None, camera_depth_image=None):
-        super().__init__(volume_of_interest, m_per_pix, pixel_dtype, m_per_height_unit=None, use_camera_depth_image=False, image=None, rgb_image=None, camera_depth_image=None)
+        super().__init__(volume_of_interest, m_per_pix, pixel_dtype, m_per_height_unit, use_camera_depth_image, image, rgb_image, camera_depth_image)
         self.logger = rclpy.logging.get_logger('stretch_funmap')
 
     @classmethod
@@ -251,7 +245,7 @@ class ROSMaxHeightImage(MaxHeightImage):
 
             if points_timestamp is None:
                 if timestamp is None: 
-                    self.last_update_time = Time().to_msg()
+                    self.last_update_time = Time(seconds=0).to_msg()
                 else:
                     self.last_update_time = timestamp
             else:
@@ -273,7 +267,7 @@ class ROSMaxHeightImage(MaxHeightImage):
 
             if points_timestamp is None:
                 if timestamp is None: 
-                    self.last_update_time = Time(seconds=0)
+                    self.last_update_time = Time(seconds=0).to_msg()
                 else:
                     self.last_update_time = timestamp
             else:

@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 
-import cv2
-from functools import partial
-import numpy as np
-import os
-import time
-
-import ros2_numpy as rn
-from control_msgs.action import FollowJointTrajectory
-from actionlib_msgs.msg import GoalStatus
 import rclpy
 from rclpy.duration import Duration
 from rclpy.clock import Clock, ClockType
 import rclpy.logging
 import rclpy.task
+
+from control_msgs.action import FollowJointTrajectory
+import ros2_numpy as rn
 from std_srvs.srv import Trigger
+
 import hello_helpers.hello_misc as hm
+
+from functools import partial
+import os
+import time
+
+import cv2
+import numpy as np
 
 from . import navigation_planning as na
 from . import ros_max_height_image as rm
@@ -62,7 +64,7 @@ class ForwardMotionObstacleDetector():
             self.max_height_im.from_rgb_points_with_tf2(rgb_points, cloud_frame, tf2_buffer)
         obstacle_im = self.max_height_im.image == 0
         num_obstacle_pix = np.sum(obstacle_im)
-        self.logger.info('num_obstacle_pix =', num_obstacle_pix)
+        self.logger.info(f'num_obstacle_pix = {num_obstacle_pix}')
         return num_obstacle_pix
 
     def publish_visualizations(self, voi_marker_pub, point_cloud_pub):
@@ -77,7 +79,7 @@ class FastSingleViewPlanner():
         self.logger = rclpy.logging.get_logger('stretch_funmap')
         if debug_directory is not None: 
             self.debug_directory = debug_directory + 'fast_single_view_planner/'
-            self.logger.info('MoveBase __init__: self.debug_directory =', self.debug_directory)
+            self.logger.info(f'MoveBase __init__: self.debug_directory = {str(self.debug_directory)}')
         else:
             self.debug_directory = debug_directory
         
@@ -118,8 +120,8 @@ class FastSingleViewPlanner():
                 # Save the new scan to disk.
                 dirname = self.debug_directory + 'check_line_path/'
                 filename = 'check_line_path_' + hm.create_time_string()
-                self.logger.info('FastSingleViewPlanner check_line_path : directory =', dirname)
-                self.logger.info('FastSingleViewPlanner check_line_path : filename =', filename)
+                self.logger.info(f'FastSingleViewPlanner check_line_path : directory = {dirname}')
+                self.logger.info(f'FastSingleViewPlanner check_line_path : filename = {filename}')
                 if not os.path.exists(dirname):
                     os.makedirs(dirname)
                 self.max_height_im.save(dirname + filename)
@@ -149,8 +151,8 @@ class FastSingleViewPlanner():
                 # Save the new scan to disk.
                 dirname = self.debug_directory + 'plan_a_path/'
                 filename = 'plan_a_path_' + hm.create_time_string()
-                self.logger.info('FastSingleViewPlanner plan_a_path : directory =', dirname)
-                self.logger.info('FastSingleViewPlanner plan_a_path : filename =', filename)
+                self.logger.info(f'FastSingleViewPlanner plan_a_path : directory = {dirname}')
+                self.logger.info(f'FastSingleViewPlanner plan_a_path : filename = {filename}')
                 if not os.path.exists(dirname):
                     os.makedirs(dirname)
                 self.save_scan(dirname + filename)
@@ -212,6 +214,7 @@ class MoveBase():
         self.unsuccessful_status = [-100, 100, FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.INVALID_JOINTS, FollowJointTrajectory.Result.INVALID_GOAL, FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.OLD_HEADER_TIMESTAMP]  
         self.at_goal = False
         self.unsuccessful_action = False
+        self._get_result_future = None
 
     def head_to_forward_motion_pose(self):
         # Move head to navigation pose.
@@ -219,19 +222,22 @@ class MoveBase():
         pose = {'joint_head_pan': 0.1, 'joint_head_tilt': -1.1}
         self.node.move_to_pose(pose)
 
-    def goal_response_callback(self, future):
-        self.logger.inf("+++++++++CHECKING GOAL HANDLE++++++++++")
+    def goal_response(self, future: rclpy.task.Future):
+        self._get_result_future = None
+        if not future.result():
+            return False
         goal_handle = future.result()
         if not goal_handle.accepted:
-            self.logger.info('Goal rejected :(')
-            return
-
-        self.logger.info('Goal accepted :)')
+            self.logger.info('Goal rejected')
+            return True
 
         self._get_result_future = goal_handle.get_result_async()
-        self._get_result_future.add_done_callback(self.get_result_callback)
+        return True
 
-    def get_result_callback(self, future):
+    def get_result(self, future: rclpy.task.Future):
+        if not future.result():
+            return
+
         result = future.result().result
         error_code = result.error_code
         self.logger.info('The Action Server has finished, it returned: "%s"' % str(error_code))
@@ -240,7 +246,7 @@ class MoveBase():
             self.at_goal = True
             self.unsuccessful_action = False
             self.logger.info("Goal point reached.")
-        elif (error_code in self.unsuccessful_actions):
+        elif (error_code in self.unsuccessful_status):
             self.at_goal = False
             self.unsuccessful_action = True
             self.logger.info("Goal unsuccessful.")
@@ -305,7 +311,6 @@ class MoveBase():
         forward_distance_m = distance_m
 
         # Make at least one move if no obtacle was detected.
-        self.logger.info("###########################################TURN CALLED##################################################")
         while (not obstacle_detected) and (((forward_attempts <= 0) or
                                             ((forward_distance_m > tolerance_distance_m) and
                                              (forward_attempts < max_forward_attempts)))):
@@ -315,20 +320,30 @@ class MoveBase():
             pose = {'translate_mobile_base': forward_distance_m}
             self.at_goal = False
             self.unsuccessful_action = False
-            self._future_goal = self.node.move_to_pose(pose, return_before_done=True, goal_cb=self.goal_response_callback)
-            # future_goal.add_done_callback(self.goal_response_callback)
+            self._future_goal = self.node.move_to_pose(pose, return_before_done=True)
+
+            # Check if goal has been successfully sent to the joint trajectory server
+            pose_sent = False
+            time_start = time.time()
+            timeout = 10
+
+            while not pose_sent and ((time.time() - time_start) < timeout):
+                pose_sent = self.goal_response(self._future_goal)
+
+            if not pose_sent or self._get_result_future == None:
+                self.logger.info("Failed to drive robot.")
+                return self.at_goal
 
             while (not self.at_goal) and (not obstacle_detected) and (not self.unsuccessful_action):
-                # self.logger.info("Not at goal, checking again...")
                 if detect_obstacles: 
                     obstacle_detected = self.forward_obstacle_detector.detect(self.node.point_cloud, self.node.tf2_buffer)
                     if obstacle_detected:
                         trigger_result = self.node.stop_the_robot_service.call_async(trigger_request)
-                        self.logger.info('trigger_result =' + str(trigger_result))
+                        self.logger.info('trigger_result = ' + str(trigger_result))
                         self.logger.info('Obstacle detected near the front of the robot, so stopping!')
                     if publish_visualizations: 
                         self.forward_obstacle_detector.publish_visualizations(self.node.voi_marker_pub, self.node.obstacle_point_cloud_pub)
-                # at_goal, unsuccessful_action = self.check_move_state(future_goal)
+                self.get_result(self._get_result_future)
 
             # obtain the new position of the robot
             xya, timestamp = hm.get_robot_floor_pose_xya(self.node.tf2_buffer)
@@ -345,11 +360,11 @@ class MoveBase():
             self.logger.info('Obstacle detected near the front of the robot, so not starting to move forward.')
 
         if abs(forward_distance_m) < tolerance_distance_m:
-            at_goal = True
+            self.at_goal = True
         else:
-            at_goal = False
+            self.at_goal = False
             
-        return at_goal
+        return self.at_goal
 
     
     def turn(self, angle_rad, publish_visualizations=True, tolerance_angle_rad=0.1, max_turn_attempts=6):
@@ -367,11 +382,25 @@ class MoveBase():
                 (turn_attempts < max_turn_attempts))):
 
             pose = {'rotate_mobile_base': turn_angle_error_rad}
-            self.node.move_to_pose(pose, return_before_done=True)
-            at_goal = False
-            unsuccessful_action = False
-            while (not at_goal) and (not unsuccessful_action):
-                at_goal, unsuccessful_action = self.check_move_state(self.node.trajectory_client)
+            self.at_goal = False
+            self.unsuccessful_action = False
+            self._future_goal = self.node.move_to_pose(pose, return_before_done=True)
+
+            # Check if goal has been successfully sent to the joint trajectory server
+            pose_sent = False
+            time_start = time.time()
+            timeout = 10
+
+            while not pose_sent and ((time.time() - time_start) < timeout):
+                pose_sent = self.goal_response(self._future_goal)
+
+            if not pose_sent or self._get_result_future == None:
+                self.logger.info("Failed to drive robot.")
+                return self.at_goal
+
+            while (not self.at_goal) and (not self.unsuccessful_action):
+                # at_goal, unsuccessful_action = self.check_move_state(self.node.trajectory_client)
+                self.get_result(self._get_result_future)
                 time.sleep(0.01)
 
             # obtain the new angle of the robot
@@ -384,8 +413,8 @@ class MoveBase():
             turn_attempts += 1
 
         if (abs(turn_angle_error_rad) < tolerance_angle_rad):
-            at_goal = True
+            self.at_goal = True
         else:
-            at_goal = False
+            self.at_goal = False
             
-        return at_goal
+        return self.at_goal

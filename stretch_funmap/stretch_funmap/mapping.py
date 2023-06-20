@@ -1,27 +1,28 @@
 #!/usr/bin/env python3
 
-import numpy as np
-import ros2_numpy as rn
-import stretch_funmap.ros_max_height_image as rm
-from actionlib_msgs.msg import GoalStatus
 import rclpy
-import rclpy.time
 from rclpy.clock import Clock
 from rclpy.duration import Duration
 import rclpy.logging
-import hello_helpers.hello_misc as hm
-import stretch_funmap.ros_max_height_image as rm
-import ros2_numpy
-import yaml
-import stretch_funmap.navigation_planning as na
-import time
-import cv2
-import copy
-import scipy.ndimage as nd
-import stretch_funmap.merge_maps as mm
-import tf_transformations
-import stretch_funmap.segment_max_height_image as sm
+import rclpy.time
 
+import ros2_numpy as rn
+import tf_transformations
+
+import hello_helpers.hello_misc as hm
+
+import copy
+import time
+import yaml
+
+import cv2
+import numpy as np
+import scipy.ndimage as nd
+
+from . import merge_maps as mm
+from . import navigation_planning as na
+from . import ros_max_height_image as rm
+from . import segment_max_height_image as sm
 
 def stow_and_lower_arm(node):
     pose = {'joint_gripper_finger_left': -0.15}
@@ -306,8 +307,9 @@ class HeadScan:
             
         self.max_height_im.print_info()
 
-        self.logger = rclpy.logging.get_logger('stretch_funmap')
+        # self.logger = rclpy.logging.get_logger('stretch_funmap')
 
+    
         
     def make_robot_footprint_unobserved(self):
         # replace robot points with unobserved points
@@ -330,7 +332,6 @@ class HeadScan:
         
         node.move_to_pose(pose)
         time.sleep(head_settle_time)
-        settle_time = self.clock.now()
         prev_cloud_time = None
         num_point_clouds = 0
         # Consider using time stamps to make decisions, instead of
@@ -383,7 +384,7 @@ class HeadScan:
 
         scan_end_time = time.time()
         scan_duration = scan_end_time - scan_start_time
-        self.logger.info('The head scan took {0} seconds.'.format(scan_duration))
+        # self.logger.info('The head scan took {0} seconds.'.format(scan_duration))
             
         #####################################
         # record robot pose information and potentially useful transformations
@@ -457,8 +458,8 @@ class HeadScan:
         self.execute(head_tilt, far_left_pan, far_right_pan, num_pan_steps, capture_params, node, look_at_self)
         
         
-    def save( self, base_filename, save_visualization=True ):
-        print('HeadScan: Saving to base_filename =', base_filename)
+    def save(self, base_filename, save_visualization=True ):
+        # self.logger.info(f'HeadScan: Saving to base_filename = {str(base_filename)}')
         # save scan to disk
         max_height_image_base_filename = base_filename + '_mhi'
         self.max_height_im.save(max_height_image_base_filename)
@@ -480,11 +481,11 @@ class HeadScan:
         
         with open(base_filename + '.yaml', 'w') as fid:
             yaml.dump(data, fid)
-        print('Finished saving.')
+        # self.logger.info('Finished saving.')
         
     @classmethod
     def from_file(self, base_filename):
-        print('HeadScan.from_file: base_filename =', base_filename)
+        # self.logger.info(f'HeadScan.from_file: base_filename = {str(base_filename)}')
         with open(base_filename + '.yaml', 'r') as fid:
             data = yaml.load(fid, Loader=yaml.FullLoader)
 
