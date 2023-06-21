@@ -48,7 +48,6 @@ class ArucoHeadScanClass(Node):
 
     def joint_states_callback(self, joint_state):
         self.joint_state = joint_state
-        self.get_logger().info("Joint states callback invoked")
 
     def execute_cb(self, goal_handle):
         self.get_logger().info("Received goal to perform aruco head scan")
@@ -69,7 +68,7 @@ class ArucoHeadScanClass(Node):
         scan_point = JointTrajectoryPoint()
         start_point = JointTrajectoryPoint()
         duration1 = Duration(seconds=0.0)
-        duration2 = Duration(seconds=3.0)
+        duration2 = Duration(seconds=2.0)
         start_point.time_from_start = duration1.to_msg()
         scan_point.time_from_start = duration2.to_msg()
         start_point.positions = [self.joint_state.position[7], self.joint_state.position[6]] # [joint_head_tilt, joint_head_pan]
@@ -88,13 +87,10 @@ class ArucoHeadScanClass(Node):
         goal_handle.publish_feedback(self.feedback)
 
         for pan_angle in np.arange(-3.14, 1.39, 0.7):
-            time.sleep(5.0)
+            time.sleep(3.0)
             
-            for i in range(1, 20):
-                rclpy.spin_once(self)
-                if self.markers:
-                    markers = self.markers
-                    break
+            if self.markers:
+                markers = self.markers
 
             if markers != []:
                 for marker in markers:
@@ -154,7 +150,6 @@ class ArucoHeadScanClass(Node):
     def aruco_callback(self, msg):
         self.marker_array = msg
         self.markers = self.marker_array.markers
-        self.get_logger().info("Aruco marker callback invoked")
 
     def main(self):
         self.get_logger().info("Initializing the tf buffer, listener and broadcaster")
@@ -162,14 +157,14 @@ class ArucoHeadScanClass(Node):
         self.listener = TransformListener(self.tf2_buffer, self)
         self.tf2_static_broadcaster = StaticTransformBroadcaster(self)
 
-        while rclpy.ok():
-            try:
-                self.aruco_tf.header.stamp = self.get_clock().now().to_msg()
-                self.tf2_broadcaster.sendTransform(self.aruco_tf)
-            except AttributeError:
-                pass
-            time.sleep(0.2)
-            rclpy.spin_once(self)
+        # while rclpy.ok():
+        #     try:
+        #         self.aruco_tf.header.stamp = self.get_clock().now().to_msg()
+        #         self.tf2_broadcaster.sendTransform(self.aruco_tf)
+        #     except AttributeError:
+        #         pass
+        #     time.sleep(0.2)
+        #     rclpy.spin_once(self)
 
 
 def main():
@@ -179,9 +174,12 @@ def main():
         node = ArucoHeadScanClass()
         executor.add_node(node)
         node.main()
+        executor.spin()
         
     except KeyboardInterrupt:
         print('interrupt received, so shutting down')
+        node.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':
