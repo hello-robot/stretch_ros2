@@ -33,11 +33,12 @@ class ArucoHeadScanClass(Node):
         self.get_logger().info("{0} started".format(self.node_name))
 
         self.get_logger().info("Initializing aruco head scan action server")
-        self.cb_group = ReentrantCallbackGroup()
-        self.server = ActionServer(self, ArucoHeadScan, 'aruco_head_scan', self.execute_cb, callback_group=self.cb_group)
-        self.aruco_marker_array = self.create_subscription(MarkerArray, 'aruco/marker_array', self.aruco_callback, 10, callback_group=self.cb_group)
-        self.joint_states_sub = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 1, callback_group=self.cb_group)
-        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory', callback_group=self.cb_group)
+        self.subs_cb_group = MutuallyExclusiveCallbackGroup()
+        self.actions_cb_group = ReentrantCallbackGroup()
+        self.server = ActionServer(self, ArucoHeadScan, 'aruco_head_scan', self.execute_cb, callback_group=self.actions_cb_group)
+        self.aruco_marker_array = self.create_subscription(MarkerArray, 'aruco/marker_array', self.aruco_callback, 10, callback_group=self.subs_cb_group)
+        self.joint_states_sub = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 1, callback_group=self.subs_cb_group)
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory', callback_group=self.actions_cb_group)
         
         self.aruco_id = 1000 # Placeholder value
         self.aruco_found = False
@@ -153,6 +154,7 @@ class ArucoHeadScanClass(Node):
     def aruco_callback(self, msg):
         self.marker_array = msg
         self.markers = self.marker_array.markers
+        self.get_logger().info("Aruco marker callback invoked")
 
     def main(self):
         self.get_logger().info("Initializing the tf buffer, listener and broadcaster")
