@@ -344,7 +344,6 @@ class ManipulationView():
             line_width = 2
             radius = 5
             p0 = tuple(np.int32(np.round(start_xy)))
-
             height, width = mask_image.shape
             color_im = np.zeros((height, width, 3), np.uint8)
             color_im[:,:,0] = mask_image
@@ -428,7 +427,6 @@ class ManipulationView():
         if lift_to_pregrasp_m > 0.94:
             lift_to_pregrasp_m = 0.94
         return lift_to_pregrasp_m
-
 
     def get_pregrasp_yaw(self, grasp_target, tf2_buffer):
         h = self.max_height_im
@@ -860,7 +858,6 @@ class ManipulationView():
             # as multiplying by [0,0,0,1]
             wrist_x, wrist_y, wrist_z = wrist_points_to_image_mat[:, 3][:3]
             wrist_xy_pix = np.array([wrist_x, wrist_y])
-
             p0, p1, normal = detect_cliff(h.image, h.m_per_pix, h.m_per_height_unit, wrist_xy_pix)
             if normal is not None: 
                 image_to_points_mat, ip_timestamp = h.get_image_to_points_mat(frame_id, tf2_buffer)
