@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>pick_place_task</name>
+  <version>0.0.1</version>
+  <description>Package containing MTC tasks for stretch robot</description>
+
+  <maintainer email="jafar@picknik.ai">Jafar Abdi</maintainer>
+  <author email="jafar@picknik.ai">Jafar Abdi</author>
+
+  <license>BSD</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>eigen3_cmake_module</buildtool_depend>
+  <buildtool_export_depend>eigen3_cmake_module</buildtool_export_depend>
+
+  <depend>eigen</depend>
+  <depend>geometry_msgs</depend>
+  <depend>moveit_core</depend>
+  <depend>moveit_ros_planning_interface</depend>
+  <depend>moveit_task_constructor_core</depend>
+  <depend>rclcpp</depend>
+  <depend>rosparam_shortcuts</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
