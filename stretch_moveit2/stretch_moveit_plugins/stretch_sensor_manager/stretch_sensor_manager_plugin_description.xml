@@ -1,0 +1,7 @@
+<library path="stretch_sensor_manager">
+  <class name="stretch_sensor_manager/StretchSensorManager" type="stretch_sensor_manager::StretchSensorManager" base_class_type="moveit_sensor_manager::MoveItSensorManager">
+    <description>
+        MoveIt sensor manager plugin for stretch head
+    </description>
+  </class>
+</library>

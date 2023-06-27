@@ -1,0 +1,7 @@
+<library path="stretch_kinematics_plugin">
+  <class name="stretch_kinematics_plugin/StretchKinematicsPlugin" type="stretch_kinematics_plugin::StretchKinematicsPlugin" base_class_type="kinematics::KinematicsBase">
+    <description>
+        MoveIt inverse kinematics solver for mobile base and chain of 1-DOF joints.
+    </description>
+  </class>
+</library>
