@@ -64,10 +64,13 @@ class HandoverObjectNode(Node):
                            for i in range(num_pan_angles)]
         self.pan_angles = self.pan_angles + self.pan_angles[1:-1][::-1]
         self.prev_pan_index = 0
-        
         self.move_lock = threading.Lock()
-
         self.logger = self.get_logger()
+        self.tf2_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.transform_listener.TransformListener(self.tf2_buffer, self)
+        self.move_to_pose_complete = False
+        self.unsuccessful_status = [-100, 100, FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.INVALID_JOINTS, FollowJointTrajectory.Result.INVALID_GOAL, FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.OLD_HEADER_TIMESTAMP]
+        self._get_result_future = None
 
         with self.move_lock: 
             self.handover_goal_ready = False
@@ -79,6 +82,26 @@ class HandoverObjectNode(Node):
         self.wrist_position = wrist_position
         lift_position, lift_velocity, lift_effort = hm.get_lift_state(joint_states)
         self.lift_position = lift_position
+
+    def goal_response(self, future: rclpy.task.Future):
+        if not future.result():
+            # self.logger.info("Future goal result is not set")
+            return False
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.move_to_pose_complete = True
+            return
+
+        self._get_result_future = goal_handle.get_result_async()
+
+    def get_result(self, future: rclpy.task.Future):
+        if not future.result():
+            return
+
+        result = future.result().result
+        error_code = result.error_code
+        # self.logger.info('The Action Server has finished, it returned: "%s"' % str(error_code))
+        self.move_to_pose_complete = True
 
     def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
         self.move_to_pose_complete = False
@@ -133,8 +156,6 @@ class HandoverObjectNode(Node):
             self.prev_pan_index = pan_index
     
     def mouth_position_callback(self, marker_array):
-        self.look_around_callback()
-        time.sleep(5)
         with self.move_lock:
 
             for marker in marker_array.markers:
@@ -145,13 +166,13 @@ class HandoverObjectNode(Node):
                     header = self.mouth_point.header
                     header.stamp = marker.header.stamp
                     header.frame_id = marker.header.frame_id
-                    header.seq = marker.header.seq
+                    # header.seq = marker.header.seq
                     self.logger.info('******* new mouth point received *******')
 
                     lookup_time = Time(seconds=0) # return most recent transform
                     timeout_ros = Duration(seconds=0.1)
 
-                    old_frame_id = self.mouth_point.header.frame_id[1:]
+                    old_frame_id = self.mouth_point.header.frame_id
                     new_frame_id = 'base_link'
                     stamped_transform = self.tf2_buffer.lookup_transform(new_frame_id, old_frame_id, lookup_time, timeout_ros)
                     points_in_old_frame_to_new_frame_mat = rn.numpify(stamped_transform.transform)
@@ -180,7 +201,7 @@ class HandoverObjectNode(Node):
                     target_xyz = mouth_xyz + target_offset_xyz
 
                     fingers_error = target_xyz - fingers_xyz
-                    self.logger.info('fingers_error =', fingers_error)
+                    self.logger.info(f'fingers_error = {str(fingers_error)}')
 
                     delta_forward_m = fingers_error[0] 
                     delta_extension_m = -fingers_error[1]
@@ -209,6 +230,7 @@ class HandoverObjectNode(Node):
 
             
     def trigger_handover_object_callback(self, request, response):
+        self.logger.info("Starting object handover!")
         with self.move_lock: 
             # First, retract the wrist in preparation for handing out an object.
             pose = {'wrist_extension': 0.005}
@@ -231,13 +253,19 @@ class HandoverObjectNode(Node):
     
     def main(self):
         self.callback_group = ReentrantCallbackGroup()
-        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', callback=self.joint_states_callback, callback_group=self.callback_group)
+        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', qos_profile=1, callback=self.joint_states_callback, callback_group=self.callback_group)
         
-        self.trigger_deliver_object_service = self.create_service(Trigger, '/deliver_object/trigger_deliver_object',
+        self.trigger_handover_object_service = self.create_service(Trigger, '/handover_object/trigger_handover_object',
                                                             callback=self.trigger_handover_object_callback, callback_group=self.callback_group)
         
-        self.mouth_position_subscriber = self.create_subscription(MarkerArray, '/nearest_mouth/marker_array', callback=self.mouth_position_callback, callback_group=self.callback_group)
-        
+        self.mouth_position_subscriber = self.create_subscription(MarkerArray, '/nearest_mouth/marker_array', qos_profile=1, callback=self.mouth_position_callback, callback_group=self.callback_group)
+
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory', callback_group=self.callback_group)
+        server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
+        if not server_reached:
+            self.get_logger().error('Unable to connect to joint_trajectory_server. Timeout exceeded.')
+            sys.exit()
+
         # This rate determines how quickly the head pans back and forth.
         # rate = rospy.Rate(0.5)
         # look_around = False
@@ -246,8 +274,9 @@ class HandoverObjectNode(Node):
         #         self.look_around_callback()
         #     rate.sleep()
 
-        
-if __name__ == '__main__':
+
+def main():
+    rclpy.init()
     try:
         parser = ap.ArgumentParser(description='Handover an object.')
         args, unknown = parser.parse_known_args()
@@ -259,3 +288,6 @@ if __name__ == '__main__':
         executor.spin()
     except KeyboardInterrupt:
         rclpy.logging.get_logger('handover_object').info('interrupt received, so shutting down')
+
+if __name__ == '__main__':
+    main()

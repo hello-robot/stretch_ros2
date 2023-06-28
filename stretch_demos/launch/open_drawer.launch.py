@@ -60,7 +60,7 @@ def generate_launch_description():
           )
 
     keyboard_teleop_params = [
-        {'handover_object_on': True,
+        {'open_drawer_on': True,
         }
     ]
 

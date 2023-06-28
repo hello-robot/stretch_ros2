@@ -1530,7 +1530,10 @@ class FunmapNode(Node):
         self.publish_map_point_cloud_thread = threading.Thread(target=self.publish_map_point_cloud)
         self.publish_map_point_cloud_thread.start()
 
-        executor.spin()
+        try:
+            executor.spin()
+        finally:
+            executor.shutdown()
 
         self.map_odom_tf_thread.join()
         self.publish_map_point_cloud_thread.join()
@@ -1546,6 +1549,8 @@ def main():
         rclpy.init()
         node = FunmapNode(map_filename)
         node.main()
+        node.destroy_node()
+        rclpy.shutdown()
     except KeyboardInterrupt:
         print('interrupt received, so shutting down')
 

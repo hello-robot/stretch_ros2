@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
-from __future__ import print_function
-
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 
 import rclpy
 from rclpy.action import ActionClient, ActionServer
-from rclpy.node import Node
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.duration import Duration
+from rclpy.executors import MultiThreadedExecutor
+from rclpy.node import Node
 from rclpy.time import Time
 # import actionlib
 # from control_msgs.msg import FollowJointTrajectoryAction
@@ -53,7 +53,7 @@ class CleanSurfaceNode(Node):
         self.log = self.get_logger()
         
     def joint_states_callback(self, joint_states):
-        with self.joint_states_lock: 
+        with self.joint_states_lock:
             self.joint_states = joint_states
         wrist_position, wrist_velocity, wrist_effort = hm.get_wrist_state(joint_states)
         self.wrist_position = wrist_position
@@ -156,7 +156,7 @@ class CleanSurfaceNode(Node):
         strokes, simple_plan, lift_to_surface_m = self.manipulation_view.get_surface_wiping_plan(self.tf2_buffer, tool_width_m, tool_length_m, step_size_m)
         self.log.info("Plan:" + str(simple_plan))
 
-        print('********* lift_to_surface_m = {0} **************'.format(lift_to_surface_m))
+        self.log.info('********* lift_to_surface_m = {0} **************'.format(lift_to_surface_m))
 
         if True and (strokes is not None) and (len(strokes) > 0):
 
@@ -260,22 +260,25 @@ class CleanSurfaceNode(Node):
         return response
     
     def main(self):
+        self.callback_group = ReentrantCallbackGroup()
+
         self.debug_directory = self.get_parameter_or('~debug_directory').value
         self.log.info('Using the following directory for debugging files: {0}'.format(self.debug_directory))
 
-        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10)
+        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', callback=self.joint_states_callback, qos_profile=10, callback_group=self.callback_group)
 
-        self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 10)
+        self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', callback=self.point_cloud_callback, qos_profile=10, callback_group=self.callback_group)
 
         self.trigger_clean_surface_service = self.create_service(Trigger,
                                                                 '/clean_surface/trigger_clean_surface',
-                                                                self.trigger_clean_surface_callback)
+                                                                callback=self.trigger_clean_surface_callback,
+                                                                callback_group=self.callback_group)
 
         self.hello_world_service = self.create_service(Trigger,
-                                                        '/clean_surface/hello_world',
-                                                        self.hello_world_callback)
+                                                       '/clean_surface/hello_world',
+                                                       callback_group=self.hello_world_callback)
 
-        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory', callback_group=self.callback_group)
         server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
         if not server_reached:
             self.get_logger().error('Unable to connect to joint_trajectory_server. Timeout exceeded.')
@@ -287,8 +290,14 @@ def main():
     rclpy.init()
     try:
         node = CleanSurfaceNode()
-        node.main()
-        rclpy.spin(node=node)
+        executor = MultiThreadedExecutor(num_threads=6)
+        executor.add_node(node=node)
+        try:
+            executor.spin()
+        finally:
+            executor.shutdown()
+            node.destroy_node()
+            rclpy.shutdown()
     except KeyboardInterrupt:
         rclpy.logging.get_logger("clean_surface").info('interrupt received, so shutting down')
         

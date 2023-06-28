@@ -6,6 +6,7 @@ from nav_msgs.msg import Odometry
 
 import rclpy
 from rclpy.node import Node
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.action import ActionClient, ActionServer
 from rclpy.duration import Duration
 from rclpy.executors import MultiThreadedExecutor
@@ -49,6 +50,10 @@ class GraspObjectNode(Node):
         self.tf2_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.transform_listener.TransformListener(self.tf2_buffer, self)
         self.logger = self.get_logger()
+
+        self.move_to_pose_complete = False
+        self.unsuccessful_status = [-100, 100, FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.INVALID_JOINTS, FollowJointTrajectory.Result.INVALID_GOAL, FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.OLD_HEADER_TIMESTAMP]
+        self._get_result_future = None
         
     def joint_states_callback(self, joint_states):
         with self.joint_states_lock: 
@@ -75,6 +80,26 @@ class GraspObjectNode(Node):
 
         self.logger.info('Move to the initial configuration for drawer opening.')
         self.move_to_pose(initial_pose)
+
+    def goal_response(self, future: rclpy.task.Future):
+        if not future.result():
+            # self.logger.info("Future goal result is not set")
+            return False
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.move_to_pose_complete = True
+            return
+
+        self._get_result_future = goal_handle.get_result_async()
+
+    def get_result(self, future: rclpy.task.Future):
+        if not future.result():
+            return
+
+        result = future.result().result
+        error_code = result.error_code
+        # self.logger.info('The Action Server has finished, it returned: "%s"' % str(error_code))
+        self.move_to_pose_complete = True
 
     def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
         self.move_to_pose_complete = False
@@ -153,20 +178,14 @@ class GraspObjectNode(Node):
         min_extension_m = 0.01
         max_extension_m = 0.5
 
-        self.logger.info(f"Lift position = {self.lift_position} m")
-
         if actually_move:
             self.logger.info('Retract the tool.')
             pose = {'wrist_extension': 0.01}
             self.move_to_pose(pose)
-            time.sleep(5)
-            self.logger.info("Tool retracted!")
 
             self.logger.info('Reorient the wrist.')
             pose = {'joint_wrist_yaw': 0.0}
             self.move_to_pose(pose)
-            time.sleep(5)
-            self.logger.info("Wrist reoriented")
             
         self.look_at_surface(scan_time_s = 3.0)
         
@@ -197,7 +216,6 @@ class GraspObjectNode(Node):
             self.logger.info('Raise tool to pregrasp height.')
             pose = {'joint_lift': lift_to_pregrasp_m}
             self.move_to_pose(pose)
-            time.sleep(5)
         
         pregrasp_yaw = self.manipulation_view.get_pregrasp_yaw(grasp_target, self.tf2_buffer)
         self.logger.info('pregrasp_yaw = {0:.2f} rad'.format(pregrasp_yaw))
@@ -207,12 +225,10 @@ class GraspObjectNode(Node):
             self.logger.info('Rotate the gripper for grasping.')
             pose = {'joint_wrist_yaw': pregrasp_yaw}
             self.move_to_pose(pose)
-            time.sleep(5)
             
             self.logger.info('Open the gripper.')
             pose = {'gripper_aperture': 0.125}
             self.move_to_pose(pose)
-            time.sleep(5)
 
         pregrasp_mobile_base_m, pregrasp_wrist_extension_m = self.manipulation_view.get_pregrasp_planar_translation(grasp_target, self.tf2_buffer)
 
@@ -229,7 +245,6 @@ class GraspObjectNode(Node):
                 self.logger.info('Extend tool above surface.')
                 pose = {'wrist_extension': extension_m}
                 self.move_to_pose(pose)
-                time.sleep(5)
             else:
                 self.logger.info('negative wrist extension for pregrasp, so not extending or retracting.')
 
@@ -249,7 +264,6 @@ class GraspObjectNode(Node):
                     'joint_lift': lift_m,
                     'wrist_extension': extension_m}
             self.move_to_pose(pose)
-            time.sleep(5)
 
             self.logger.info('Attempt to close the gripper on the object.')
             gripper_aperture_m = grasp_target['width_m'] - 0.18
@@ -259,7 +273,6 @@ class GraspObjectNode(Node):
             # Lifting appears to happen before the gripper has
             # finished unless there is this sleep. Need to look
             # into this issue.
-            time.sleep(5.0)
 
             self.logger.info('Attempt to lift the object.')
             object_lift_height_m = 0.1
@@ -269,23 +282,19 @@ class GraspObjectNode(Node):
 
             pose = {'joint_lift': lift_m}
             self.move_to_pose(pose)
-            time.sleep(5)
 
             self.logger.info('Open the gripper a little to avoid overtorquing and overheating the gripper motor.')
             pose = {'gripper_aperture': gripper_aperture_m + 0.005}
             self.move_to_pose(pose)
-            time.sleep(5)
         
         if actually_move:
             self.logger.info('Retract the tool.')
             pose = {'wrist_extension': 0.01}
             self.move_to_pose(pose)
-            time.sleep(5)
 
             self.logger.info('Reorient the wrist.')
             pose = {'joint_wrist_yaw': 0.0}
             self.move_to_pose(pose)
-            time.sleep(5)
 
         return Trigger.Response(
             success=True,
@@ -294,31 +303,33 @@ class GraspObjectNode(Node):
     
     def main(self):
         # hm.HelloNode.main(self, 'grasp_object', 'grasp_object', wait_for_first_pointcloud=False)
+        self.callback_group = ReentrantCallbackGroup()
 
         self.debug_directory = '/home/hello-robot/demos/' #self.get_parameter_or('~debug_directory').value
         self.logger.info('Using the following directory for debugging files: {0}'.format(self.debug_directory))
 
 
-        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 1)
+        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', callback=self.joint_states_callback, qos_profile=1, callback_group=self.callback_group)
 
-        self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 1)
+        self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', callback=self.point_cloud_callback, qos_profile=1, callback_group=self.callback_group)
 
         self.trigger_grasp_object_service = self.create_service(Trigger,
                                                                 '/grasp_object/trigger_grasp_object',
-                                                                self.trigger_grasp_object_callback)
+                                                                callback=self.trigger_grasp_object_callback,
+                                                                callback_group=self.callback_group)
 
-        self.trigger_reach_until_contact_service = self.create_client(Trigger, '/funmap/trigger_reach_until_contact')
+        self.trigger_reach_until_contact_service = self.create_client(Trigger, '/funmap/trigger_reach_until_contact', callback_group=self.callback_group)
         self.logger.info("Waiting for /funmap/trigger_reach_until_contact' service")
         self.trigger_reach_until_contact_service.wait_for_service()
         self.logger.info('Node ' + self.get_name() + ' connected to /funmap/trigger_reach_until_contact.')
 
 
-        self.trigger_lower_until_contact_service = self.create_client(Trigger, '/funmap/trigger_lower_until_contact')
+        self.trigger_lower_until_contact_service = self.create_client(Trigger, '/funmap/trigger_lower_until_contact', callback_group=self.callback_group)
         self.logger.info("Waiting for /funmap/trigger_lower_until_contact' service")
         self.trigger_lower_until_contact_service.wait_for_service()
         self.logger.info('Node ' + self.get_name() + ' connected to /funmap/trigger_lower_until_contact.')
 
-        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory', callback_group=self.callback_group)
         server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
         if not server_reached:
             self.get_logger().error('Unable to connect to joint_trajectory_server. Timeout exceeded.')
@@ -331,15 +342,15 @@ def main():
     try:
         node = GraspObjectNode()
         node.main()
-        rclpy.spin(node=node)
-        # executor = MultiThreadedExecutor(num_threads=6)
-        # executor.add_node(node=node)
-        # try:
-        #     executor.spin()
-        # finally:
-        #     executor.shutdown()
-        #     node.destroy_node()
-        #     rclpy.shutdown()
+        # rclpy.spin(node=node)
+        executor = MultiThreadedExecutor(num_threads=6)
+        executor.add_node(node=node)
+        try:
+            executor.spin()
+        finally:
+            executor.shutdown()
+            node.destroy_node()
+            rclpy.shutdown()
     except KeyboardInterrupt:
         rclpy.logging.get_logger('grasp_object').info('interrupt received, so shutting down')
 

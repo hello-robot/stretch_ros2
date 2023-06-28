@@ -42,6 +42,11 @@ class OpenDrawerNode(Node):
         self.wrist_position = None
         self.lift_position = None
         self.logger = rclpy.logging.get_logger('open_drawer')
+        self.tf2_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.transform_listener.TransformListener(self.tf2_buffer, self)
+        self.move_to_pose_complete = False
+        self.unsuccessful_status = [-100, 100, FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.INVALID_JOINTS, FollowJointTrajectory.Result.INVALID_GOAL, FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.OLD_HEADER_TIMESTAMP]
+        self._get_result_future = None
 
     def joint_states_callback(self, joint_states):
         with self.joint_states_lock:
@@ -50,6 +55,26 @@ class OpenDrawerNode(Node):
         self.wrist_position = wrist_position
         lift_position, lift_velocity, lift_effort = hm.get_lift_state(joint_states)
         self.lift_position = lift_position
+    
+    def goal_response(self, future: rclpy.task.Future):
+        if not future.result():
+            # self.logger.info("Future goal result is not set")
+            return False
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.move_to_pose_complete = True
+            return
+
+        self._get_result_future = goal_handle.get_result_async()
+
+    def get_result(self, future: rclpy.task.Future):
+        if not future.result():
+            return
+
+        result = future.result().result
+        error_code = result.error_code
+        # self.logger.info('The Action Server has finished, it returned: "%s"' % str(error_code))
+        self.move_to_pose_complete = True
 
     def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
         self.move_to_pose_complete = False
@@ -105,7 +130,7 @@ class OpenDrawerNode(Node):
         max_reach_m = 0.4
         extension_m = self.wrist_position + max_reach_m
         extension_m = min(extension_m, max_extension_m)
-        extension_contact_effort = 18.5 #effort_pct #42.0 #40.0 from funmap
+        extension_contact_effort = 42.0 #18.5 #effort_pct #42.0 #40.0 from funmap
         pose = {'wrist_extension': (extension_m, extension_contact_effort)}
         self.move_to_pose(pose, custom_contact_thresholds=True)
 
@@ -113,7 +138,7 @@ class OpenDrawerNode(Node):
         self.logger.info('lower_hook_until_contact')
         max_drop_m = 0.15
         lift_m = self.lift_position - max_drop_m
-        lift_contact_effort = 32.5 #effort_pct #18.0 #20.0 #20.0 from funmap
+        lift_contact_effort = 42.0 #32.5 #effort_pct #18.0 #20.0 #20.0 from funmap
         pose = {'joint_lift': (lift_m, lift_contact_effort)}
         self.move_to_pose(pose, custom_contact_thresholds=True)
 
@@ -130,7 +155,7 @@ class OpenDrawerNode(Node):
         self.logger.info('raise_hook_until_contact')
         max_raise_m = 0.15
         lift_m = self.lift_position + max_raise_m
-        lift_contact_effort = 41.4 #effort_pct
+        lift_contact_effort = 42.0 #effort_pct
         pose = {'joint_lift': (lift_m, lift_contact_effort)}
         self.move_to_pose(pose, custom_contact_thresholds=True)
 
@@ -187,10 +212,10 @@ class OpenDrawerNode(Node):
         self.logger.info('Move to the initial configuration for drawer opening.')
         self.move_to_pose(initial_pose)
 
-    def trigger_open_drawer_down_callback(self, request):
+    def trigger_open_drawer_down_callback(self, request, response):
         return self.open_drawer('down')
 
-    def trigger_open_drawer_up_callback(self, request):
+    def trigger_open_drawer_up_callback(self, request, response):
         return self.open_drawer('up')
 
 
@@ -232,7 +257,13 @@ class OpenDrawerNode(Node):
     def main(self):
         self.callback_group = ReentrantCallbackGroup()
 
-        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, callback_group=self.callback_group)
+        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, qos_profile=1, callback_group=self.callback_group)
+
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory', callback_group=self.callback_group)
+        server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
+        if not server_reached:
+            self.get_logger().error('Unable to connect to joint_trajectory_server. Timeout exceeded.')
+            sys.exit()
 
         self.trigger_open_drawer_service = self.create_service(Trigger, '/open_drawer/trigger_open_drawer_down',
                                                          self.trigger_open_drawer_down_callback, callback_group=self.callback_group)
@@ -242,19 +273,20 @@ class OpenDrawerNode(Node):
 
         self.trigger_align_with_nearest_cliff_service = self.create_client(Trigger, '/funmap/trigger_align_with_nearest_cliff', callback_group=self.callback_group)
         self.trigger_align_with_nearest_cliff_service.wait_for_service()
-        self.logger.info('Node ' + self.node_name + ' connected to /funmap/trigger_align_with_nearest_cliff.')
+        self.logger.info('Node ' + self.get_name() + ' connected to /funmap/trigger_align_with_nearest_cliff.')
 
         self.trigger_reach_until_contact_service = self.create_client(Trigger, '/funmap/trigger_reach_until_contact', callback_group=self.callback_group)
         self.trigger_reach_until_contact_service.wait_for_service()
-        self.logger.info('Node ' + self.node_name + ' connected to /funmap/trigger_reach_until_contact.')
+        self.logger.info('Node ' + self.get_name() + ' connected to /funmap/trigger_reach_until_contact.')
 
         self.trigger_lower_until_contact_service = self.create_client(Trigger, '/funmap/trigger_lower_until_contact', callback_group=self.callback_group)
         self.trigger_lower_until_contact_service.wait_for_service()
-        self.logger.info('Node ' + self.node_name + ' connected to /funmap/trigger_lower_until_contact.')
+        self.logger.info('Node ' + self.get_name() + ' connected to /funmap/trigger_lower_until_contact.')
 
 
-if __name__ == '__main__':
+def main():
     try:
+        rclpy.init()
         parser = ap.ArgumentParser(description='Open Drawer behavior for stretch.')
         #parser.add_argument('--mapping_on', action='store_true', help='Turn on mapping control. For example, the space bar will trigger a head scan. This requires that the mapping node be run (funmap).')
         args, unknown = parser.parse_known_args()
@@ -265,3 +297,6 @@ if __name__ == '__main__':
         executor.spin()
     except KeyboardInterrupt:
         rclpy.logging.get_logger('open_drawer').info('interrupt received, so shutting down')
+
+if __name__ == '__main__':
+    main()

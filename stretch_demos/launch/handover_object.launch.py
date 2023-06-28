@@ -22,18 +22,6 @@ def generate_launch_description():
             '/d435i_high_resolution.launch.py']),
         )
     
-    # rplidar = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource([os.path.join(
-    #         get_package_share_directory('stretch_core'), 'launch'),
-    #         '/rplidar.launch.py']),
-    #     )
-
-    # joint_state_publisher = Node(package='joint_state_publisher',
-    #                              executable='joint_state_publisher',
-    #                              output='log',
-    #                              parameters=[{'source_list': ['/stretch/joint_states']},
-    #                                          {'rate': 15}])
-
     stretch_description_path = get_package_share_directory('stretch_description')
     robot_description_content = Command(
         ['xacro ', os.path.join(stretch_description_path, 'urdf', 'stretch_uncalibrated.urdf')]
@@ -77,12 +65,28 @@ def generate_launch_description():
             get_package_share_directory('stretch_funmap'), 'launch'),
             '/funmap.launch.py']),
         )
+    
+    detect_nearest_mouth = Node(
+        package='stretch_deep_perception',
+        executable='detect_nearest_mouth',
+        output='screen'
+    )
 
     handover_object = Node(
             package='stretch_demos',
             executable='handover_object',
             output='screen',
     )
+
+    stretch_deep_perception_path = get_package_share_directory('stretch_deep_perception')
+    rviz_config_path = os.path.join(stretch_deep_perception_path, 'rviz', 'nearest_mouth_detection.rviz')
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        arguments=['-d', rviz_config_path],
+        output='screen',
+        )
 
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
         d435i_high_res_launch,
@@ -94,5 +98,7 @@ def generate_launch_description():
         # stretch_description,
         stretch_funmap,
         keyboard_teleop,
-        handover_object
+        handover_object,
+        rviz_node,
+        detect_nearest_mouth
         ])

@@ -294,7 +294,7 @@ class HelloWorldNode(Node):
     def main(self):
         self.callback_group = ReentrantCallbackGroup()
 
-        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', callback=self.joint_states_callback, callback_group=self.callback_group)
+        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', callback=self.joint_states_callback, qos_profile=1, callback_group=self.callback_group)
         
         self.trigger_write_hello_service = self.create_service(Trigger, '/hello_world/trigger_write_hello',
                                                          callback=self.trigger_write_hello_callback, callback_group=self.callback_group)
@@ -306,11 +306,10 @@ class HelloWorldNode(Node):
         self.trigger_reach_until_contact_service = self.create_client(Trigger, '/funmap/trigger_reach_until_contact', callback_group=self.callback_group)
         self.trigger_reach_until_contact_service.wait_for_service()
         self.logger.info('Node ' + self.node_name + ' connected to /funmap/trigger_reach_until_contact.')
-        
-if __name__ == '__main__':
+
+def main():
     try:
-        parser = ap.ArgumentParser(description='Hello World demo for stretch.')
-        args, unknown = parser.parse_known_args()
+        rclpy.init()
         node = HelloWorldNode()
         node.main()
         executor = MultiThreadedExecutor(num_threads=6)
@@ -318,3 +317,6 @@ if __name__ == '__main__':
         executor.spin()
     except KeyboardInterrupt:
         rclpy.logging.get_logger('hello_world').info('interrupt received, so shutting down')
+
+if __name__ == '__main__':
+    main()

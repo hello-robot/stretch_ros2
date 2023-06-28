@@ -159,6 +159,12 @@ class GetKeyboardCommands:
         ####################################################
         ## COMMANDS TO TRIGGER STRETCH DEMOS
         ####################################################
+        # Trigger Hello World whiteboard writing demo
+        if ((c == '`') or (c == '~')) and self.hello_world_on:
+            trigger_request = Trigger.Request() 
+            future = node.trigger_write_hello_service.call_async(trigger_request)
+            node.get_logger().info('trigger_result = {0}'.format(future))
+
         # Trigger clean surface demo
         if ((c == '/') or (c == '?')) and self.clean_surface_on:
             trigger_request = Trigger.Request() 
@@ -172,6 +178,23 @@ class GetKeyboardCommands:
             future = node.trigger_grasp_object_service.call_async(trigger_request)
             node.get_logger().info('trigger_result = {0}'.format(future))
             # future.add_done_callback(partial(self.done_callback))
+
+        if ((c == 'y') or (c == 'Y')) and self.handover_object_on:
+            trigger_request = Trigger.Request() 
+            future = node.trigger_handover_object_service.call_async(trigger_request)
+            node.get_logger().info('trigger_result = {0}'.format(future))
+        
+        # Trigger open drawer demo with downward hook motion
+        if ((c == 'z') or (c == 'Z')) and self.open_drawer_on:
+            trigger_request = Trigger.Request() 
+            future = node.trigger_open_drawer_down_service.call_async(trigger_request)
+            node.get_logger().info('trigger_result = {0}'.format(future))
+
+        # Trigger open drawer demo with upward hook motion
+        if ((c == '.') or (c == '>')) and self.open_drawer_on:
+            trigger_request = Trigger.Request() 
+            future = node.trigger_open_drawer_up_service.call_async(trigger_request)
+            node.get_logger().info('trigger_result = {0}'.format(future))
 
         ####################################################
         ## BASIC KEYBOARD TELEOPERATION COMMANDS
@@ -421,6 +444,29 @@ class KeyboardTeleopNode(Node):
             self.get_logger().info("Waiting for /grasp_object/trigger_grasp_object' service")
             self.trigger_grasp_object_service.wait_for_service()
             self.get_logger().info('Node ' + self.get_name() + ' connected to /grasp_object/trigger_grasp_object.')
+        
+        if self.handover_object_on:
+            self.trigger_handover_object_service = self.create_client(Trigger,
+                                                                    '/handover_object/trigger_handover_object')
+            self.get_logger().info("Waiting for /handover_object/trigger_handover_object service")
+            self.trigger_handover_object_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /handover_object/trigger_handover_object.')
+
+        if self.hello_world_on:
+            self.trigger_write_hello_service = self.create_client(Trigger, '/hello_world/trigger_write_hello')
+            self.get_logger().info('Waiting for /hello_world/trigger_write_hello service')
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /hello_world/trigger_write_hello.')
+        
+        if self.open_drawer_on:
+            self.trigger_open_drawer_down_service = self.create_client(Trigger, '/open_drawer/trigger_open_drawer_down')
+            self.get_logger().info('Waiting for /open_drawer/trigger_open_drawer_down service')
+            self.trigger_open_drawer_down_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /open_drawer/trigger_open_drawer_down.')
+
+            self.trigger_open_drawer_up_service = self.create_client(Trigger, '/open_drawer/trigger_open_drawer_up')
+            self.get_logger().info('Waiting for /open_drawer/trigger_open_drawer_up service')
+            self.trigger_open_drawer_up_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /open_drawer/trigger_open_drawer_up.')
         
         self.keys.print_commands()
         while rclpy.ok():
