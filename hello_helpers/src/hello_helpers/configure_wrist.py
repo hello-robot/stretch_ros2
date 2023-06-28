@@ -4,6 +4,7 @@ import subprocess
 import shlex
 import sys
 import argparse as ap
+import lsb_release
 
 def run_cmd(cmdstr):
     process = subprocess.run(shlex.split(cmdstr), capture_output=True, text=True)
@@ -41,13 +42,19 @@ def configure_wrist(wrist_type):
     process = run_cmd(bashCommand)
     installpath = process.stdout
 
-    addpath = "/src/stretch_ros2/stretch_moveit_config/config/stretch_description_{}.srdf".format(wrist_type)
+    if lsb_release.get_os_release()["RELEASE"] == "20.04":
+        addpath = "/src/stretch_ros2/stretch_moveit_config/config/stretch_description_{}.srdf".format(wrist_type)
+    else: # Humble on 22.04
+        addpath = "/src/stretch_ros2/stretch_moveit2/stretch_moveit_config/config/stretch_description_{}.srdf".format(wrist_type)
     minuspath = "/install/stretch_moveit_config"
     installpath = installpath[0 : len(installpath) - len(minuspath) - 1]
     srcpath = "{0}{1}".format(installpath, addpath)
     print(srcpath)
 
-    addpath = "/src/stretch_ros2/stretch_moveit_config/config/stretch_description.srdf"
+    if lsb_release.get_os_release()["RELEASE"] == "20.04":
+        addpath = "/src/stretch_ros2/stretch_moveit_config/config/stretch_description.srdf"
+    else: # Humble on 22.04
+        addpath = "/src/stretch_ros2/stretch_moveit2/stretch_moveit_config/config/stretch_description.srdf"
     srdf_path = "{0}{1}".format(installpath, addpath)
     print(xacro_path)
 
