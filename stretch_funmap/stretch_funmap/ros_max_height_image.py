@@ -259,7 +259,6 @@ class ROSMaxHeightImage(MaxHeightImage):
         # points = np.array([[x1,y1,z1], [x2,y2,z2]...]). The points
         # should be specified with respect to the coordinate system
         # defined by points_frame_id.
-
         points_to_voi_mat, timestamp = self.voi.get_points_to_voi_matrix_with_tf2(points_frame_id, tf2_buffer, lookup_time=points_timestamp, timeout_s=timeout_s)
 
         if points_to_voi_mat is not None: 
