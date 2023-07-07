@@ -60,7 +60,7 @@ def generate_launch_description():
         {'rate': 25.0,
          'timeout': 0.5,
          'controller_calibration_file': LaunchConfiguration('uncalibrated_controller_yaml_file'),
-         'fail_out_of_range_goal': 'False'
+         'fail_out_of_range_goal': False
          }
     ]
 
