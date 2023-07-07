@@ -473,6 +473,15 @@ class StretchDriver(Node):
         response.message = 'Homed.'
         return response
 
+    def stow_the_robot_callback(self, request, response):
+        with self.robot_stop_lock:
+            self.robot.stow()
+
+        self.get_logger().info('Received stow_the_robot service call.')
+        response.success = True
+        response.message = 'Stowed.'
+        return response
+
     def navigation_mode_service_callback(self, request, response):
         success, message = self.turn_on_navigation_mode()
         response.success = success
@@ -666,6 +675,10 @@ class StretchDriver(Node):
         self.home_the_robot_service = self.create_service(Trigger,
                                                           '/home_the_robot',
                                                           self.home_the_robot_callback)
+
+        self.stow_the_robot_service = self.create_service(Trigger,
+                                                           '/stow_the_robot',
+                                                           self.stow_the_robot_callback)
 
         self.runstop_service = self.create_service(SetBool,
                                                    '/runstop',
