@@ -318,7 +318,7 @@
       link="link_lift" />
     <axis
 	xyz="0 0 1" />
-  <!-- for now: hand copied range_m: from lift: from ~/repos/stretch_fleet/stretch-re1-1001/stretch_re1_factory_params.yaml -->
+  <!-- for now hand copied range_m from lift from ~/repos/stretch_fleet/stretch-re1-1001/stretch_re1_factory_params.yaml -->
   <!--<limit effort="100" lower="0.0" upper="1.095" velocity="1.0"/>-->
   <!-- copied value did not reach the top of mesh model with GUI sliders and RViz -->
   <limit effort="100" lower="0.0" upper="1.1" velocity="1.0"/>
@@ -661,9 +661,9 @@
     <axis
       xyz="0 0 -1" />
     <!--
-      stowed to front ~225 deg: 3.15159 x 1.25 = 3.9395
+      stowed to front ~225 deg, 3.15159 x 1.25 = 3.9395
       using 4.0
-      stowed to back ~100 deg:  100 / 180 x 3.14159 = 1.7453
+      stowed to back ~100 deg, 100 / 180 x 3.14159 = 1.7453
       using -1.75
     -->
     <limit effort="100" lower="-1.75" upper="4.0" velocity="1.0"/>
