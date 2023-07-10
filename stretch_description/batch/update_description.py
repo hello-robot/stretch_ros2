@@ -23,11 +23,11 @@ else:
     batch_name = hu.read_fleet_yaml('stretch_re1_factory_params.yaml')['robot']['batch_name'].lower()
 
 batch_meshes_path = os.path.expanduser(
-    '~/catkin_ws/src/stretch_ros/stretch_description/batch/' + batch_name) + '/meshes/*.STL'
-batch_urdfs_path = os.path.expanduser('~/catkin_ws/src/stretch_ros/stretch_description/batch/' + batch_name) + '/urdf/*.xacro'
+    '~/ament_ws/src/stretch_ros2/stretch_description/batch/' + batch_name) + '/meshes/*.STL'
+batch_urdfs_path = os.path.expanduser('~/ament_ws/src/stretch_ros2/stretch_description/batch/' + batch_name) + '/urdf/*.xacro'
 
-meshes_path = os.path.expanduser('~/catkin_ws/src/stretch_ros/stretch_description/meshes')
-urdfs_path = os.path.expanduser('~/catkin_ws/src/stretch_ros/stretch_description/urdf')
+meshes_path = os.path.expanduser('~/ament_ws/src/stretch_ros2/stretch_description/meshes')
+urdfs_path = os.path.expanduser('~/ament_ws/src/stretch_ros2/stretch_description/urdf')
 
 cmd_cp_meshes = 'cp {} {}'.format(batch_meshes_path, meshes_path)
 cmd_cp_urdfs = 'cp {} {}'.format(batch_urdfs_path, urdfs_path)
