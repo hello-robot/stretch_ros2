@@ -266,6 +266,7 @@ class StretchDriver(Node):
         battery_state.present = True
         self.power_pub.publish(battery_state)
 
+        # publish homed status
         homed_status = Bool()
         homed_status.data = bool(self.robot.is_calibrated())
         self.homed_pub.publish(homed_status)
@@ -490,8 +491,7 @@ class StretchDriver(Node):
         return response
 
     def stow_the_robot_callback(self, request, response):
-        with self.robot_stop_lock:
-            self.robot.stow()
+        self.stow_the_robot()
 
         self.get_logger().info('Received stow_the_robot service call.')
         response.success = True
@@ -538,6 +538,22 @@ class StretchDriver(Node):
         self.robot.home()
         self.change_mode(last_robot_mode, code_to_run)
         return True, 'Homed.'
+    
+    def stow_the_robot(self):
+        self.robot_mode_rwlock.acquire_read()
+        can_stow = self.robot_mode in self.control_modes
+        last_robot_mode = copy.copy(self.robot_mode)
+        self.robot_mode_rwlock.release_read()
+        if not can_stow:
+            errmsg = f'Cannot stow while in mode={last_robot_mode}.'
+            self.get_logger().error(errmsg)
+            return False, errmsg
+        def code_to_run():
+            pass
+        self.change_mode('stowing', code_to_run)
+        self.robot.stow()
+        self.change_mode(last_robot_mode, code_to_run)
+        return True, 'Stowed.'
 
     def runstop_the_robot(self, runstopped, just_change_mode=False):
         if runstopped:
@@ -548,18 +564,26 @@ class StretchDriver(Node):
             self.robot_mode_rwlock.release_read()
             if already_runstopped:
                 return
-            self.change_mode('runstopped', code_to_run=None)
+
+            def code_to_run():
+                pass
+            self.change_mode('runstopped', code_to_run)
             if not just_change_mode:
                 self.robot.pimu.runstop_event_trigger()
+                self.robot.push_command()
         else:
             self.robot_mode_rwlock.acquire_read()
             already_not_runstopped = self.robot_mode != 'runstopped'
             self.robot_mode_rwlock.release_read()
             if already_not_runstopped:
                 return
-            self.change_mode(self.prerunstop_mode, code_to_run=None)
+
+            def code_to_run():
+                pass
+            self.change_mode(self.prerunstop_mode, code_to_run)
             if not just_change_mode:
                 self.robot.pimu.runstop_event_reset()
+                self.robot.push_command()
 
     # ROS Setup #################
     def ros_setup(self):
