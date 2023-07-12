@@ -7,6 +7,7 @@ from launch.conditions import LaunchConfigurationEquals
 
 configurable_parameters = [{'name': 'depth_module.profile',         'default': '1280x720x15', 'description': 'depth module profile'},                           
                            {'name': 'rgb_camera.profile',           'default': '1280x720x15', 'description': 'color image width'},
+                           {'name': 'align_depth.enable',           'default': 'true',        'description': 'whether to publish aligned_depth_to_color feed'},
                            ]
                            
 def declare_configurable_parameters(parameters):
