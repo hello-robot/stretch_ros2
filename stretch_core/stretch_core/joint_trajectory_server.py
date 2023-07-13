@@ -288,6 +288,7 @@ class JointTrajectoryAction(Node):
                 # self.action_server_rate.sleep()
 
             time.sleep(0.1)
+            self.node.robot_mode_rwlock.release_read()
             self._update_trajectory_dynamixel()
             self._update_trajectory_non_dynamixel()
             return self.success_callback(goal_handle, 'traj succeeded!')
