@@ -67,7 +67,7 @@ class StretchDriver(Node):
         self.robot_mode_rwlock = RWLock()
         self.robot_mode = None
 
-        self.control_modes = ['position', 'navigation']
+        self.control_modes = ['position', 'navigation', 'trajectory']
         self.prev_runstop_state = None
 
         self.ros_setup()
