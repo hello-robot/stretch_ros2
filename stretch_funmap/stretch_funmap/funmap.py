@@ -1,53 +1,61 @@
 #!/usr/bin/env python3
 
-import rospy
-import actionlib
+import rclpy
+from rclpy.action import ActionClient, ActionServer
+from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
+from rclpy.client import Client
+from rclpy.clock import Clock
+from rclpy.duration import Duration
+from rclpy.executors import MultiThreadedExecutor
+import rclpy.logging
+from rclpy.node import Node
+import rclpy.task
+from rclpy.time import Time
 
-from sensor_msgs.msg import JointState
+from control_msgs.action import FollowJointTrajectory
 from geometry_msgs.msg import Transform, TransformStamped, PoseWithCovarianceStamped, PoseStamped, Pose, PointStamped
 from nav_msgs.msg import Odometry
-from move_base_msgs.msg import MoveBaseAction, MoveBaseResult, MoveBaseFeedback
 from nav_msgs.srv import GetPlan
 from nav_msgs.msg import Path
-from sensor_msgs.msg import PointCloud2
-from visualization_msgs.msg import Marker, MarkerArray
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
-from tf.transformations import euler_from_quaternion
+from nav2_msgs.action import NavigateToPose
+import ros2_numpy
+from sensor_msgs.msg import JointState, PointCloud2
+from std_srvs.srv import Trigger
+from tf_transformations import euler_from_quaternion
 from tf2_geometry_msgs import do_transform_pose
-
-import numpy as np
-import scipy.ndimage as nd
-import cv2
-import math
-import time
-import threading
-import sys
-import os
-import copy
-
-import tf_conversions
-import ros_numpy
 import tf2_ros
-
-import argparse as ap
+from trajectory_msgs.msg import JointTrajectoryPoint
+from visualization_msgs.msg import Marker, MarkerArray
 
 import hello_helpers.hello_misc as hm
 import hello_helpers.hello_ros_viz as hr
 
-import stretch_funmap.merge_maps as mm
-import stretch_funmap.navigate as nv
-import stretch_funmap.mapping as ma
-import stretch_funmap.segment_max_height_image as sm
-import stretch_funmap.navigation_planning as na
-import stretch_funmap.manipulation_planning as mp
+import argparse as ap
+import copy
+import math
+import os
+import sys
+import threading
+import time
 
+import cv2
+import numpy as np
+import scipy.ndimage as nd
 
-def create_map_to_odom_transform(t_mat):
+from . import mapping as ma
+from . import manipulation_planning as mp
+from . import merge_maps as mm
+from . import navigate as nv
+from . import navigation_planning as na
+from . import segment_max_height_image as sm
+
+# Timestamp as an argument since we can't access clock outside of a node
+def create_map_to_odom_transform(t_mat, timestamp = None):
     t = TransformStamped()
-    t.header.stamp = rospy.Time.now()
+    t.header.stamp = timestamp if timestamp != None else Time(seconds=0).to_msg()
     t.header.frame_id = 'map'
     t.child_frame_id = 'odom'
-    t.transform = ros_numpy.msgify(Transform, t_mat)
+    t.transform = ros2_numpy.msgify(Transform, t_mat)
     return t
 
 
@@ -72,6 +80,8 @@ class ContactDetector():
 
         self.min_av_effort_threshold = 10.0
         self.move_increment = move_increment
+
+        self.logger = rclpy.logging.get_logger('stretch_funmap')
 
     def set_regulate_contact(self):
         with self.contact_mode_lock:
@@ -121,7 +131,7 @@ class ContactDetector():
         with self.contact_mode_lock:
             self.contact_mode = 'stop_on_contact'
 
-    def update(self, joint_states, stop_the_robot_service):
+    def update(self, joint_states, stop_the_robot_service: Client):
         with self.contact_state_lock:
             self.in_contact = False
             self.in_contact_wrist_position = None
@@ -131,11 +141,11 @@ class ContactDetector():
 
         # First, check that the stopping position, if defined, has not been passed
         if self.passed_stopping_position():
-            trigger_request = TriggerRequest()
-            trigger_result = stop_the_robot_service(trigger_request)
+            trigger_request = Trigger.Request()
+            trigger_result = stop_the_robot_service.call_async(trigger_request)
             with self.contact_mode_lock:
                 self.contact_mode = 'passed_stopping_point'
-            rospy.loginfo('stop_on_contact: stopping the robot due to passing the stopping position, position = {0}, stopping_position = {1}, direction_sign = {2}'.format(
+            self.logger.info('stop_on_contact: stopping the robot due to passing the stopping position, position = {0}, stopping_position = {1}, direction_sign = {2}'.format(
                 self.position, self.stopping_position, self.direction_sign))
 
         # Second, check that the effort thresholds have not been exceeded
@@ -152,9 +162,9 @@ class ContactDetector():
                 self.in_contact_position = self.position
             with self.contact_mode_lock:
                 if self.contact_mode == 'stop_on_contact':
-                    trigger_request = TriggerRequest()
-                    trigger_result = stop_the_robot_service(trigger_request)
-                    rospy.loginfo('stop_on_contact: stopping the robot due to detected contact, effort = {0}, av_effort = {1}'.format(
+                    trigger_request = Trigger.Request()
+                    trigger_result = stop_the_robot_service.call_async(trigger_request)
+                    self.logger.info('stop_on_contact: stopping the robot due to detected contact, effort = {0}, av_effort = {1}'.format(
                         effort, self.av_effort))
                     self.contact_mode = 'regulate_contact'
                 elif self.contact_mode == 'regulate_contact':
@@ -177,7 +187,6 @@ class ContactDetector():
             # The target has not been passed
             self.turn_on()
 
-            move_rate = rospy.Rate(5.0)
             move_increment = direction_sign * self.move_increment
             finished = False
             while self.not_stopped():
@@ -186,7 +195,7 @@ class ContactDetector():
                     new_target = self.get_position() + move_increment
                     pose = {joint_name: new_target}
                     move_to_pose(pose, return_before_done=True)
-                move_rate.sleep()
+                time.sleep(0.2)
 
             if self.is_in_contact():
                 # back off from the detected contact location
@@ -195,10 +204,10 @@ class ContactDetector():
                 if contact_position is not None:
                     new_target = contact_position - 0.001  # - 0.002
                 else:
-                    new_target = self.position() - 0.001  # - 0.002
+                    new_target = self.get_position() - 0.001  # - 0.002
                 pose = {joint_name: new_target}
                 move_to_pose(pose, return_before_done=False)
-                rospy.loginfo(
+                self.logger.info(
                     'backing off after contact: moving away from surface to decrease force')
                 success = True
                 message = 'Successfully reached until contact.'
@@ -211,13 +220,16 @@ class ContactDetector():
         return success, message
 
 
-class FunmapNode(hm.HelloNode):
+class FunmapNode(Node):
 
     def __init__(self, map_filename):
-        hm.HelloNode.__init__(self)
+        super().__init__('stretch_funmap')
 
         self.map_filename = map_filename
         self.debug_directory = None
+
+        self.joint_state = None
+        self.point_cloud = None
 
         # This holds all the poses the robot's mobile base was in
         # while making scans merged into the map. They are defined
@@ -233,16 +245,25 @@ class FunmapNode(hm.HelloNode):
 
         self.use_hook = False  # True #False
 
+        self.logger = self.get_logger()
+        self.clock = self.get_clock()
+        self.move_to_pose_complete = False
+        self.unsuccessful_status = [-100, 100, FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.INVALID_JOINTS, FollowJointTrajectory.Result.INVALID_GOAL, FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.OLD_HEADER_TIMESTAMP]
+        self._get_result_future = None
+
+        self.point_cloud_lock = threading.Lock()
+        self.map_odom_tf_lock = threading.Lock()
+
         if self.use_hook:
             def extension_contact_func(effort, av_effort):
                 single_effort_threshold = 38.0
                 av_effort_threshold = 34.0
 
                 if (effort >= single_effort_threshold):
-                    rospy.loginfo('Extension single effort exceeded single_effort_threshold: {0} >= {1}'.format(
+                    self.logger.info('Extension single effort exceeded single_effort_threshold: {0} >= {1}'.format(
                         effort, single_effort_threshold))
                 if (av_effort >= av_effort_threshold):
-                    rospy.loginfo('Extension average effort exceeded av_effort_threshold: {0} >= {1}'.format(
+                    self.logger.info('Extension average effort exceeded av_effort_threshold: {0} >= {1}'.format(
                         av_effort, av_effort_threshold))
 
                 return ((effort >= single_effort_threshold) or
@@ -257,10 +278,10 @@ class FunmapNode(hm.HelloNode):
                 av_effort_threshold = 40.0
 
                 if (effort >= single_effort_threshold):
-                    rospy.loginfo('Extension single effort exceeded single_effort_threshold: {0} >= {1}'.format(
+                    self.logger.info('Extension single effort exceeded single_effort_threshold: {0} >= {1}'.format(
                         effort, single_effort_threshold))
                 if (av_effort >= av_effort_threshold):
-                    rospy.loginfo('Extension average effort exceeded av_effort_threshold: {0} >= {1}'.format(
+                    self.logger.info('Extension average effort exceeded av_effort_threshold: {0} >= {1}'.format(
                         av_effort, av_effort_threshold))
 
                 return ((effort >= single_effort_threshold) or
@@ -274,10 +295,10 @@ class FunmapNode(hm.HelloNode):
             av_effort_threshold = 20.0
 
             if (effort <= single_effort_threshold):
-                rospy.loginfo('Lift single effort less than single_effort_threshold: {0} <= {1}'.format(
+                self.logger.info('Lift single effort less than single_effort_threshold: {0} <= {1}'.format(
                     effort, single_effort_threshold))
             if (av_effort <= av_effort_threshold):
-                rospy.loginfo('Lift average effort less than av_effort_threshold: {0} <= {1}'.format(
+                self.logger.info('Lift average effort less than av_effort_threshold: {0} <= {1}'.format(
                     av_effort, av_effort_threshold))
 
             return ((effort <= single_effort_threshold) or
@@ -287,15 +308,17 @@ class FunmapNode(hm.HelloNode):
             hm.get_lift_state, lift_contact_func)
 
     def publish_map_point_cloud(self):
-        if self.merged_map is not None:
-            max_height_point_cloud = self.merged_map.max_height_im.to_point_cloud()
-            self.point_cloud_pub.publish(max_height_point_cloud)
+        while rclpy.ok():
+            if self.merged_map is not None:
+                max_height_point_cloud = self.merged_map.max_height_im.to_point_cloud()
+                self.point_cloud_pub.publish(max_height_point_cloud)
 
-            pub_voi = True
-            if pub_voi:
-                marker = self.merged_map.max_height_im.voi.get_ros_marker(
-                    duration=1000.0)
-                self.voi_marker_pub.publish(marker)
+                pub_voi = True
+                if pub_voi:
+                    marker = self.merged_map.max_height_im.voi.get_ros_marker(max_height_point_cloud.header.stamp,
+                        duration=1000.0)
+                    self.voi_marker_pub.publish(marker)
+            time.sleep(0.2)
 
     def publish_nav_plan_markers(self, line_segment_path, image_to_points_mat, clicked_frame_id):
         path_height_m = 0.2
@@ -314,7 +337,7 @@ class FunmapNode(hm.HelloNode):
             self.navigation_plan_markers_pub.publish(self.prev_nav_markers)
         nav_markers = MarkerArray()
         duration_s = 1 * 60
-        timestamp = rospy.Time.now()
+        timestamp = self.clock.now().to_msg()
         m = hr.create_line_strip(points, 0, points_frame_id, timestamp, rgba=[
                                  0.0, 1.0, 0.0, 1.0], line_width_m=0.05, duration_s=duration_s)
         nav_markers.markers.append(m)
@@ -325,7 +348,7 @@ class FunmapNode(hm.HelloNode):
         self.navigation_plan_markers_pub.publish(nav_markers)
         self.prev_nav_markers = nav_markers
 
-    def trigger_align_with_nearest_cliff_service_callback(self, request):
+    def trigger_align_with_nearest_cliff_service_callback(self, request, response):
         manip = mp.ManipulationView(self.tf2_buffer, self.debug_directory)
         manip.move_head(self.move_to_pose)
         manip.update(self.point_cloud, self.tf2_buffer)
@@ -337,7 +360,7 @@ class FunmapNode(hm.HelloNode):
             filename = 'nearest_cliff_scan_' + hm.create_time_string()
             manip.save_scan(dirname + filename)
         else:
-            rospy.loginfo(
+            self.logger.info(
                 'FunmapNode trigger_align_with_nearest_cliff_service_callback: No debug directory provided, so debugging data will not be saved.')
         p0, p1, normal = manip.get_nearest_cliff('odom', self.tf2_buffer)
         if normal is not None:
@@ -358,7 +381,7 @@ class FunmapNode(hm.HelloNode):
                 turn_ang, publish_visualizations=True)
             if not at_goal:
                 message_text = 'Failed to reach turn goal.'
-                rospy.loginfo(message_text)
+                self.logger.info(message_text)
                 success = False
                 message = message_text
             else:
@@ -368,12 +391,18 @@ class FunmapNode(hm.HelloNode):
             success = False
             message = 'Failed to detect cliff.'
 
-        return TriggerResponse(
+        return Trigger.Response(
             success=success,
             message=message
         )
 
+    def point_cloud_callback(self, point_cloud):
+        # self.logger.info("New pc2 received")
+        with self.point_cloud_lock:
+            self.point_cloud = point_cloud
+
     def joint_states_callback(self, joint_states):
+        self.joint_state = joint_states
         self.extension_contact_detector.update(
             joint_states, self.stop_the_robot_service)
         self.wrist_position = self.extension_contact_detector.get_position()
@@ -382,10 +411,11 @@ class FunmapNode(hm.HelloNode):
             joint_states, self.stop_the_robot_service)
         self.lift_position = self.lift_down_contact_detector.get_position()
 
-    def trigger_reach_until_contact_service_callback(self, request):
+    def trigger_reach_until_contact_service_callback(self, request, response):
         manip = mp.ManipulationView(self.tf2_buffer, self.debug_directory)
         manip.move_head(self.move_to_pose)
-        manip.update(self.point_cloud, self.tf2_buffer)
+        with self.point_cloud_lock:
+            manip.update(self.point_cloud, self.tf2_buffer)
         if self.debug_directory is not None:
             dirname = self.debug_directory + 'reach_until_contact/'
             # If the directory does not already exist, create it.
@@ -394,7 +424,7 @@ class FunmapNode(hm.HelloNode):
             filename = 'reach_until_contact_' + hm.create_time_string()
             manip.save_scan(dirname + filename)
         else:
-            rospy.loginfo(
+            self.logger.info(
                 'FunmapNode trigger_reach_until_contact_service_callback: No debug directory provided, so debugging data will not be saved.')
 
         if self.use_hook:
@@ -403,9 +433,9 @@ class FunmapNode(hm.HelloNode):
             tooltip_frame = 'link_grasp_center'
         reach_m = manip.estimate_reach_to_contact_distance(
             tooltip_frame, self.tf2_buffer)
-        rospy.loginfo('----------------')
-        rospy.loginfo('reach_m = {0}'.format(reach_m))
-        rospy.loginfo('----------------')
+        self.logger.info('----------------')
+        self.logger.info('reach_m = {0}'.format(reach_m))
+        self.logger.info('----------------')
 
         # Be aggressive moving in observed freespace and cautious
         # moving toward a perceived obstacle or unknown region.
@@ -450,47 +480,47 @@ class FunmapNode(hm.HelloNode):
                 success, message = self.extension_contact_detector.move_until_contact(
                     'wrist_extension', in_contact_target_m, direction_sign, self.move_to_pose)
 
-        return TriggerResponse(
+        return Trigger.Response(
             success=success,
             message=message
         )
 
-    def trigger_lower_until_contact_service_callback(self, request):
+    def trigger_lower_until_contact_service_callback(self, request, response):
         direction_sign = -1
         lowest_allowed_m = 0.3
         success, message = self.lift_down_contact_detector.move_until_contact(
             'joint_lift', lowest_allowed_m, direction_sign, self.move_to_pose)
-        return TriggerResponse(
+        return Trigger.Response(
             success=success,
             message=message
         )
 
-    def trigger_global_localization_service_callback(self, request):
+    def trigger_global_localization_service_callback(self, request, response):
         self.perform_head_scan(localize_only=True, global_localization=True)
-        return TriggerResponse(
+        return Trigger.Response(
             success=True,
             message='Completed localization with scan.'
         )
 
-    def trigger_local_localization_service_callback(self, request):
+    def trigger_local_localization_service_callback(self, request, response):
         self.perform_head_scan(
             localize_only=True, global_localization=False, fast_scan=True)
-        return TriggerResponse(
+        return Trigger.Response(
             success=True,
             message='Completed localization with scan.'
         )
 
-    def trigger_head_scan_service_callback(self, request):
+    def trigger_head_scan_service_callback(self, request, response):
         self.perform_head_scan()
-        return TriggerResponse(
+        return Trigger.Response(
             success=True,
             message='Completed head scan.'
         )
 
-    def trigger_drive_to_scan_service_callback(self, request):
+    def trigger_drive_to_scan_service_callback(self, request, response):
 
         if self.merged_map is None:
-            return TriggerResponse(
+            return Trigger.Response(
                 success=False,
                 message='No map exists yet, so unable to drive to a good scan spot.'
             )
@@ -521,7 +551,7 @@ class FunmapNode(hm.HelloNode):
                                                camera_height_m, max_scan_distance_m,
                                                display_on=False)
         if best_xy is None:
-            return TriggerResponse(
+            return Trigger.Response(
                 success=False,
                 message='No good scan location was detected.'
             )
@@ -533,7 +563,7 @@ class FunmapNode(hm.HelloNode):
         success, message = self.navigate_to_map_pixel(
             end_xy, robot_xya_pix=robot_xya_pix, floor_mask=floor_mask)
 
-        return TriggerResponse(
+        return Trigger.Response(
             success=success,
             message=message
         )
@@ -547,7 +577,7 @@ class FunmapNode(hm.HelloNode):
         if self.merged_map is None:
             success = False
             message = 'No map exists yet, so unable to drive to a good scan spot.'
-            rospy.logerr(message)
+            self.logger.error(message)
             return None
 
         max_height_im = self.merged_map.max_height_im
@@ -564,9 +594,9 @@ class FunmapNode(hm.HelloNode):
             clicked_xyz = np.array([c_x, c_y, c_z, 1.0])
             clicked_image_pixel = np.matmul(points_to_image_mat, clicked_xyz)
             i_x, i_y, i_z = clicked_image_pixel[:3]
-            rospy.loginfo('clicked_image_pixel =' + str(clicked_image_pixel))
+            self.logger.info('clicked_image_pixel =' + str(clicked_image_pixel))
             end_xy = np.int64(np.round(np.array([i_x, i_y])))
-            rospy.loginfo('end_xy =' + str(end_xy))
+            self.logger.info('end_xy =' + str(end_xy))
             return end_xy
 
         return None
@@ -607,7 +637,7 @@ class FunmapNode(hm.HelloNode):
         # Check if a map exists
         if self.merged_map is None:
             message = 'No map exists yet, so unable to plan a reach.'
-            rospy.logerr(message)
+            self.logger.error(message)
             return None, None
 
         if robot_xya_pix is None:
@@ -634,7 +664,7 @@ class FunmapNode(hm.HelloNode):
             c = cv2.waitKey(0)
 
         if base_x_pix is None:
-            rospy.logerr('No valid base pose found for reaching the target.')
+            self.logger.error('No valid base pose found for reaching the target.')
             return None, None
 
         robot_reach_xya_pix = [base_x_pix, base_y_pix, base_ang_rad]
@@ -672,7 +702,7 @@ class FunmapNode(hm.HelloNode):
         return robot_reach_xya_pix, simple_reach_plan
 
     def reach_to_click_callback(self, clicked_msg):
-        rospy.loginfo('clicked_msg =' + str(clicked_msg))
+        self.logger.info('clicked_msg =' + str(clicked_msg))
 
         clicked_frame_id = clicked_msg.header.frame_id
         clicked_timestamp = clicked_msg.header.stamp
@@ -682,14 +712,14 @@ class FunmapNode(hm.HelloNode):
         # Check if a map exists
         if self.merged_map is None:
             message = 'No map exists yet, so unable to plan a reach.'
-            rospy.logerr(message)
+            self.logger.error(message)
             return
 
         points_to_image_mat, pi_timestamp = max_height_im.get_points_to_image_mat(
             clicked_frame_id, self.tf2_buffer)
 
         if points_to_image_mat is None:
-            rospy.logerr('points_to_image_mat not found')
+            self.logger.error('points_to_image_mat not found')
             return
 
         c_x = clicked_point.x
@@ -698,11 +728,11 @@ class FunmapNode(hm.HelloNode):
         clicked_xyz = np.array([c_x, c_y, c_z, 1.0])
         clicked_image_pixel = np.matmul(points_to_image_mat, clicked_xyz)[:3]
         i_x, i_y, i_z = clicked_image_pixel
-        rospy.loginfo('clicked_image_pixel =' + str(clicked_image_pixel))
+        self.logger.info('clicked_image_pixel =' + str(clicked_image_pixel))
 
         h, w = max_height_im.image.shape
         if not ((i_x >= 0) and (i_y >= 0) and (i_x < w) and (i_y < h)):
-            rospy.logerr(
+            self.logger.error(
                 'clicked point does not fall within the bounds of the max_height_image')
             return
 
@@ -722,18 +752,12 @@ class FunmapNode(hm.HelloNode):
             for pose in simple_reach_plan:
                 self.move_to_pose(pose)
         else:
-            rospy.logerr(message)
-            rospy.logerr('Aborting reach attempt due to failed navigation')
+            self.logger.error(message)
+            self.logger.error('Aborting reach attempt due to failed navigation')
 
         return
 
     def navigate_to_map_pixel(self, end_xy, end_angle=None, robot_xya_pix=None, floor_mask=None):
-        # Set the D435i to Default mode for obstacle detection
-        trigger_request = TriggerRequest()
-        trigger_result = self.trigger_d435i_default_mode_service(
-            trigger_request)
-        rospy.loginfo('trigger_result = {0}'.format(trigger_result))
-
         # Move the head to a pose from which the D435i can detect
         # obstacles near the front of the mobile base while moving
         # forward.
@@ -806,10 +830,10 @@ class FunmapNode(hm.HelloNode):
                 # the robot would ideally be located.
                 waypoint_tolerance_m = 0.25
                 waypoint_error = np.linalg.norm(p0 - r0)
-                rospy.loginfo('waypoint_error =' + str(waypoint_error))
+                self.logger.info('waypoint_error =' + str(waypoint_error))
                 if waypoint_error > waypoint_tolerance_m:
                     message_text = 'Failed due to waypoint_error being above the maximum allowed error.'
-                    rospy.loginfo(message_text)
+                    self.logger.info(message_text)
                     success = False
                     message = message_text
                     return success, message
@@ -819,8 +843,8 @@ class FunmapNode(hm.HelloNode):
                 travel_vector = p1 - r0
                 travel_dist = np.linalg.norm(travel_vector)
                 travel_ang = np.arctan2(travel_vector[1], travel_vector[0])
-                rospy.loginfo('travel_dist =' + str(travel_dist))
-                rospy.loginfo('travel_ang =' + str(travel_ang * (180.0/np.pi)))
+                self.logger.info('travel_dist =' + str(travel_dist))
+                self.logger.info('travel_ang =' + str(travel_ang * (180.0/np.pi)))
 
                 # Find the angle that the robot should turn in order
                 # to point toward the next waypoint.
@@ -828,13 +852,13 @@ class FunmapNode(hm.HelloNode):
 
                 # Command the robot to turn to point to the next
                 # waypoint.
-                rospy.loginfo('robot turn angle in degrees =' +
+                self.logger.info('robot turn angle in degrees =' +
                               str(turn_ang * (180.0/np.pi)))
                 at_goal = self.move_base.turn(
                     turn_ang, publish_visualizations=True)
                 if not at_goal:
                     message_text = 'Failed to reach turn goal.'
-                    rospy.loginfo(message_text)
+                    self.logger.info(message_text)
                     success = False
                     message = message_text
                     return success, message
@@ -850,34 +874,34 @@ class FunmapNode(hm.HelloNode):
                 if testing_future_code:
                     check_result = self.move_base.check_line_path(
                         next_point_xyz, 'odom')
-                    rospy.loginfo(
+                    self.logger.info(
                         'Result of check line path = {0}'.format(check_result))
                     local_path, local_path_frame_id = self.move_base.local_plan(
                         next_point_xyz, 'odom')
                     if local_path is not None:
-                        rospy.loginfo(
+                        self.logger.info(
                             'Found local path! Publishing markers for it!')
                         self.publish_path_markers(
                             local_path, local_path_frame_id)
                     else:
-                        rospy.loginfo('Did not find a local path...')
+                        self.logger.info('Did not find a local path...')
 
                 # Command the robot to move forward to the next waypoing.
                 at_goal = self.move_base.forward(
                     travel_dist, publish_visualizations=True)
                 if not at_goal:
                     message_text = 'Failed to reach forward motion goal.'
-                    rospy.loginfo(message_text)
+                    self.logger.info(message_text)
                     success = False
                     message = message_text
                     return success, message
 
-                rospy.loginfo('Turn and forward motion succeeded.')
+                self.logger.info('Turn and forward motion succeeded.')
 
             if end_angle is not None:
                 # If a final target angle has been provided, rotate
                 # the robot to match the target angle.
-                rospy.loginfo(
+                self.logger.info(
                     'Attempting to achieve the final target orientation.')
 
                 # Find the robot's current pose in the map frame. This
@@ -893,13 +917,13 @@ class FunmapNode(hm.HelloNode):
 
                 # Command the robot to turn to point to the next
                 # waypoint.
-                rospy.loginfo('robot turn angle in degrees =' +
+                self.logger.info('robot turn angle in degrees =' +
                               str(turn_ang * (180.0/np.pi)))
                 at_goal = self.move_base.turn(
                     turn_ang, publish_visualizations=True)
                 if not at_goal:
                     message_text = 'Failed to reach turn goal.'
-                    rospy.loginfo(message_text)
+                    self.logger.info(message_text)
                     success = False
                     message = message_text
                     return success, message
@@ -910,11 +934,6 @@ class FunmapNode(hm.HelloNode):
 
     def perform_head_scan(self, fill_in_blindspot_with_second_scan=True, localize_only=False, global_localization=False, fast_scan=False):
         node = self
-
-        trigger_request = TriggerRequest()
-        trigger_result = self.trigger_d435i_high_accuracy_mode_service(
-            trigger_request)
-        rospy.loginfo('trigger_result = {0}'.format(trigger_result))
 
         # Reduce the occlusion due to the arm and grabber. This is
         # intended to be run when the standard grabber is not holding
@@ -938,7 +957,7 @@ class FunmapNode(hm.HelloNode):
             filename = 'head_scan_' + hm.create_time_string()
             head_scan.save(dirname + filename)
         else:
-            rospy.loginfo(
+            self.logger.info(
                 'FunmapNode perform_head_scan: No debug directory provided, so debugging data will not be saved.')
 
         head_scan.make_robot_footprint_unobserved()
@@ -947,7 +966,7 @@ class FunmapNode(hm.HelloNode):
         if self.merged_map is None:
             # The robot does not currently have a map, so initialize
             # the map with the new head scan.
-            rospy.loginfo(
+            self.logger.info(
                 'perform_head_scan: No map available, so setting the map to be the scan that was just taken.')
             self.merged_map = head_scan
             robot_pose = [head_scan.robot_xy_pix[0],
@@ -958,7 +977,7 @@ class FunmapNode(hm.HelloNode):
         else:
             if localize_only and (not global_localization):
                 # The scan was performed to localize the robot locally.
-                rospy.loginfo(
+                self.logger.info(
                     'perform_head_scan: Performing local localization.')
                 use_full_size_scans = False
                 if use_full_size_scans:
@@ -988,7 +1007,7 @@ class FunmapNode(hm.HelloNode):
                         filename = 'localization_scaled_merged_map_' + time_string
                         scaled_merged_map.save(dirname + filename)
                     else:
-                        rospy.loginfo(
+                        self.logger.info(
                             'FunmapNode perform_head_scan: No debug directory provided, so debugging data will not be saved.')
                 self.localized = True
             elif (not self.localized) or (localize_only and global_localization):
@@ -1000,7 +1019,7 @@ class FunmapNode(hm.HelloNode):
                 # search for a match globally.
 
                 # This does not merge the new scan into the current map.
-                rospy.loginfo(
+                self.logger.info(
                     'perform_head_scan: Performing global localization.')
                 save_merged_map = False
 
@@ -1022,7 +1041,7 @@ class FunmapNode(hm.HelloNode):
                     filename = 'localization_scaled_merged_map_' + time_string
                     scaled_merged_map.save(dirname + filename)
                 else:
-                    rospy.loginfo(
+                    self.logger.info(
                         'FunmapNode perform_head_scan: No debug directory provided, so debugging data will not be saved.')
             else:
                 # The robot has been localized with respect to the
@@ -1031,7 +1050,7 @@ class FunmapNode(hm.HelloNode):
                 # estimated pose is close to its actual pose in the
                 # map. It constrains the matching optimization to a
                 # limited range of positions and orientations.
-                rospy.loginfo('perform_head_scan: Performing local map merge.')
+                self.logger.info('perform_head_scan: Performing local map merge.')
                 original_robot_map_pose, corrected_robot_map_pose = mm.merge_scan_1_into_scan_2(
                     head_scan, self.merged_map)
                 save_merged_map = True
@@ -1067,7 +1086,7 @@ class FunmapNode(hm.HelloNode):
                 filename = 'merged_map_' + hm.create_time_string()
                 self.merged_map.save(merged_maps_dirname + filename)
             else:
-                rospy.loginfo(
+                self.logger.info(
                     'FunmapNode perform_head_scan: No debug directory provided, so debugging data will not be saved.')
 
         if fill_in_blindspot_with_second_scan and (not localize_only):
@@ -1077,31 +1096,31 @@ class FunmapNode(hm.HelloNode):
 
             # Command the robot to turn to point to the next
             # waypoint.
-            rospy.loginfo('robot turn angle in degrees =' +
+            self.logger.info('robot turn angle in degrees =' +
                           str(turn_ang * (180.0/np.pi)))
             at_goal = self.move_base.turn(
                 turn_ang, publish_visualizations=True)
             if not at_goal:
                 message_text = 'Failed to reach turn goal.'
-                rospy.loginfo(message_text)
+                self.logger.info(message_text)
             self.perform_head_scan(fill_in_blindspot_with_second_scan=False)
 
-    def get_plan_service_callback(self, request):
+    def get_plan_service_callback(self, request, response):
         # request.start, request.goal, request.tolerance
         goal_pose = request.goal
         end_xy = self.pose_to_map_pixel(goal_pose)
         if end_xy is None:
             message = 'Failed to convert pose to map pixel.'
-            rospy.logerr(message)
+            self.logger.error(message)
             return
         path, message = self.plan_a_path(end_xy)
         plan = Path()
         header = plan.header
-        time_stamp = rospy.Time.now()
+        time_stamp = self.clock.now().to_msg()
         header.stamp = time_stamp
         header.frame_id = 'map'
         if path is None:
-            rospy.logerr(message)
+            self.logger.error(message)
             return plan
 
         # Existence of the merged map is checked by plan_a_path, but
@@ -1118,7 +1137,7 @@ class FunmapNode(hm.HelloNode):
             map_frame_id, self.tf2_buffer)
 
         if image_to_points_mat is None:
-            rospy.logerr('image_to_points_mat unavailable via TF2')
+            self.logger.error('image_to_points_mat unavailable via TF2')
             return plan
 
         path_height_m = 0.0
@@ -1156,15 +1175,16 @@ class FunmapNode(hm.HelloNode):
         t[0, 3] = tx
         t[1, 3] = ty
         t[:2, :2] = rot_mat
-        self.map_to_odom_transform_mat = np.matmul(
-            t, self.map_to_odom_transform_mat)
-        self.tf2_broadcaster.sendTransform(
-            create_map_to_odom_transform(self.map_to_odom_transform_mat))
+        with self.map_odom_tf_lock:
+            self.map_to_odom_transform_mat = np.matmul(
+                t, self.map_to_odom_transform_mat)
+            self.tf2_broadcaster.sendTransform(
+                create_map_to_odom_transform(self.map_to_odom_transform_mat, self.clock.now().to_msg()))
 
     def publish_corrected_robot_pose_markers(self, original_robot_map_pose_xya, corrected_robot_map_pose_xya):
         # Publish markers to visualize the corrected and
         # uncorrected robot poses on the map.
-        timestamp = rospy.Time.now()
+        timestamp = self.clock.now().to_msg()
         markers = MarkerArray()
         ang_rad = corrected_robot_map_pose_xya[2]
         x_axis = [np.cos(ang_rad), np.sin(ang_rad), 0.0]
@@ -1194,9 +1214,9 @@ class FunmapNode(hm.HelloNode):
         self.marker_array_pub.publish(markers)
 
     def set_robot_pose_callback(self, pose_with_cov_stamped):
-        rospy.loginfo(
+        self.logger.info(
             'Set robot pose called. This will set the pose of the robot on the map.')
-        rospy.loginfo(pose_with_cov_stamped)
+        self.logger.info(f"Setting pose to {str(pose_with_cov_stamped)}")
 
         original_robot_map_pose_xya, timestamp = self.get_robot_floor_pose_xya(
             floor_frame='map')
@@ -1207,9 +1227,9 @@ class FunmapNode(hm.HelloNode):
         pose = pwcs.pose.pose
 
         if frame_id != 'map':
-            lookup_time = rospy.Time(0)  # return most recent transform
-            timeout_ros = rospy.Duration(0.1)
-            stamped_transform = tf2_buffer.lookup_transform(
+            lookup_time = Time(seconds=0)  # return most recent transform
+            timeout_ros = Duration(seconds=0.1)
+            stamped_transform = self.tf2_buffer.lookup_transform(
                 'map', frame_id, lookup_time, timeout_ros)
             map_pose = do_transform_pose(pose, stamped_transform)
         else:
@@ -1230,50 +1250,151 @@ class FunmapNode(hm.HelloNode):
             original_robot_map_pose_xya, corrected_robot_map_pose_xya)
 
     def navigate_to_goal_topic_callback(self, goal_pose):
-        rospy.loginfo(
+        self.logger.info(
             'Navigate to goal simple navigate to goal topic received a command!')
-        rospy.loginfo(goal_pose)
+        self.logger.info(f"Goal pose is {str(goal_pose)}")
 
         end_xy = self.pose_to_map_pixel(goal_pose)
         if end_xy is None:
             message = 'Failed to convert pose to map pixel.'
-            rospy.logerr(message)
+            self.logger.error(message)
             return
         success, message = self.navigate_to_map_pixel(end_xy)
 
         if success:
-            rospy.loginfo(message)
+            self.logger.info(message)
         else:
-            rospy.logerr(message)
+            self.logger.error(message)
         return
 
-    def navigate_to_goal_action_callback(self, goal):
-        # geometry_msgs/PoseStamped target_pose
-        goal_pose = goal.target_pose
-        rospy.loginfo(
+    def navigate_to_goal_action_callback(self, goal_handle):
+        # geometry_msgs/PoseStamped pose
+        goal_pose = goal_handle.request.pose
+        self.logger.info(
             'Navigate to goal simple action server received a command!')
-        rospy.loginfo(goal_pose)
+        self.logger.info(goal_pose)
+
+        result = NavigateToPose.Result()
 
         end_xy = self.pose_to_map_pixel(goal_pose)
         if end_xy is None:
             message = 'Failed to convert pose to map pixel.'
-            rospy.logerr(message)
-            self.navigate_to_goal_action_server.set_aborted()
-            return
+            self.logger.error(message)
+            goal_handle.abort()
+            return result
         success, message = self.navigate_to_map_pixel(end_xy)
 
         if success:
-            result = MoveBaseResult()
-            self.navigate_to_goal_action_server.set_succeeded(result)
+            goal_handle.succeed()
         else:
-            rospy.logerr(message)
-            self.navigate_to_goal_action_server.set_aborted()
-        return
+            self.logger.error(message)
+        return result
+
+    def goal_response(self, future: rclpy.task.Future):
+        if not future.result():
+            # self.logger.info("Future goal result is not set")
+            return False
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.move_to_pose_complete = True
+            return
+
+        self._get_result_future = goal_handle.get_result_async()
+
+    def get_result(self, future: rclpy.task.Future):
+        if not future or not future.result():
+            return
+
+        result = future.result().result
+        error_code = result.error_code
+        # self.logger.info('The Action Server has finished, it returned: "%s"' % str(error_code))
+        self.move_to_pose_complete = True
+    
+    def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
+        self.move_to_pose_complete = False
+        joint_names = [key for key in pose]
+        point = JointTrajectoryPoint()
+        point.time_from_start = Duration(seconds=0.0).to_msg()
+
+        trajectory_goal = FollowJointTrajectory.Goal()
+        trajectory_goal.goal_time_tolerance = Duration(seconds=1.0).to_msg()
+        trajectory_goal.trajectory.joint_names = joint_names
+        if not custom_contact_thresholds: 
+            joint_positions = [pose[key] for key in joint_names]
+            point.positions = joint_positions
+            trajectory_goal.trajectory.points = [point]
+        else:
+            pose_correct = all([len(pose[key])==2 for key in joint_names])
+            if not pose_correct:
+                self.logger.error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
+                return
+            joint_positions = [pose[key][0] for key in joint_names]
+            joint_efforts = [pose[key][1] for key in joint_names]
+            point.positions = joint_positions
+            point.effort = joint_efforts
+            trajectory_goal.trajectory.points = [point]
+        trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
+        self._send_goal_future = self.trajectory_client.send_goal_async(trajectory_goal)
+
+        if not return_before_done:
+            time_start = time.time()
+            self._get_result_future = None
+
+            while not self._get_result_future and (time.time() - time_start) < 10:
+                self.goal_response(self._send_goal_future)
+
+            if not self._get_result_future:
+                return self._send_goal_future
+
+            time_start = time.time()
+            while not self.move_to_pose_complete and (time.time() - time_start) < 10:
+                self.get_result(self._get_result_future)
+        
+        return self._send_goal_future
+
+    def get_robot_floor_pose_xya(self, floor_frame='odom'):
+        # Returns the current estimated x, y position and angle of the
+        # robot on the floor. This is typically called with respect to
+        # the odom frame or the map frame. x and y are in meters and
+        # the angle is in radians.
+        
+        # Navigation planning is performed with respect to a height of
+        # 0.0, so the heights of transformed points are 0.0. The
+        # simple method of handling the heights below assumes that the
+        # frame is aligned such that the z axis is normal to the
+        # floor, so that ignoring the z coordinate is approximately
+        # equivalent to projecting a point onto the floor.
+        
+        # Query TF2 to obtain the current estimated transformation
+        # from the robot's base_link frame to the frame.
+        robot_to_odom_mat, timestamp = hm.get_p1_to_p2_matrix('base_link', floor_frame, self.tf2_buffer)
+        print('robot_to_odom_mat =', robot_to_odom_mat)
+        print('timestamp =', timestamp)
+
+        # Find the robot's current location in the frame.
+        r0 = np.array([0.0, 0.0, 0.0, 1.0])
+        print('r0 =', r0)
+        r0 = np.matmul(robot_to_odom_mat, r0)[:2]
+
+        # Find the current angle of the robot in the frame.
+        r1 = np.array([1.0, 0.0, 0.0, 1.0])
+        r1 = np.matmul(robot_to_odom_mat, r1)[:2]
+        robot_forward = r1 - r0
+        r_ang = np.arctan2(robot_forward[1], robot_forward[0])
+
+        return [r0[0], r0[1], r_ang], timestamp
+
+    def publish_map_to_odom_tf(self):
+        while rclpy.ok():
+            with self.map_odom_tf_lock:
+                self.tf2_broadcaster.sendTransform(
+                create_map_to_odom_transform(self.map_to_odom_transform_mat, self.clock.now().to_msg()))
+                time.sleep(0.2)
 
     def main(self):
-        hm.HelloNode.main(self, 'funmap', 'funmap')
+        # hm.HelloNode.main(self, 'funmap', 'funmap')
 
-        self.debug_directory = rospy.get_param('~debug_directory')
+        self.debug_directory = self.get_parameter_or('~debug_directory', None).value
 
         self.merged_map = None
         self.localized = False
@@ -1282,99 +1403,139 @@ class FunmapNode(hm.HelloNode):
             self.merged_map = ma.HeadScan.from_file(self.map_filename)
             self.localized = False
 
+        self.callback_group = ReentrantCallbackGroup()
+
         ###########################
         # Related to move_base API
-        self.navigate_to_goal_action_server = actionlib.SimpleActionServer('/move_base',
-                                                                           MoveBaseAction,
-                                                                           execute_cb=self.navigate_to_goal_action_callback,
-                                                                           auto_start=False)
-        self.navigate_to_goal_action_server.start()
+        self.navigate_to_goal_action_server = ActionServer(self,
+                                                           NavigateToPose,
+                                                           '/move_base',
+                                                           execute_callback=self.navigate_to_goal_action_callback,
+                                                           callback_group=self.callback_group)
+        # self.navigate_to_goal_action_server.start()
 
-        self.navigation_goal_subscriber = rospy.Subscriber('/move_base_simple/goal',
-                                                           PoseStamped,
-                                                           self.navigate_to_goal_topic_callback)
+        self.navigation_goal_subscriber = self.create_subscription(PoseStamped,
+                                                                   '/move_base_simple/goal',
+                                                                   self.navigate_to_goal_topic_callback,
+                                                                   1,
+                                                                   callback_group=self.callback_group)
 
-        self.set_robot_pose_subscriber = rospy.Subscriber(
-            '/initialpose', PoseWithCovarianceStamped, self.set_robot_pose_callback)
+        self.set_robot_pose_subscriber = self.create_subscription(PoseWithCovarianceStamped,
+                                                                   '/initialpose',
+                                                                   self.set_robot_pose_callback,
+                                                                   1,
+                                                                   callback_group=self.callback_group)
 
-        self.get_plan_service = rospy.Service('/make_plan',
-                                              GetPlan,
-                                              self.get_plan_service_callback)
+        self.get_plan_service = self.create_service(GetPlan,
+                                                    '/make_plan',
+                                              self.get_plan_service_callback,
+                                              callback_group=self.callback_group)
         ###########################
 
-        self.trigger_head_scan_service = rospy.Service('/funmap/trigger_head_scan',
-                                                       Trigger,
-                                                       self.trigger_head_scan_service_callback)
-        self.trigger_drive_to_scan_service = rospy.Service('/funmap/trigger_drive_to_scan',
-                                                           Trigger,
-                                                           self.trigger_drive_to_scan_service_callback)
-        self.trigger_global_localization_service = rospy.Service('/funmap/trigger_global_localization',
-                                                                 Trigger,
-                                                                 self.trigger_global_localization_service_callback)
-        self.trigger_local_localization_service = rospy.Service('/funmap/trigger_local_localization',
-                                                                Trigger,
-                                                                self.trigger_local_localization_service_callback)
+        self.trigger_head_scan_service = self.create_service(Trigger,
+                                                             '/funmap/trigger_head_scan',
+                                                       self.trigger_head_scan_service_callback,
+                                                       callback_group=self.callback_group)
+        self.trigger_drive_to_scan_service = self.create_service(Trigger,
+                                                                 '/funmap/trigger_drive_to_scan',
+                                                           self.trigger_drive_to_scan_service_callback,
+                                                           callback_group=self.callback_group)
+        self.trigger_global_localization_service = self.create_service(Trigger,
+                                                                 '/funmap/trigger_global_localization',
+                                                                 self.trigger_global_localization_service_callback,
+                                                                 callback_group=self.callback_group)
+        self.trigger_local_localization_service = self.create_service(Trigger,
+                                                                      '/funmap/trigger_local_localization',
+                                                                self.trigger_local_localization_service_callback,
+                                                                callback_group=self.callback_group)
 
-        self.trigger_align_with_nearest_cliff_service = rospy.Service('/funmap/trigger_align_with_nearest_cliff',
-                                                                      Trigger,
-                                                                      self.trigger_align_with_nearest_cliff_service_callback)
+        self.trigger_align_with_nearest_cliff_service = self.create_service(Trigger,
+                                                                            '/funmap/trigger_align_with_nearest_cliff',
+                                                                            self.trigger_align_with_nearest_cliff_service_callback,
+                                                                            callback_group=self.callback_group)
 
-        self.trigger_reach_until_contact_service = rospy.Service('/funmap/trigger_reach_until_contact',
-                                                                 Trigger,
-                                                                 self.trigger_reach_until_contact_service_callback)
+        self.trigger_reach_until_contact_service = self.create_service(Trigger,
+                                                                 '/funmap/trigger_reach_until_contact',
+                                                                 self.trigger_reach_until_contact_service_callback,
+                                                                 callback_group=self.callback_group)
 
-        self.trigger_lower_until_contact_service = rospy.Service('/funmap/trigger_lower_until_contact',
-                                                                 Trigger,
-                                                                 self.trigger_lower_until_contact_service_callback)
+        self.trigger_lower_until_contact_service = self.create_service(Trigger,
+                                                                 '/funmap/trigger_lower_until_contact',
+                                                                 self.trigger_lower_until_contact_service_callback,
+                                                                 callback_group=self.callback_group)
 
-        self.reach_to_click_subscriber = rospy.Subscriber(
-            '/clicked_point', PointStamped, self.reach_to_click_callback)
+        self.reach_to_click_subscriber = self.create_subscription(
+            PointStamped, '/clicked_point', self.reach_to_click_callback, 1, callback_group=self.callback_group)
 
-        default_service = '/camera/switch_to_default_mode'
-        high_accuracy_service = '/camera/switch_to_high_accuracy_mode'
-        rospy.loginfo('Node ' + self.node_name + ' waiting to connect to ' +
-                      default_service + ' and ' + high_accuracy_service)
-        rospy.wait_for_service(default_service)
-        rospy.loginfo('Node ' + self.node_name +
-                      ' connected to ' + default_service)
-        self.trigger_d435i_default_mode_service = rospy.ServiceProxy(
-            default_service, Trigger)
-        rospy.wait_for_service(high_accuracy_service)
-        rospy.loginfo('Node ' + self.node_name +
-                      ' connected to' + high_accuracy_service)
-        self.trigger_d435i_high_accuracy_mode_service = rospy.ServiceProxy(
-            high_accuracy_service, Trigger)
+        self.tf2_broadcaster = tf2_ros.TransformBroadcaster(self)
 
-        self.tf2_broadcaster = tf2_ros.TransformBroadcaster()
+        self.point_cloud_pub = self.create_publisher(
+            PointCloud2, '/funmap/point_cloud2', 1)
+        self.voi_marker_pub = self.create_publisher(
+            Marker, '/funmap/voi_marker', 1)
+        self.marker_array_pub = self.create_publisher(
+            MarkerArray, '/funmap/marker_array', 1)
+        self.navigation_plan_markers_pub = self.create_publisher(
+            MarkerArray, '/funmap/navigation_plan_markers', 1)
+        self.obstacle_point_cloud_pub = self.create_publisher(
+            PointCloud2, '/funmap/obstacle_point_cloud2', 1)
 
-        self.point_cloud_pub = rospy.Publisher(
-            '/funmap/point_cloud2', PointCloud2, queue_size=1)
-        self.voi_marker_pub = rospy.Publisher(
-            '/funmap/voi_marker', Marker, queue_size=1)
-        self.marker_array_pub = rospy.Publisher(
-            '/funmap/marker_array', MarkerArray, queue_size=1)
-        self.navigation_plan_markers_pub = rospy.Publisher(
-            '/funmap/navigation_plan_markers', MarkerArray, queue_size=1)
-        self.obstacle_point_cloud_pub = rospy.Publisher(
-            '/funmap/obstacle_point_cloud2', PointCloud2, queue_size=1)
-
-        self.joint_states_subscriber = rospy.Subscriber(
-            '/stretch/joint_states', JointState, self.joint_states_callback)
-
-        self.rate = 5.0
-        rate = rospy.Rate(self.rate)
+        self.joint_states_subscriber = self.create_subscription(
+            JointState, '/stretch/joint_states', self.joint_states_callback, 1, callback_group=self.callback_group)
 
         self.move_base = nv.MoveBase(self, self.debug_directory)
+        
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
+        server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
+        if not server_reached:
+            self.logger.error('Unable to connect to arm action server. Timeout exceeded.')
+            sys.exit()
 
-        self.map_to_odom_transform_mat = np.identity(4)
-        while not rospy.is_shutdown():
-            self.tf2_broadcaster.sendTransform(
-                create_map_to_odom_transform(self.map_to_odom_transform_mat))
-            self.publish_map_point_cloud()
-            rate.sleep()
+        self.tf2_buffer = tf2_ros.Buffer()
+        self.tf2_listener = tf2_ros.TransformListener(self.tf2_buffer, self)
 
+        self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 1, callback_group=self.callback_group)
+        # self.point_cloud_pub = self.create_publisher(PointCloud2, '/funmap/point_cloud2', 1)
 
-if __name__ == '__main__':
+        self.stop_the_robot_service = self.create_client(Trigger, '/stop_the_robot', callback_group=self.callback_group)
+        while not self.stop_the_robot_service.wait_for_service(timeout_sec=2.0):
+            self.get_logger().info("Waiting on '/stop_the_robot' service...")
+        self.logger.info('Node ' + self.get_name() + ' connected to /stop_the_robot service.')
+
+        hz = 5.0
+        self.rate = self.create_rate(hz, self.get_clock())
+
+        # Do not start until a point cloud has been received
+        with self.point_cloud_lock:
+            point_cloud_msg = self.point_cloud
+        self.get_logger().info('Node ' + self.get_name() + ' waiting to receive first point cloud.')
+        while point_cloud_msg is None:
+            # self.rate.sleep()
+            time.sleep(0.2)
+            # self.get_logger().info("Spinning...")
+            rclpy.spin_once(self)
+            with self.point_cloud_lock:
+                point_cloud_msg = self.point_cloud
+        self.get_logger().info('Node ' + self.get_name() + ' received first point cloud, so continuing.')
+
+        with self.map_odom_tf_lock:
+            self.map_to_odom_transform_mat = np.identity(4)
+
+        executor = MultiThreadedExecutor(num_threads=6)
+        executor.add_node(self)
+
+        self.map_odom_tf_thread = threading.Thread(target=self.publish_map_to_odom_tf)
+        self.map_odom_tf_thread.start()
+
+        self.publish_map_point_cloud_thread = threading.Thread(target=self.publish_map_point_cloud)
+        self.publish_map_point_cloud_thread.start()
+
+        executor.spin()
+
+        self.map_odom_tf_thread.join()
+        self.publish_map_point_cloud_thread.join()
+
+def main():
     try:
         parser = ap.ArgumentParser(
             description='Keyboard teleoperation for stretch.')
@@ -1382,8 +1543,11 @@ if __name__ == '__main__':
                             help='Provide directory from which to load a map.')
         args, unknown = parser.parse_known_args()
         map_filename = args.load_map if args.load_map else None
+        rclpy.init()
         node = FunmapNode(map_filename)
         node.main()
-        rospy.spin()
     except KeyboardInterrupt:
         print('interrupt received, so shutting down')
+
+if __name__ == '__main__':
+    main()

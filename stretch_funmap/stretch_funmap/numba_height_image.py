@@ -1,8 +1,7 @@
+import math
 
 from numba import jit, njit
 import numpy as np
-import math
-
 
 def numba_max_height_image_to_points(points_in_image_to_frame_mat, image, points, m_per_pix, m_per_height_unit):
     dtype = image.dtype

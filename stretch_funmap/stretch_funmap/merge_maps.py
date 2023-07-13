@@ -1,27 +1,24 @@
 #!/usr/bin/env python3
 
-import stretch_funmap.max_height_image as mh
-import numpy as np
-import scipy.ndimage as nd
-import scipy.signal as si
+import tf_transformations
+
+import hello_helpers.hello_misc as hm
+
+import copy
 import cv2
 import math
-import hello_helpers.hello_misc as hm
-import stretch_funmap.navigation_planning as na
-import copy
 import time
 
-
-from scipy.optimize import minimize, minimize_scalar
-
-
-from stretch_funmap.numba_compare_images import numba_compare_images_2
-import stretch_funmap.mapping as ma
-
-import tf_conversions
-
 import cma
+import numpy as np
+from scipy.optimize import minimize, minimize_scalar
+import scipy.ndimage as nd
+import scipy.signal as si
 
+from . import mapping as ma
+from . import max_height_image as mh
+from . import navigation_planning as na
+from .numba_compare_images import numba_compare_images_2
 
 def affine_transform_2d_point(affine_matrix, point):
     affine_point = np.ones(3)
@@ -315,7 +312,7 @@ def unaligned_merge_scan_1_into_scan_2(scan_1, scan_2, display_on=False, show_un
         merged_sub_image = mhi_2.image[:h1,:w1]
     merged_sub_image[merged_sub_image == 0] = mhi_1.image[merged_sub_image == 0]
     if display_on:
-        cv2.imshow('Naive merge', merged.image)
+        cv2.imshow('Naive merge', merged_sub_image.image)
 
         
 def unaligned_blended_scan_1_into_scan_2(scan_1, scan_2, display_on=False, show_unaligned=False):
@@ -342,7 +339,7 @@ def unaligned_blended_scan_1_into_scan_2(scan_1, scan_2, display_on=False, show_
     selector = unobserved_selector | nearer_selector
     merged_sub_image[selector] = mhi_1.image[selector]
     if display_on:
-        cv2.imshow('Unaligned camera depth merge', merged.image)
+        cv2.imshow('Unaligned camera depth merge', merged_sub_image.image)
 
         
 def estimate_scan_1_to_scan_2_transform(scan_1, scan_2, display_on=False, show_unaligned=False,
@@ -414,7 +411,7 @@ def estimate_scan_1_to_scan_2_transform(scan_1, scan_2, display_on=False, show_u
     a = p['theta_rad']
     map_x, map_y, map_ang_rad = transform_xya_to_xya_3d(scan_2.image_to_map_mat, x1, y1, a)
     map_xy_1 = np.array([map_x, map_y])
-    map_quat = tf_conversions.transformations.quaternion_from_euler(0, 0, map_ang_rad)
+    map_quat = tf_transformations.quaternion_from_euler(0, 0, map_ang_rad)
     print('map_xy_1 =', map_xy_1)
     print('map_ang_rad =', map_ang_rad)
     print('map_quat =', map_quat)

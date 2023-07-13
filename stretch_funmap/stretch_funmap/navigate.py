@@ -1,15 +1,26 @@
 #!/usr/bin/env python3
 
-import numpy as np
-import ros_numpy as rn
-import stretch_funmap.ros_max_height_image as rm
-from control_msgs.msg import FollowJointTrajectoryResult
-from actionlib_msgs.msg import GoalStatus
-import rospy
-from std_srvs.srv import Trigger, TriggerRequest
+import rclpy
+from rclpy.duration import Duration
+from rclpy.clock import Clock, ClockType
+import rclpy.logging
+import rclpy.task
+
+from control_msgs.action import FollowJointTrajectory
+import ros2_numpy as rn
+from std_srvs.srv import Trigger
+
 import hello_helpers.hello_misc as hm
-import stretch_funmap.navigation_planning as na
+
+from functools import partial
+import os
+import time
+
 import cv2
+import numpy as np
+
+from . import navigation_planning as na
+from . import ros_max_height_image as rm
 
 class ForwardMotionObstacleDetector():
     def __init__(self):
@@ -34,6 +45,7 @@ class ForwardMotionObstacleDetector():
         pixel_dtype = np.uint8
         self.max_height_im = rm.ROSMaxHeightImage(self.voi, m_per_pix, pixel_dtype)
         self.max_height_im.print_info()
+        self.logger = rclpy.logging.get_logger('stretch_funmap')
 
     def detect(self, point_cloud_msg, tf2_buffer):
         return (self.count_obstacle_pixels(point_cloud_msg, tf2_buffer) > self.obstacle_pixel_thresh)
@@ -52,7 +64,7 @@ class ForwardMotionObstacleDetector():
             self.max_height_im.from_rgb_points_with_tf2(rgb_points, cloud_frame, tf2_buffer)
         obstacle_im = self.max_height_im.image == 0
         num_obstacle_pix = np.sum(obstacle_im)
-        print('num_obstacle_pix =', num_obstacle_pix)
+        self.logger.info(f'num_obstacle_pix = {num_obstacle_pix}')
         return num_obstacle_pix
 
     def publish_visualizations(self, voi_marker_pub, point_cloud_pub):
@@ -64,9 +76,10 @@ class ForwardMotionObstacleDetector():
 
 class FastSingleViewPlanner():
     def __init__(self, debug_directory=None):
+        self.logger = rclpy.logging.get_logger('stretch_funmap')
         if debug_directory is not None: 
             self.debug_directory = debug_directory + 'fast_single_view_planner/'
-            print('MoveBase __init__: self.debug_directory =', self.debug_directory)
+            self.logger.info(f'MoveBase __init__: self.debug_directory = {str(self.debug_directory)}')
         else:
             self.debug_directory = debug_directory
         
@@ -107,8 +120,8 @@ class FastSingleViewPlanner():
                 # Save the new scan to disk.
                 dirname = self.debug_directory + 'check_line_path/'
                 filename = 'check_line_path_' + hm.create_time_string()
-                print('FastSingleViewPlanner check_line_path : directory =', dirname)
-                print('FastSingleViewPlanner check_line_path : filename =', filename)
+                self.logger.info(f'FastSingleViewPlanner check_line_path : directory = {dirname}')
+                self.logger.info(f'FastSingleViewPlanner check_line_path : filename = {filename}')
                 if not os.path.exists(dirname):
                     os.makedirs(dirname)
                 self.max_height_im.save(dirname + filename)
@@ -117,14 +130,14 @@ class FastSingleViewPlanner():
                 radius = 20
                 color = 255
                 cv2.circle(im, tuple(rpix[:2]), radius, color, 2)
-                rospy.loginfo('end_xy_pix = {0}'.format(end_xy_pix))
+                self.logger.info('end_xy_pix = {0}'.format(end_xy_pix))
                 epix = np.int64(np.round(end_xy_pix))
                 cv2.circle(im, tuple(epix), radius, color, 2)
                 cv2.imwrite(dirname + filename + '_with_start_and_end.png', im)
 
             check_result = na.check_line_path(self.max_height_im, robot_xya_pix, end_xy_pix, floor_mask=floor_mask)
             return check_result
-        rospy.logerr('FastSingleViewPlanner.check_line_path called without first updating the scan with a pointcloud.')
+        self.logger.error('FastSingleViewPlanner.check_line_path called without first updating the scan with a pointcloud.')
         return False
         
     def plan_a_path(self, end_xyz, end_frame_id, tf2_buffer, floor_mask=None):
@@ -138,8 +151,8 @@ class FastSingleViewPlanner():
                 # Save the new scan to disk.
                 dirname = self.debug_directory + 'plan_a_path/'
                 filename = 'plan_a_path_' + hm.create_time_string()
-                print('FastSingleViewPlanner plan_a_path : directory =', dirname)
-                print('FastSingleViewPlanner plan_a_path : filename =', filename)
+                self.logger.info(f'FastSingleViewPlanner plan_a_path : directory = {dirname}')
+                self.logger.info(f'FastSingleViewPlanner plan_a_path : filename = {filename}')
                 if not os.path.exists(dirname):
                     os.makedirs(dirname)
                 self.save_scan(dirname + filename)
@@ -148,7 +161,7 @@ class FastSingleViewPlanner():
                 radius = 20
                 color = 255
                 cv2.circle(im, tuple(rpix[:2]), radius, color, 2)
-                rospy.loginfo('end_xy_pix = {0}'.format(end_xy_pix))
+                self.logger.info('end_xy_pix = {0}'.format(end_xy_pix))
                 epix = np.int64(np.round(end_xy_pix))
                 cv2.circle(im, tuple(epix), radius, color, 2)
                 cv2.imwrite(dirname + filename + '_with_start_and_end.png', im)
@@ -191,33 +204,69 @@ class FastSingleViewPlanner():
 
 class MoveBase():
     def __init__(self, node, debug_directory=None):
+        self.logger = rclpy.logging.get_logger('stretch_funmap')
         self.debug_directory = debug_directory
-        print('MoveBase __init__: self.debug_directory =', self.debug_directory)
+        self.logger.info(f"MoveBase __init__: self.debug_directory = {str(self.debug_directory)}")
  
         self.forward_obstacle_detector = ForwardMotionObstacleDetector()
         self.local_planner = FastSingleViewPlanner()
         self.node = node
-        self.unsuccessful_status = [GoalStatus.PREEMPTED, GoalStatus.ABORTED, GoalStatus.REJECTED, GoalStatus.RECALLED, GoalStatus.LOST]  
-        
+        self.unsuccessful_status = [-100, 100, FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.INVALID_JOINTS, FollowJointTrajectory.Result.INVALID_GOAL, FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.OLD_HEADER_TIMESTAMP]  
+        self.at_goal = False
+        self.unsuccessful_action = False
+        self._get_result_future = None
+
     def head_to_forward_motion_pose(self):
         # Move head to navigation pose.
         #pose = {'joint_head_pan': 0.1, 'joint_head_tilt': -0.9}
         pose = {'joint_head_pan': 0.1, 'joint_head_tilt': -1.1}
         self.node.move_to_pose(pose)
 
-    def check_move_state(self, trajectory_client):
-        at_goal = False
-        unsuccessful_action = False
-        state = trajectory_client.get_state()
-        if state == GoalStatus.SUCCEEDED:
-            rospy.loginfo('Move succeeded!')
-            # wait for the motion to come to a complete stop
-            rospy.sleep(0.5)
-            at_goal = True
-        elif state in self.unsuccessful_status:
-            rospy.loginfo('Move action terminated without success (state = {0}).'.format(state))
-            unsuccessful_action = True
-        return at_goal, unsuccessful_action
+    def goal_response(self, future: rclpy.task.Future):
+        self._get_result_future = None
+        if not future.result():
+            return False
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.logger.info('Goal rejected')
+            return True
+
+        self._get_result_future = goal_handle.get_result_async()
+        return True
+
+    def get_result(self, future: rclpy.task.Future):
+        if not future.result():
+            return
+
+        result = future.result().result
+        error_code = result.error_code
+        self.logger.info('The Action Server has finished, it returned: "%s"' % str(error_code))
+
+        if (error_code == FollowJointTrajectory.Result.SUCCESSFUL):
+            self.at_goal = True
+            self.unsuccessful_action = False
+            self.logger.info("Goal point reached.")
+        elif (error_code in self.unsuccessful_status):
+            self.at_goal = False
+            self.unsuccessful_action = True
+            self.logger.info("Goal unsuccessful.")
+        else:
+            self.at_goal = False
+            self.unsuccessful_action = False
+            self.logger.info("Goal aborted.")
+
+    # def check_move_state(self, result_future: rclpy.task.Future):
+    #     at_goal = False
+    #     unsuccessful_action = False
+    #     if result_future.done():
+    #         self.logger.info('Move succeeded!')
+    #         # wait for the motion to come to a complete stop
+    #         time.sleep(0.5)
+    #         at_goal = True
+    #     elif result_future.cancelled() or result_future.exception():
+    #         self.logger.info('Move action terminated without success.')
+    #         unsuccessful_action = True
+    #     return at_goal, unsuccessful_action
     
     def local_plan(self, end_xyz, end_frame_id):
         self.local_planner.update(self.node.point_cloud, self.node.tf2_buffer)
@@ -241,7 +290,7 @@ class MoveBase():
         # correct before proceeding
         
         # obtain the initial position of the robot
-        xya, timestamp = self.node.get_robot_floor_pose_xya()
+        xya, timestamp = hm.get_robot_floor_pose_xya(self.node.tf2_buffer)
         start_position_m = xya[:2]
         start_angle_rad = xya[2]
         start_direction = np.array([np.cos(start_angle_rad), np.sin(start_angle_rad)])
@@ -266,24 +315,38 @@ class MoveBase():
                                             ((forward_distance_m > tolerance_distance_m) and
                                              (forward_attempts < max_forward_attempts)))):
             # no obstacles detected, so start moving
-            trigger_request = TriggerRequest() 
+            trigger_request = Trigger.Request() 
 
             pose = {'translate_mobile_base': forward_distance_m}
-            self.node.move_to_pose(pose, return_before_done=True)
+            self.at_goal = False
+            self.unsuccessful_action = False
+            self._future_goal = self.node.move_to_pose(pose, return_before_done=True)
 
-            while (not at_goal) and (not obstacle_detected) and (not unsuccessful_action):
+            # Check if goal has been successfully sent to the joint trajectory server
+            pose_sent = False
+            time_start = time.time()
+            timeout = 10
+
+            while not pose_sent and ((time.time() - time_start) < timeout):
+                pose_sent = self.goal_response(self._future_goal)
+
+            if not pose_sent or self._get_result_future == None:
+                self.logger.info("Failed to drive robot.")
+                return self.at_goal
+
+            while (not self.at_goal) and (not obstacle_detected) and (not self.unsuccessful_action):
                 if detect_obstacles: 
                     obstacle_detected = self.forward_obstacle_detector.detect(self.node.point_cloud, self.node.tf2_buffer)
                     if obstacle_detected:
-                        trigger_result = self.node.stop_the_robot_service(trigger_request)
-                        rospy.loginfo('trigger_result =' + str(trigger_result))
-                        rospy.loginfo('Obstacle detected near the front of the robot, so stopping!')
+                        trigger_result = self.node.stop_the_robot_service.call_async(trigger_request)
+                        self.logger.info('trigger_result = ' + str(trigger_result))
+                        self.logger.info('Obstacle detected near the front of the robot, so stopping!')
                     if publish_visualizations: 
                         self.forward_obstacle_detector.publish_visualizations(self.node.voi_marker_pub, self.node.obstacle_point_cloud_pub)
-                at_goal, unsuccessful_action = self.check_move_state(self.node.trajectory_client)
+                self.get_result(self._get_result_future)
 
             # obtain the new position of the robot
-            xya, timestamp = self.node.get_robot_floor_pose_xya()
+            xya, timestamp = hm.get_robot_floor_pose_xya(self.node.tf2_buffer)
             end_position_m = xya[:2]
             end_angle_rad = xya[2]
             end_direction = np.array([np.cos(end_angle_rad), np.sin(end_angle_rad)])
@@ -294,19 +357,19 @@ class MoveBase():
             forward_distance_m = distance_to_closest_point_m
 
         if obstacle_detected: 
-            rospy.loginfo('Obstacle detected near the front of the robot, so not starting to move forward.')
+            self.logger.info('Obstacle detected near the front of the robot, so not starting to move forward.')
 
         if abs(forward_distance_m) < tolerance_distance_m:
-            at_goal = True
+            self.at_goal = True
         else:
-            at_goal = False
+            self.at_goal = False
             
-        return at_goal
+        return self.at_goal
 
     
     def turn(self, angle_rad, publish_visualizations=True, tolerance_angle_rad=0.1, max_turn_attempts=6):
         # obtain the initial angle of the robot
-        xya, timestamp = self.node.get_robot_floor_pose_xya()
+        xya, timestamp = hm.get_robot_floor_pose_xya(self.node.tf2_buffer)
         start_angle_rad = xya[2]
         target_angle_rad = start_angle_rad + angle_rad
 
@@ -319,15 +382,29 @@ class MoveBase():
                 (turn_attempts < max_turn_attempts))):
 
             pose = {'rotate_mobile_base': turn_angle_error_rad}
-            self.node.move_to_pose(pose, return_before_done=True)
-            at_goal = False
-            unsuccessful_action = False
-            while (not at_goal) and (not unsuccessful_action):
-                at_goal, unsuccessful_action = self.check_move_state(self.node.trajectory_client)
-                rospy.sleep(0.01)
+            self.at_goal = False
+            self.unsuccessful_action = False
+            self._future_goal = self.node.move_to_pose(pose, return_before_done=True)
+
+            # Check if goal has been successfully sent to the joint trajectory server
+            pose_sent = False
+            time_start = time.time()
+            timeout = 10
+
+            while not pose_sent and ((time.time() - time_start) < timeout):
+                pose_sent = self.goal_response(self._future_goal)
+
+            if not pose_sent or self._get_result_future == None:
+                self.logger.info("Failed to drive robot.")
+                return self.at_goal
+
+            while (not self.at_goal) and (not self.unsuccessful_action):
+                # at_goal, unsuccessful_action = self.check_move_state(self.node.trajectory_client)
+                self.get_result(self._get_result_future)
+                time.sleep(0.01)
 
             # obtain the new angle of the robot
-            xya, timestamp = self.node.get_robot_floor_pose_xya()
+            xya, timestamp = hm.get_robot_floor_pose_xya(self.node.tf2_buffer)
             end_angle_rad = xya[2]
 
             # Find the angle that the robot should turn in order
@@ -336,8 +413,8 @@ class MoveBase():
             turn_attempts += 1
 
         if (abs(turn_angle_error_rad) < tolerance_angle_rad):
-            at_goal = True
+            self.at_goal = True
         else:
-            at_goal = False
+            self.at_goal = False
             
-        return at_goal
+        return self.at_goal

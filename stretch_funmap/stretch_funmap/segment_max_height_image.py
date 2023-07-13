@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 
-import stretch_funmap.max_height_image as mh
+import hello_helpers.fit_plane as fp
+import hello_helpers.hello_misc as hm
+
+import math
+
+import cv2
 import numpy as np
 import scipy.ndimage as nd
 import scipy.signal as si
-import cv2
 import skimage as sk
 from skimage.morphology import convex_hull_image
-import math
-import hello_helpers.hello_misc as hm
-import stretch_funmap.navigation_planning as na
 
-from stretch_funmap.numba_height_image import numba_create_segment_image_uint8
-import hello_helpers.fit_plane as fp
-
+from . import max_height_image as mh
+from . import navigation_planning as na
+from .numba_height_image import numba_create_segment_image_uint8
 
 def find_object_to_grasp(height_image, display_on=False):
     h_image = height_image.image
@@ -563,8 +564,7 @@ def histogram_segment(segments_image, image,
         else:
             left_segment_id = None
 
-        # If left_segment_id is valid and corresponds with a segmented
-        # region.
+        # If left_segment_id is valid and corresponds with a segmented region.
         if (left_segment_id is not None) and (left_segment_id != 0):
             # There is a valid bump segment to the left of the local
             # minimum bin. Merge the local mininum bin to the bump
@@ -892,7 +892,7 @@ def test_segment(image, mm_per_unit, zero_height_unit, segmentation_scale=0.1, v
                                              segment_info, verbose=verbose, visualize=visualize)        
     for segment_id in segment_info:
         height_unit = segment_info[segment_id]['height_unit']
-        height_m = m_per_unit * (height_unit - zero_height_unit)
+        height_m = 0.001 * mm_per_unit * (height_unit - zero_height_unit)
         segment_info[segment_id]['height_m'] = height_m
 
     return segments_image, segment_info, height_to_segment_id

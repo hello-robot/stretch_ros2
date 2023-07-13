@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
 
-import numpy as np
-import ros_numpy as rn
-import stretch_funmap.ros_max_height_image as rm
-from actionlib_msgs.msg import GoalStatus
-import rospy
-import hello_helpers.hello_misc as hm
-import stretch_funmap.ros_max_height_image as rm
-import ros_numpy
-import yaml
-import stretch_funmap.navigation_planning as na
-import time
-import cv2
-import copy
-import scipy.ndimage as nd
-import stretch_funmap.merge_maps as mm
-import tf_conversions
-import stretch_funmap.segment_max_height_image as sm
+import rclpy
+from rclpy.clock import Clock
+from rclpy.duration import Duration
+import rclpy.logging
+import rclpy.time
 
+import ros2_numpy as rn
+import tf_transformations
+
+import hello_helpers.hello_misc as hm
+
+import copy
+import time
+import yaml
+
+import cv2
+import numpy as np
+import scipy.ndimage as nd
+
+from . import merge_maps as mm
+from . import navigation_planning as na
+from . import ros_max_height_image as rm
+from . import segment_max_height_image as sm
 
 def stow_and_lower_arm(node):
     pose = {'joint_gripper_finger_left': -0.15}
@@ -218,7 +223,7 @@ def localize_with_reduced_images(head_scan, merged_map, global_localization=True
     map_x, map_y, map_ang_rad = mm.transform_xya_to_xya_3d(im_to_map_mat,
                                                            map_im_x, map_im_y, map_im_a)
     map_xy_1 = np.array([map_x, map_y])
-    map_quat = tf_conversions.transformations.quaternion_from_euler(0, 0, map_ang_rad)
+    map_quat = tf_transformations.quaternion_from_euler(0, 0, map_ang_rad)
     print('map_xy_1 =', map_xy_1)
     print('map_ang_rad =', map_ang_rad)
 
@@ -302,6 +307,9 @@ class HeadScan:
             
         self.max_height_im.print_info()
 
+        # self.logger = rclpy.logging.get_logger('stretch_funmap')
+
+    
         
     def make_robot_footprint_unobserved(self):
         # replace robot points with unobserved points
@@ -323,8 +331,7 @@ class HeadScan:
             time_between_point_clouds = time_between_point_clouds
         
         node.move_to_pose(pose)
-        rospy.sleep(head_settle_time)
-        settle_time = rospy.Time.now()
+        time.sleep(head_settle_time)
         prev_cloud_time = None
         num_point_clouds = 0
         # Consider using time stamps to make decisions, instead of
@@ -336,20 +343,20 @@ class HeadScan:
         while not_finished:
             cloud_time = node.point_cloud.header.stamp
             cloud_frame = node.point_cloud.header.frame_id
-            point_cloud = ros_numpy.numpify(node.point_cloud)
-            if (cloud_time is not None) and (cloud_time != prev_cloud_time) and (cloud_time >= settle_time): 
+            point_cloud = rn.numpify(node.point_cloud)
+            if (cloud_time is not None) and (cloud_time != prev_cloud_time): 
                 only_xyz = False
                 if only_xyz:
-                    xyz = ros_numpy.point_cloud2.get_xyz_points(point_cloud)
+                    xyz = rn.point_cloud2.get_xyz_points(point_cloud)
                     self.max_height_im.from_points_with_tf2(xyz, cloud_frame, node.tf2_buffer)
                 else: 
-                    rgb_points = ros_numpy.point_cloud2.split_rgb_field(point_cloud)
+                    rgb_points = rn.point_cloud2.split_rgb_field(point_cloud)
                     self.max_height_im.from_rgb_points_with_tf2(rgb_points, cloud_frame, node.tf2_buffer)
                 num_point_clouds += 1
                 prev_cloud_time = cloud_time
             not_finished = num_point_clouds < num_point_clouds_per_pan_ang
             if not_finished: 
-                rospy.sleep(time_between_point_clouds)
+                time.sleep(time_between_point_clouds)
 
 
     def execute(self, head_tilt, far_left_pan, far_right_pan, num_pan_steps, capture_params, node, look_at_self=True):
@@ -377,7 +384,7 @@ class HeadScan:
 
         scan_end_time = time.time()
         scan_duration = scan_end_time - scan_start_time
-        rospy.loginfo('The head scan took {0} seconds.'.format(scan_duration))
+        # self.logger.info('The head scan took {0} seconds.'.format(scan_duration))
             
         #####################################
         # record robot pose information and potentially useful transformations
@@ -451,8 +458,8 @@ class HeadScan:
         self.execute(head_tilt, far_left_pan, far_right_pan, num_pan_steps, capture_params, node, look_at_self)
         
         
-    def save( self, base_filename, save_visualization=True ):
-        print('HeadScan: Saving to base_filename =', base_filename)
+    def save(self, base_filename, save_visualization=True ):
+        # self.logger.info(f'HeadScan: Saving to base_filename = {str(base_filename)}')
         # save scan to disk
         max_height_image_base_filename = base_filename + '_mhi'
         self.max_height_im.save(max_height_image_base_filename)
@@ -474,12 +481,11 @@ class HeadScan:
         
         with open(base_filename + '.yaml', 'w') as fid:
             yaml.dump(data, fid)
-        print('Finished saving.')
-
+        # self.logger.info('Finished saving.')
         
     @classmethod
     def from_file(self, base_filename):
-        print('HeadScan.from_file: base_filename =', base_filename)
+        # self.logger.info(f'HeadScan.from_file: base_filename = {str(base_filename)}')
         with open(base_filename + '.yaml', 'r') as fid:
             data = yaml.load(fid, Loader=yaml.FullLoader)
 
@@ -490,8 +496,8 @@ class HeadScan:
 
         head_scan.robot_xy_pix = np.array(data['robot_xy_pix'])
         head_scan.robot_ang_rad = data['robot_ang_rad']
-        head_scan.timestamp = rospy.Time()
-        head_scan.timestamp.set(data['timestamp']['secs'], data['timestamp']['nsecs'])
+        head_scan.timestamp = rclpy.time.Time(seconds=data['timestamp']['secs'], nanoseconds=data['timestamp']['nsecs'])
+        # head_scan.timestamp.set(data['timestamp']['secs'], data['timestamp']['nsecs'])
         head_scan.base_link_to_image_mat = np.array(data['base_link_to_image_mat'])
         head_scan.base_link_to_map_mat = np.array(data['base_link_to_map_mat']) 
         head_scan.image_to_map_mat = np.array(data['image_to_map_mat'])
