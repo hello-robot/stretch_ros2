@@ -4,14 +4,12 @@ import argparse as ap
 from functools import partial
 import math
 import sys
-
 from .keyboard import KBHit
 
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.duration import Duration
 from rclpy.node import Node
-from rclpy.parameter import Parameter
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
 from sensor_msgs.msg import JointState
@@ -338,6 +336,12 @@ class KeyboardTeleopNode(Node):
 
 
     def main(self):
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
+        server_reached = self.trajectory_client.wait_for_server(timeout_sec=10.0)
+        if not server_reached:
+            self.get_logger().error('Unable to connect to server. Timeout exceeded. Is stretch_driver running?')
+            sys.exit()
+
         self.joint_states_sub = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 1)
         self.joint_states_sub
 
@@ -394,7 +398,6 @@ class KeyboardTeleopNode(Node):
 def main():
     try:
         rclpy.init()
-
         node = KeyboardTeleopNode()
         node.main()
     except KeyboardInterrupt:
