@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
 import math
+import sys
 from .keyboard import KBHit
 
 import rclpy
+from rclpy.action import ActionClient
 from rclpy.duration import Duration
+from rclpy.node import Node
 from std_msgs.msg import String
 from sensor_msgs.msg import JointState
 from control_msgs.action import FollowJointTrajectory
@@ -154,10 +157,10 @@ class GetKeyboardCommands:
         return command
 
 
-class KeyboardTeleopNode(hm.HelloNode):
+class KeyboardTeleopNode(Node):
 
     def __init__(self):
-        hm.HelloNode.__init__(self)
+        super().__init__('keyboard_teleop')
         self.keys = GetKeyboardCommands()
         self.joint_state = JointState()
         self.robot_mode = String()
@@ -248,8 +251,11 @@ class KeyboardTeleopNode(hm.HelloNode):
 
 
     def main(self):
-        rclpy.init()
-        hm.HelloNode.main(self, 'keyboard_teleop', 'keyboard_teleop', wait_for_first_pointcloud=False)
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
+        server_reached = self.trajectory_client.wait_for_server(timeout_sec=10.0)
+        if not server_reached:
+            self.get_logger().error('Unable to connect to server. Timeout exceeded. Is stretch_driver running?')
+            sys.exit()
 
         self.joint_states_sub = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 1)
         self.joint_states_sub
@@ -269,6 +275,7 @@ class KeyboardTeleopNode(hm.HelloNode):
 
 def main():
     try:
+        rclpy.init()
         node = KeyboardTeleopNode()
         node.main()
     except KeyboardInterrupt:
