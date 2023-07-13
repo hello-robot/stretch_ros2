@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+import copy
 import yaml
 import numpy as np
 import threading
@@ -65,6 +66,9 @@ class StretchDriver(Node):
 
         self.robot_mode_rwlock = RWLock()
         self.robot_mode = None
+
+        self.control_modes = ['position', 'navigation', 'trajectory']
+        self.prev_runstop_state = None
 
         self.ros_setup()
 
@@ -262,9 +266,15 @@ class StretchDriver(Node):
         battery_state.present = True
         self.power_pub.publish(battery_state)
 
+        # publish homed status
         homed_status = Bool()
         homed_status.data = bool(self.robot.is_calibrated())
         self.homed_pub.publish(homed_status)
+
+        # publish runstop event
+        runstop_event = Bool()
+        runstop_event.data = robot_status['pimu']['runstop_event']
+        self.runstop_event_pub.publish(runstop_event)
 
         mode_msg = String()
         mode_msg.data = self.robot_mode
@@ -390,15 +400,22 @@ class StretchDriver(Node):
 
         self.robot_mode_rwlock.release_read()
 
+        # must happen after the read release, otherwise the write lock in change_mode() will cause a deadlock
+        if (self.prev_runstop_state == None and runstop_event.data) or (self.prev_runstop_state != None and runstop_event.data != self.prev_runstop_state):
+            self.runstop_the_robot(runstop_event.data, just_change_mode=True)
+        self.prev_runstop_state = runstop_event.data
+
     # CHANGE MODES ################
 
-    def change_mode(self, new_mode, code_to_run):
+    def change_mode(self, new_mode, code_to_run = None):
         self.robot_mode_rwlock.acquire_write()
         self.robot_mode = new_mode
-        success, message = code_to_run()
+        
+        if code_to_run:
+            code_to_run()
+
         self.get_logger().info('{0}: Changed to mode = {1}'.format(self.node_name, self.robot_mode))
         self.robot_mode_rwlock.release_write()
-        return success, message
 
     # TODO : add a freewheel mode or something comparable for the mobile base?
 
@@ -409,8 +426,8 @@ class StretchDriver(Node):
         def code_to_run():
             self.linear_velocity_mps = 0.0
             self.angular_velocity_radps = 0.0
-            return True, 'Now in navigation mode.'
-        return self.change_mode('navigation', code_to_run)
+        self.change_mode('navigation', code_to_run)
+        return True, 'Now in navigation mode.'
 
     def turn_on_position_mode(self):
         # Position mode enables mobile base translation and rotation
@@ -421,8 +438,8 @@ class StretchDriver(Node):
         # 'base_link' become identical in this mode.
         def code_to_run():
             self.robot.base.enable_pos_incr_mode()
-            return True, 'Now in position mode.'
-        return self.change_mode('position', code_to_run)
+        self.change_mode('position', code_to_run)
+        return True, 'Now in position mode.'
 
     def turn_on_trajectory_mode(self):
         # Trajectory mode is able to execute plans from
@@ -440,8 +457,9 @@ class StretchDriver(Node):
                 return False, str(e)
             self.robot.base.first_step = True
             self.robot.base.pull_status()
-            return True, 'Now in trajectory mode.'
-        return self.change_mode('trajectory', code_to_run)
+
+        self.change_mode('trajectory', code_to_run)
+        return True, 'Now in trajectory mode.'
 
     # SERVICE CALLBACKS ##############
 
@@ -465,17 +483,15 @@ class StretchDriver(Node):
         return response
 
     def home_the_robot_callback(self, request, response):
-        with self.robot_stop_lock:
-            self.robot.home()
+        success, message = self.home_the_robot()
 
         self.get_logger().info('Received home_the_robot service call.')
-        response.success = True
-        response.message = 'Homed.'
+        response.success = success
+        response.message = message
         return response
 
     def stow_the_robot_callback(self, request, response):
-        with self.robot_stop_lock:
-            self.robot.stow()
+        self.stow_the_robot()
 
         self.get_logger().info('Received stow_the_robot service call.')
         response.success = True
@@ -501,27 +517,73 @@ class StretchDriver(Node):
         return response
 
     def runstop_service_callback(self, request, response):
-        if request.data:
-            with self.robot_stop_lock:
-                self.robot.base.translate_by(0.0)
-                self.robot.base.rotate_by(0.0)
-                self.robot.arm.move_by(0.0)
-                self.robot.lift.move_by(0.0)
-                self.robot.push_command()
-
-                self.robot.head.move_by('head_pan', 0.0)
-                self.robot.head.move_by('head_tilt', 0.0)
-                self.robot.end_of_arm.move_by('wrist_yaw', 0.0)
-                self.robot.end_of_arm.move_by('stretch_gripper', 0.0)
-                self.robot.push_command()
-
-            self.robot.pimu.runstop_event_trigger()
-        else:
-            self.robot.pimu.runstop_event_reset()
+        self.runstop_the_robot(request.data)
 
         response.success = True
         response.message = 'is_runstopped: {0}'.format(request.data)
         return response
+    
+    def home_the_robot(self):
+        self.robot_mode_rwlock.acquire_read()
+        can_home = self.robot_mode in self.control_modes
+        last_robot_mode = copy.copy(self.robot_mode)
+        self.robot_mode_rwlock.release_read()
+        if not can_home:
+            errmsg = f'Cannot home while in mode={last_robot_mode}.'
+            self.get_logger().error(errmsg)
+            return False, errmsg
+        def code_to_run():
+            pass
+        self.change_mode('homing', code_to_run)
+        self.robot.home()
+        self.change_mode(last_robot_mode, code_to_run)
+        return True, 'Homed.'
+    
+    def stow_the_robot(self):
+        self.robot_mode_rwlock.acquire_read()
+        can_stow = self.robot_mode in self.control_modes
+        last_robot_mode = copy.copy(self.robot_mode)
+        self.robot_mode_rwlock.release_read()
+        if not can_stow:
+            errmsg = f'Cannot stow while in mode={last_robot_mode}.'
+            self.get_logger().error(errmsg)
+            return False, errmsg
+        def code_to_run():
+            pass
+        self.change_mode('stowing', code_to_run)
+        self.robot.stow()
+        self.change_mode(last_robot_mode, code_to_run)
+        return True, 'Stowed.'
+
+    def runstop_the_robot(self, runstopped, just_change_mode=False):
+        if runstopped:
+            self.robot_mode_rwlock.acquire_read()
+            already_runstopped = self.robot_mode == 'runstopped'
+            if not already_runstopped:
+                self.prerunstop_mode = copy.copy(self.robot_mode)
+            self.robot_mode_rwlock.release_read()
+            if already_runstopped:
+                return
+
+            def code_to_run():
+                pass
+            self.change_mode('runstopped', code_to_run)
+            if not just_change_mode:
+                self.robot.pimu.runstop_event_trigger()
+                self.robot.push_command()
+        else:
+            self.robot_mode_rwlock.acquire_read()
+            already_not_runstopped = self.robot_mode != 'runstopped'
+            self.robot_mode_rwlock.release_read()
+            if already_not_runstopped:
+                return
+
+            def code_to_run():
+                pass
+            self.change_mode(self.prerunstop_mode, code_to_run)
+            if not just_change_mode:
+                self.robot.pimu.runstop_event_reset()
+                self.robot.push_command()
 
     # ROS Setup #################
     def ros_setup(self):
@@ -541,6 +603,9 @@ class StretchDriver(Node):
 
         self.declare_parameter('mode', "position")
         mode = self.get_parameter('mode').value
+        if mode not in self.control_modes:
+            self.get_logger().warn(f'{self.node_name} given invalid mode={mode}, using position instead')
+            mode = 'position'
         self.get_logger().info('mode = ' + str(mode))
         if mode == "position":
             self.turn_on_position_mode()
@@ -622,13 +687,14 @@ class StretchDriver(Node):
         self.imu_mobile_base_pub = self.create_publisher(Imu, 'imu_mobile_base', 1)
         self.magnetometer_mobile_base_pub = self.create_publisher(MagneticField, 'magnetometer_mobile_base', 1)
         self.imu_wrist_pub = self.create_publisher(Imu, 'imu_wrist', 1)
+        self.runstop_event_pub = self.create_publisher(Bool, 'is_runstopped', 1)
 
         self.group = MutuallyExclusiveCallbackGroup()
         self.create_subscription(Twist, "cmd_vel", self.set_mobile_base_velocity_callback, 1, callback_group=self.group)
 
         self.declare_parameter('rate', 15.0)
         self.joint_state_rate = self.get_parameter('rate').value
-        self.declare_parameter('timeout', 1.0)
+        self.declare_parameter('timeout', 0.5)
         self.timeout_s = self.get_parameter('timeout').value
         self.timeout = Duration(seconds=self.timeout_s)
         self.get_logger().info("{0} rate = {1} Hz".format(self.node_name, self.joint_state_rate))
