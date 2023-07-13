@@ -30,18 +30,11 @@ def generate_launch_description():
                '/d435i_high_resolution.launch.py'])
           )
     
-    stretch_description = IncludeLaunchDescription(
-          PythonLaunchDescriptionSource([os.path.join(
-               get_package_share_directory('stretch_description'), 'launch'),
-               '/display.launch.py'])
-            #    launch_arguments={'broadcast_odom_tf': 'True'}.items()
-          )
-    
-    keyboard_teleop = IncludeLaunchDescription(
+    stretch_driver = IncludeLaunchDescription(
           PythonLaunchDescriptionSource([os.path.join(
                get_package_share_directory('stretch_core'), 'launch'),
-               '/keyboard_teleop.launch.py']),
-               launch_arguments={'mapping_on': 'True'}.items()
+               '/stretch_driver.launch.py']),
+               launch_arguments={'broadcast_odom_tf': 'True', 'mode': 'position'}.items()
           )
 
     funmap = Node(package='stretch_funmap',
@@ -63,8 +56,7 @@ def generate_launch_description():
 
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
         d435i_high_resolution,
-        # stretch_description,
-        keyboard_teleop,
+        stretch_driver,
         funmap,
         rviz_node
     ])

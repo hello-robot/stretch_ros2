@@ -332,7 +332,7 @@ class KeyboardTeleopNode(Node):
                     self.trajectory_client.send_goal_async(trajectory_goal)
 
             else:
-                self.get_logger().warn('Keyboard teleoperation available only in position or manipulaiton mode')
+                self.get_logger().warn('Keyboard teleoperation available only in position or manipulation mode')
 
 
     def main(self):

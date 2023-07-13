@@ -348,7 +348,7 @@ class FunmapNode(Node):
         self.navigation_plan_markers_pub.publish(nav_markers)
         self.prev_nav_markers = nav_markers
 
-    def trigger_align_with_nearest_cliff_service_callback(self, request):
+    def trigger_align_with_nearest_cliff_service_callback(self, request, response):
         manip = mp.ManipulationView(self.tf2_buffer, self.debug_directory)
         manip.move_head(self.move_to_pose)
         manip.update(self.point_cloud, self.tf2_buffer)
@@ -1105,7 +1105,7 @@ class FunmapNode(Node):
                 self.logger.info(message_text)
             self.perform_head_scan(fill_in_blindspot_with_second_scan=False)
 
-    def get_plan_service_callback(self, request):
+    def get_plan_service_callback(self, request, response):
         # request.start, request.goal, request.tolerance
         goal_pose = request.goal
         end_xy = self.pose_to_map_pixel(goal_pose)
@@ -1302,7 +1302,7 @@ class FunmapNode(Node):
         self._get_result_future = goal_handle.get_result_async()
 
     def get_result(self, future: rclpy.task.Future):
-        if not future.result():
+        if not future or not future.result():
             return
 
         result = future.result().result
@@ -1340,10 +1340,10 @@ class FunmapNode(Node):
             time_start = time.time()
             self._get_result_future = None
 
-            while self._get_result_future == None and (time.time() - time_start) < 10:
+            while not self._get_result_future and (time.time() - time_start) < 10:
                 self.goal_response(self._send_goal_future)
 
-            if self._get_result_future == None:
+            if not self._get_result_future:
                 return self._send_goal_future
 
             time_start = time.time()
