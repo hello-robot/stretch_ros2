@@ -6,6 +6,7 @@ from rclpy.duration import Duration
 import rclpy.logging
 import rclpy.time
 
+from builtin_interfaces.msg import Time
 import ros2_numpy as rn
 import tf_transformations
 
@@ -471,7 +472,7 @@ class HeadScan:
         data = {'max_height_image_base_filename' : max_height_image_base_filename,
                 'robot_xy_pix' : self.robot_xy_pix.tolist(),
                 'robot_ang_rad' : robot_ang_rad,
-                'timestamp' : {'secs':self.timestamp.secs, 'nsecs':self.timestamp.nsecs},
+                'timestamp' : {'secs':self.timestamp.sec, 'nsecs':self.timestamp.nanosec},
                 'base_link_to_image_mat' : self.base_link_to_image_mat.tolist(), 
                 'base_link_to_map_mat' : self.base_link_to_map_mat.tolist(), 
                 'image_to_map_mat' : self.image_to_map_mat.tolist(), 
@@ -496,8 +497,7 @@ class HeadScan:
 
         head_scan.robot_xy_pix = np.array(data['robot_xy_pix'])
         head_scan.robot_ang_rad = data['robot_ang_rad']
-        head_scan.timestamp = rclpy.time.Time(seconds=data['timestamp']['secs'], nanoseconds=data['timestamp']['nsecs'])
-        # head_scan.timestamp.set(data['timestamp']['secs'], data['timestamp']['nsecs'])
+        head_scan.timestamp = Time(sec=data['timestamp']['secs'], nanosec=data['timestamp']['nsecs'])
         head_scan.base_link_to_image_mat = np.array(data['base_link_to_image_mat'])
         head_scan.base_link_to_map_mat = np.array(data['base_link_to_map_mat']) 
         head_scan.image_to_map_mat = np.array(data['image_to_map_mat'])

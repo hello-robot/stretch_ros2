@@ -30,7 +30,6 @@ from visualization_msgs.msg import Marker, MarkerArray
 import hello_helpers.hello_misc as hm
 import hello_helpers.hello_ros_viz as hr
 
-import argparse as ap
 import copy
 import math
 import os
@@ -222,10 +221,10 @@ class ContactDetector():
 
 class FunmapNode(Node):
 
-    def __init__(self, map_filename):
+    def __init__(self):
         super().__init__('stretch_funmap')
 
-        self.map_filename = map_filename
+        self.map_filename = None
         self.debug_directory = None
 
         self.joint_state = None
@@ -1392,14 +1391,16 @@ class FunmapNode(Node):
                 time.sleep(0.2)
 
     def main(self):
-        # hm.HelloNode.main(self, 'funmap', 'funmap')
+        self.declare_parameter('debug_directory', '')
+        self.debug_directory = self.get_parameter('debug_directory').value
 
-        self.debug_directory = self.get_parameter_or('~debug_directory', None).value
+        self.declare_parameter('map_yaml', '')
+        self.map_filename = self.get_parameter('map_yaml').value
 
         self.merged_map = None
         self.localized = False
 
-        if self.map_filename is not None:
+        if self.map_filename != '':
             self.merged_map = ma.HeadScan.from_file(self.map_filename)
             self.localized = False
 
@@ -1537,14 +1538,8 @@ class FunmapNode(Node):
 
 def main():
     try:
-        parser = ap.ArgumentParser(
-            description='Keyboard teleoperation for stretch.')
-        parser.add_argument('--load_map', default=None,
-                            help='Provide directory from which to load a map.')
-        args, unknown = parser.parse_known_args()
-        map_filename = args.load_map if args.load_map else None
         rclpy.init()
-        node = FunmapNode(map_filename)
+        node = FunmapNode()
         node.main()
     except KeyboardInterrupt:
         print('interrupt received, so shutting down')

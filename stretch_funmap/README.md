@@ -2,26 +2,31 @@
 
 ## Overview
 
-*stretch_funmap* is an implementation of Fast Unified Navigation, Manipulation And Planning (FUNMAP). FUNMAP provides navigation, manipulation, and planning capabilities for the Stretch RE1 mobile manipulator. *stretch_funmap* includes examples of efficient ways to take advantage of the Stretch RE1's unique properties. 
+*stretch_funmap* is an implementation of Fast Unified Navigation, Manipulation And Planning (FUNMAP). FUNMAP provides navigation, manipulation, and planning capabilities for the Stretch mobile manipulator. *stretch_funmap* includes examples of efficient ways to take advantage of the Stretch's unique properties. 
 
 Previous commercially-available mobile manipulators have consisted of a serial manipulator (i.e., links connected by rotary joints) placed on a mobile base [1]. Widely used software (e.g., the Robot Operating System (ROS)) [1] typically expects a velocity-controlled mobile base that can be held still while the arm manipulates [3, 4]. 
 
-In contrast, the Stretch RE1's mobile base is integral to manipulation and typically moves throughout a task. It can also perform high-fidelity position control with its mobile base. FUNMAP uses approximate geometric models and computer-vision algorithms to efficiently find plans that take advantage of its prismatic joints (e.g., telescoping arm) and Cartesian structure. In contrast to typical approaches that treat navigation (e.g., ROS Navigation Stack ) and manipulation (e.g., MoveIt! [5, 6]) separately, FUNMAP does both. 
+In contrast, the Stretch's mobile base is integral to manipulation and typically moves throughout a task. It can also perform high-fidelity position control with its mobile base. FUNMAP uses approximate geometric models and computer-vision algorithms to efficiently find plans that take advantage of its prismatic joints (e.g., telescoping arm) and Cartesian structure. In contrast to typical approaches that treat navigation (e.g., ROS Navigation Stack ) and manipulation (e.g., MoveIt! [5, 6]) separately, FUNMAP does both. 
 
 ## Getting Started Demo
 
-First, make sure that your Stretch RE1 has clearance to rotate in place and will rotate without straining any cables connected to the trunk. Ideally, you should have the robot untethered.
+First, make sure that your Stretch has clearance to rotate in place and will rotate without straining any cables connected to the trunk. Ideally, you should have the robot untethered.
 
 Next, run the following launch file:
 
 ```
-roslaunch stretch_funmap mapping.launch
+ros2 launch stretch_funmap mapping.launch.py
+```
+
+In another terminal, run the keyboard teleoperation node:
+```
+ros2 run stretch_core keyboard_teleop --ros-args -p mapping_on:=True
 ```
 
 Now, you will take a head scan, which will involve the head panning around, the base rotating, and the head panning around again to overcome the blindspot due to the mast.
 
 ```
-While in the terminal in which you ran roslaunch, press the space bar to initiate the head scan.
+While in the terminal in which you started the `keyboard_teleop` node, press the space bar to initiate the head scan.
 ```
 
 At this point, you should see a 3D map resulting from the head scan in RViz. You can rotate it around and look at it. It has been created by merging many 3D scans.
@@ -74,7 +79,7 @@ You can see the image representations by looking at files with the following nam
 ./stretch_user/debug/merged_maps/merged_map_DATETIME_mhi_visualization.png
 ```
 
-You can also click on a reaching goal for the Stretch RE1 by clicking on "Publish Point" in Rviz and then selecting a 3D point on the map. FUNMAP will attempt to generate a navigation and manipulation plan to reach close to the selected 3D location with Stretch's gripper.
+You can also click on a reaching goal for the Stretch by clicking on "Publish Point" in Rviz and then selecting a 3D point on the map. FUNMAP will attempt to generate a navigation and manipulation plan to reach close to the selected 3D location with Stretch's gripper.
 
 
 ```
@@ -93,7 +98,7 @@ That concludes the demonstration. Have fun with FUNMAP!
 
 FUNMAP represents human environments with Max Height Images (MHIs). An MHI is an image for which each pixel typically represents the height of the robot’s environment. Given a volume of interest (VOI) with its z-axis aligned with gravity, an MHI, I, maps locations to heights. Specifically, I(x,y)=z, where (x,y) represents a discretized planar location within the VOI and z represents the discretized height of the maximum occupied voxel within the VOI at that planar location (see Figure 1 above). 
 
-The placement of the Stretch RE1 3D camera at a human head height enables it to capture MHIs that represent the horizontal surfaces with which humans frequently interact, such as table tops, countertops, and chairs. The orientation of its 3D camera enables the robot to quickly scan an environment to create a room-scale MHI by panning its head at a constant tilt angle. 
+The placement of the Stretch 3D camera at a human head height enables it to capture MHIs that represent the horizontal surfaces with which humans frequently interact, such as table tops, countertops, and chairs. The orientation of its 3D camera enables the robot to quickly scan an environment to create a room-scale MHI by panning its head at a constant tilt angle. 
 
 In contrast to other environment representations, such as point clouds and 3D mesh models, MHIs support fast, efficient operations through optimized image processing and are compatible with deep learning methods for images. Related representations have primarily been used for navigation, including for legged robots on rough terrain, but have not emphasized elevated surfaces in human environments nor incorporated manipulation [7, 8]. Object grasping systems for bin picking have used related representations, but have only considered small areas with objects and not incorporated navigation [9, 10]. 
 
@@ -111,9 +116,9 @@ Figure 3: Left: The cyan lines represent achievable driving goals on the floor f
 
 Figure 4: Left: Example of a piecewise linear navigation plan (green line segments and white spheres) being executed. Right: Example of a successfully executed plan to reach a target location on a table (light blue) while avoiding a wall with shelves (dark blue and purple).
 
-The Stretch RE1’s slender links and Cartesian kinematics support rapid optimization of plans due to the simplified geometry of the robot’s motions. FUNMAP uses piecewise linear paths on the cost image for fast navigation and manipulation planning. 
+The Stretch’s slender links and Cartesian kinematics support rapid optimization of plans due to the simplified geometry of the robot’s motions. FUNMAP uses piecewise linear paths on the cost image for fast navigation and manipulation planning. 
 
-FUNMAP enables the Stretch RE1 to reach a 3D target position. FUNMAP models the linear motion of the telescoping arm as it extends to reach a target as a line in a manipulation cost image (see Figure 2). FUNMAP uses a navigation cost image and Djikstra’s algorithm with a priority queue to efficiently estimate the cost of navigating to all floor locations (see Figure 3 left). FUNMAP then combines these results to find a minimum cost plan that increases the distance to obstacles and the manipulable workspace of the robot (see Figure 3 right). 
+FUNMAP enables the Stretch to reach a 3D target position. FUNMAP models the linear motion of the telescoping arm as it extends to reach a target as a line in a manipulation cost image (see Figure 2). FUNMAP uses a navigation cost image and Djikstra’s algorithm with a priority queue to efficiently estimate the cost of navigating to all floor locations (see Figure 3 left). FUNMAP then combines these results to find a minimum cost plan that increases the distance to obstacles and the manipulable workspace of the robot (see Figure 3 right). 
 
 
 ## References
