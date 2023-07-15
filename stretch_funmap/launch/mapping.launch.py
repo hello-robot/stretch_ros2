@@ -7,8 +7,10 @@ from launch.conditions import LaunchConfigurationEquals
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
+debug_directory_path = os.path.join(os.getenv('HELLO_FLEET_PATH'), 'debug') + '/' if os.getenv('HELLO_FLEET_PATH') else ''
+
 configurable_parameters = [{'name': 'map_yaml',         'default': '', 'description': 'previously captured FUNMAP map (optional)'},                           
-                           {'name': 'debug_directory',  'default': '', 'description': 'directory where debug imagery is saved'},
+                           {'name': 'debug_directory',  'default': debug_directory_path, 'description': 'directory where debug imagery is saved'},
                            ]
                            
 def declare_configurable_parameters(parameters):
