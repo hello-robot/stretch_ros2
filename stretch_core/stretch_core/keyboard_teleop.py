@@ -146,6 +146,14 @@ class GetKeyboardCommands:
             trigger_result = node.trigger_lower_until_contact_service.call_async(trigger_request)
 
         ####################################################
+        ## OTHER CAPABILITIES
+        ####################################################
+
+        if ((c == '/') or (c == '?')) and self.clean_surface_on:
+            trigger_request = Trigger.Request() 
+            trigger_result = node.trigger_clean_surface_service.call_async(trigger_request)
+
+        ####################################################
         ## BASIC KEYBOARD TELEOPERATION COMMANDS
         ####################################################
         
@@ -384,7 +392,12 @@ class KeyboardTeleopNode(Node):
             self.trigger_lower_until_contact_service = self.create_client(Trigger, '/funmap/trigger_lower_until_contact')
             self.trigger_lower_until_contact_service.wait_for_service()
             self.get_logger().info('Node ' + self.get_name() + ' connected to /funmap/trigger_lower_until_contact.')
-        
+
+        if self.clean_surface_on:
+            self.trigger_clean_surface_service = self.create_client(Trigger, '/clean_surface/trigger_clean_surface')
+            self.trigger_clean_surface_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /clean_surface/trigger_clean_surface.')
+
         self.keys.print_commands()
         while rclpy.ok():
             rclpy.spin_once(self)
