@@ -149,6 +149,17 @@ class GetKeyboardCommands:
         ## OTHER CAPABILITIES
         ####################################################
 
+        # Trigger open drawer demo with downward hook motion
+        if ((c == 'z') or (c == 'Z')) and self.open_drawer_on:
+            trigger_request = Trigger.Request() 
+            trigger_result = node.trigger_open_drawer_down_service.call_async(trigger_request)
+
+        # Trigger open drawer demo with upward hook motion
+        if ((c == '.') or (c == '>')) and self.open_drawer_on:
+            trigger_request = Trigger.Request() 
+            trigger_result = node.trigger_open_drawer_up_service.call_async(trigger_request)
+
+        # Trigger clean surface demo
         if ((c == '/') or (c == '?')) and self.clean_surface_on:
             trigger_request = Trigger.Request() 
             trigger_result = node.trigger_clean_surface_service.call_async(trigger_request)
@@ -392,6 +403,15 @@ class KeyboardTeleopNode(Node):
             self.trigger_lower_until_contact_service = self.create_client(Trigger, '/funmap/trigger_lower_until_contact')
             self.trigger_lower_until_contact_service.wait_for_service()
             self.get_logger().info('Node ' + self.get_name() + ' connected to /funmap/trigger_lower_until_contact.')
+
+        if self.open_drawer_on:
+            self.trigger_open_drawer_down_service = self.create_client(Trigger, '/open_drawer/trigger_open_drawer_down')
+            self.trigger_open_drawer_down_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /open_drawer/trigger_open_drawer_down.')
+
+            self.trigger_open_drawer_up_service = self.create_client(Trigger, '/open_drawer/trigger_open_drawer_up')
+            self.trigger_open_drawer_up_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /open_drawer/trigger_open_drawer_up.')
 
         if self.clean_surface_on:
             self.trigger_clean_surface_service = self.create_client(Trigger, '/clean_surface/trigger_clean_surface')

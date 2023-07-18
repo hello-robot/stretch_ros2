@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'clean_surface = stretch_demos.clean_surface:main',
+            'open_drawer = stretch_demos.open_drawer:main',
         ],
     },
 )

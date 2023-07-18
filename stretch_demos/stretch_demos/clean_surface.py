@@ -61,7 +61,7 @@ class CleanSurfaceNode(Node):
         self.point_cloud = point_cloud
 
     def goal_response(self, future: rclpy.task.Future):
-        if not future.result():
+        if not future or not future.result():
             # self.logger.info("Future goal result is not set")
             return False
         goal_handle = future.result()
