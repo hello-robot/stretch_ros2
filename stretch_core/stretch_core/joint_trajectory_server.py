@@ -174,9 +174,17 @@ class JointTrajectoryAction(Node):
                     return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_JOINTS, "joint names violated one of command group's requirements")
 
                 robot_status = self.node.robot.get_status() # uses lock held by robot
+
+                #Relying on the stretch_driver node to do the push_command
+                #If it doesn't due to thread conflict, then do it here
+                #We rely on stretch_driver to avoid two push_commands() from two threads that are close together in tie
+                if self.node.dirty_command:
+                    self.node.robot.push_command()
+                    
                 for c in self.command_groups:
                     c.init_execution(self.node.robot, robot_status)
-                # self.node.robot.push_command()
+                # self.node.robot.push_command() #Moved to an asynchronous call in stretch_driver
+                self.node.dirty_command=True
 
                 goals_reached = [c.goal_reached() for c in self.command_groups]
                 goal_start_time = self.node.get_clock().now()

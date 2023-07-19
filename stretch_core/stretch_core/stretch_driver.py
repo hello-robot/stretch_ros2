@@ -70,6 +70,7 @@ class StretchDriver(Node):
 
         self.control_modes = ['position', 'navigation', 'trajectory']
         self.prev_runstop_state = None
+        self.dirty_command = False
 
         self.ros_setup()
 
@@ -408,6 +409,7 @@ class StretchDriver(Node):
         
         self.robot.non_dxl_thread.step()
         self.robot.push_command() # Main push command
+        self.dirty_command = False
 
     # CHANGE MODES ################
 
