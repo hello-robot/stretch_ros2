@@ -6,6 +6,7 @@ import numpy as np
 import threading
 from .rwlock import RWLock
 import stretch_body.robot as rb
+import stretch_body
 from stretch_body.hello_utils import ThreadServiceExit
 
 import tf2_ros
@@ -405,6 +406,7 @@ class StretchDriver(Node):
             self.runstop_the_robot(runstop_event.data, just_change_mode=True)
         self.prev_runstop_state = runstop_event.data
         
+        self.robot.non_dxl_thread.step()
         self.robot.push_command() # Main push command
 
     # CHANGE MODES ################
@@ -594,9 +596,17 @@ class StretchDriver(Node):
         self.get_logger().info("For use with S T R E T C H (TM) RESEARCH EDITION from Hello Robot Inc.")
 
         self.get_logger().info("{0} started".format(self.node_name))
-
+        
+        if int(stretch_body.__version__.split('.')[1]) < 5:
+            self.get_logger().fatal("ERROR: Found old stretch_body version. Please upgrade stretch_body to v0.5.0 or above.")
+            rclpy.shutdown()
+            exit()
+        
         self.robot = rb.Robot()
-        if not self.robot.startup():
+        #Handle the non_dxl status in local loop, not thread
+        if not self.robot.startup(start_non_dxl_thread=False,
+                                  start_dxl_thread=True,
+                                  start_sys_mon_thread=True):
             self.get_logger().fatal('Robot startup failed.')
             rclpy.shutdown()
             exit()
