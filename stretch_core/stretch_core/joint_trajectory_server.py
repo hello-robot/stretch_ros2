@@ -176,7 +176,7 @@ class JointTrajectoryAction(Node):
                 robot_status = self.node.robot.get_status() # uses lock held by robot
                 for c in self.command_groups:
                     c.init_execution(self.node.robot, robot_status)
-                self.node.robot.push_command()
+                # self.node.robot.push_command()
 
                 goals_reached = [c.goal_reached() for c in self.command_groups]
                 goal_start_time = self.node.get_clock().now()

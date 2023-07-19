@@ -99,11 +99,11 @@ class StretchDriver(Node):
             time_since_last_twist = self.get_clock().now() - self.last_twist_time
             if time_since_last_twist < self.timeout:
                 self.robot.base.set_velocity(self.linear_velocity_mps, self.angular_velocity_radps)
-                self.robot.push_command()
+                # self.robot.push_command() #Moved to main
             else:
                 # Too much information in general, although it could be blocked, since it's just INFO.
                 self.robot.base.set_velocity(0.0, 0.0)
-                self.robot.push_command()
+                # self.robot.push_command() #Moved to main
 
         # get copy of the current robot status (uses lock held by the robot)
         robot_status = self.robot.get_status()
@@ -404,6 +404,8 @@ class StretchDriver(Node):
         if (self.prev_runstop_state == None and runstop_event.data) or (self.prev_runstop_state != None and runstop_event.data != self.prev_runstop_state):
             self.runstop_the_robot(runstop_event.data, just_change_mode=True)
         self.prev_runstop_state = runstop_event.data
+        
+        self.robot.push_command() # Main push command
 
     # CHANGE MODES ################
 
@@ -469,13 +471,13 @@ class StretchDriver(Node):
             self.robot.base.rotate_by(0.0)
             self.robot.arm.move_by(0.0)
             self.robot.lift.move_by(0.0)
-            self.robot.push_command()
+            # self.robot.push_command() #Moved to main
 
             self.robot.head.move_by('head_pan', 0.0)
             self.robot.head.move_by('head_tilt', 0.0)
             self.robot.end_of_arm.move_by('wrist_yaw', 0.0)
             self.robot.end_of_arm.move_by('stretch_gripper', 0.0)
-            self.robot.push_command()
+            # self.robot.push_command() #Moved to main
 
         self.get_logger().info('Received stop_the_robot service call, so commanded all actuators to stop.')
         response.success = True
@@ -570,7 +572,7 @@ class StretchDriver(Node):
             self.change_mode('runstopped', code_to_run)
             if not just_change_mode:
                 self.robot.pimu.runstop_event_trigger()
-                self.robot.push_command()
+                # self.robot.push_command()#Moved to main
         else:
             self.robot_mode_rwlock.acquire_read()
             already_not_runstopped = self.robot_mode != 'runstopped'
@@ -583,7 +585,7 @@ class StretchDriver(Node):
             self.change_mode(self.prerunstop_mode, code_to_run)
             if not just_change_mode:
                 self.robot.pimu.runstop_event_reset()
-                self.robot.push_command()
+                # self.robot.push_command() #Moved to main
 
     # ROS Setup #################
     def ros_setup(self):
@@ -717,7 +719,7 @@ class StretchDriver(Node):
         self.declare_parameter('fail_out_of_range_goal', True)
         self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
         
-        self.declare_parameter('action_server_rate', 15.0)
+        self.declare_parameter('action_server_rate', 30.0)
         self.action_server_rate = self.get_parameter('action_server_rate').value
 
         self.diagnostics = StretchDiagnostics(self, self.robot)
