@@ -706,7 +706,7 @@ class StretchDriver(Node):
         self.group = MutuallyExclusiveCallbackGroup()
         self.create_subscription(Twist, "cmd_vel", self.set_mobile_base_velocity_callback, 1, callback_group=self.group)
 
-        self.declare_parameter('rate', 15.0)
+        self.declare_parameter('rate', 30.0)
         self.joint_state_rate = self.get_parameter('rate').value
         self.declare_parameter('timeout', 0.5)
         self.timeout_s = self.get_parameter('timeout').value
