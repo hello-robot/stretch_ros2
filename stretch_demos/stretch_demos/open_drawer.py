@@ -282,16 +282,18 @@ class OpenDrawerNode(Node):
 
 
 def main():
+    rclpy.init()
     try:
-        rclpy.init()
-        parser = ap.ArgumentParser(description='Open Drawer behavior for stretch.')
-        #parser.add_argument('--mapping_on', action='store_true', help='Turn on mapping control. For example, the space bar will trigger a head scan. This requires that the mapping node be run (funmap).')
-        args, unknown = parser.parse_known_args()
         node = OpenDrawerNode()
         node.main()
         executor = MultiThreadedExecutor(num_threads=6)
         executor.add_node(node=node)
-        executor.spin()
+        try:
+            executor.spin()
+        finally:
+            executor.shutdown()
+            node.destroy_node()
+            rclpy.shutdown()
     except KeyboardInterrupt:
         rclpy.logging.get_logger('open_drawer').info('interrupt received, so shutting down')
 

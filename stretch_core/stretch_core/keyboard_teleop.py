@@ -164,6 +164,11 @@ class GetKeyboardCommands:
             trigger_request = Trigger.Request() 
             trigger_result = node.trigger_clean_surface_service.call_async(trigger_request)
 
+        # Trigger grasp object demo    
+        if ((c == '\\') or (c == '\"')) and self.grasp_object_on:
+            trigger_request = Trigger.Request() 
+            trigger_result = node.trigger_grasp_object_service.call_async(trigger_request)
+
         ####################################################
         ## BASIC KEYBOARD TELEOPERATION COMMANDS
         ####################################################
@@ -231,6 +236,9 @@ class GetKeyboardCommands:
         if c == 'q' or c == 'Q':
             node.get_logger().info('keyboard_teleop exiting...')
             node.get_logger().info('Received quit character (q), so exiting')
+            node.destroy_node()
+            rclpy.shutdown()
+            sys.exit(0)
 
         ####################################################
 
@@ -266,8 +274,8 @@ class KeyboardTeleopNode(Node):
         self.joint_state = JointState()
         self.robot_mode = String()
 
-        if self.clean_surface_on:
-            self.get_logger().info("Clean surface demo enabled.")
+        if self.grasp_object_on:
+            self.get_logger().info("Grasp object demo enabled.")
         
     def joint_states_callback(self, joint_state):
         self.joint_state = joint_state
@@ -417,6 +425,11 @@ class KeyboardTeleopNode(Node):
             self.trigger_clean_surface_service = self.create_client(Trigger, '/clean_surface/trigger_clean_surface')
             self.trigger_clean_surface_service.wait_for_service()
             self.get_logger().info('Node ' + self.get_name() + ' connected to /clean_surface/trigger_clean_surface.')
+
+        if self.grasp_object_on:
+            self.trigger_grasp_object_service = self.create_client(Trigger, '/grasp_object/trigger_grasp_object')
+            self.trigger_grasp_object_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /clean_surface/trigger_grasp_surface.')
 
         self.keys.print_commands()
         while rclpy.ok():

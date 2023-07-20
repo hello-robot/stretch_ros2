@@ -224,7 +224,7 @@ class MoveBase():
 
     def goal_response(self, future: rclpy.task.Future):
         self._get_result_future = None
-        if not future.result():
+        if not future or not future.result():
             return False
         goal_handle = future.result()
         if not goal_handle.accepted:
@@ -235,7 +235,7 @@ class MoveBase():
         return True
 
     def get_result(self, future: rclpy.task.Future):
-        if not future.result():
+        if not future or not future.result():
             return
 
         result = future.result().result
