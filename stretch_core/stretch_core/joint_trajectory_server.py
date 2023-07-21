@@ -54,13 +54,17 @@ class JointTrajectoryAction(Node):
             if 'head_tilt' in self.node.robot.head.joints else None
         self.wrist_yaw_cg = WristYawCommandGroup(node=self.node) \
             if 'wrist_yaw' in self.node.robot.end_of_arm.joints else None
+        self.wrist_pitch_cg = WristYawCommandGroup(node=self.node) \
+            if 'wrist_pitch' in self.node.robot.end_of_arm.joints else None
+        self.wrist_roll_cg = WristYawCommandGroup(node=self.node) \
+            if 'wrist_roll' in self.node.robot.end_of_arm.joints else None
         self.gripper_cg = GripperCommandGroup(node=self.node) \
             if 'stretch_gripper' in self.node.robot.end_of_arm.joints else None
         self.arm_cg = ArmCommandGroup(node=self.node)
         self.lift_cg = LiftCommandGroup(node=self.node)
         self.mobile_base_cg = MobileBaseCommandGroup(node=self.node)
         self.command_groups = [self.arm_cg, self.lift_cg, self.mobile_base_cg, self.head_pan_cg,
-                               self.head_tilt_cg, self.wrist_yaw_cg, self.gripper_cg]
+                               self.head_tilt_cg, self.wrist_yaw_cg, self.wrist_pitch_cg, self.wrist_roll_cg, self.gripper_cg]
         self.command_groups = [cg for cg in self.command_groups if cg is not None]
 
         for joint in self.node.robot.end_of_arm.joints:
@@ -240,7 +244,7 @@ class JointTrajectoryAction(Node):
             return self.success_callback(goal_handle, "Achieved all target points.")
         
         elif self.node.robot_mode == 'trajectory':
-             # pre-process
+            # pre-process
             try:
                 goal.trajectory = hm.merge_arm_joints(goal.trajectory)
                 goal.trajectory = hm.preprocess_gripper_trajectory(goal.trajectory)
