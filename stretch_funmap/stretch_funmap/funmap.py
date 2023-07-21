@@ -259,10 +259,10 @@ class FunmapNode(Node):
                 av_effort_threshold = 34.0
 
                 if (effort >= single_effort_threshold):
-                    self.logger.info('Extension single effort exceeded single_effort_threshold: {0} >= {1}'.format(
+                    self.logger.debug('Extension single effort exceeded single_effort_threshold: {0} >= {1}'.format(
                         effort, single_effort_threshold))
                 if (av_effort >= av_effort_threshold):
-                    self.logger.info('Extension average effort exceeded av_effort_threshold: {0} >= {1}'.format(
+                    self.logger.debug('Extension average effort exceeded av_effort_threshold: {0} >= {1}'.format(
                         av_effort, av_effort_threshold))
 
                 return ((effort >= single_effort_threshold) or
@@ -277,10 +277,10 @@ class FunmapNode(Node):
                 av_effort_threshold = 40.0
 
                 if (effort >= single_effort_threshold):
-                    self.logger.info('Extension single effort exceeded single_effort_threshold: {0} >= {1}'.format(
+                    self.logger.debug('Extension single effort exceeded single_effort_threshold: {0} >= {1}'.format(
                         effort, single_effort_threshold))
                 if (av_effort >= av_effort_threshold):
-                    self.logger.info('Extension average effort exceeded av_effort_threshold: {0} >= {1}'.format(
+                    self.logger.debug('Extension average effort exceeded av_effort_threshold: {0} >= {1}'.format(
                         av_effort, av_effort_threshold))
 
                 return ((effort >= single_effort_threshold) or
@@ -294,10 +294,10 @@ class FunmapNode(Node):
             av_effort_threshold = 20.0
 
             if (effort <= single_effort_threshold):
-                self.logger.info('Lift single effort less than single_effort_threshold: {0} <= {1}'.format(
+                self.logger.debug('Lift single effort less than single_effort_threshold: {0} <= {1}'.format(
                     effort, single_effort_threshold))
             if (av_effort <= av_effort_threshold):
-                self.logger.info('Lift average effort less than av_effort_threshold: {0} <= {1}'.format(
+                self.logger.debug('Lift average effort less than av_effort_threshold: {0} <= {1}'.format(
                     av_effort, av_effort_threshold))
 
             return ((effort <= single_effort_threshold) or

@@ -276,9 +276,15 @@ class StretchDriver(Node):
         runstop_event.data = robot_status['pimu']['runstop_event']
         self.runstop_event_pub.publish(runstop_event)
 
+        # publish stretch_driver operation mode
         mode_msg = String()
         mode_msg.data = self.robot_mode
         self.mode_pub.publish(mode_msg)
+
+        # publish end of arm tool
+        tool_msg = String()
+        tool_msg.data = self.robot.end_of_arm.name
+        self.tool_pub.publish(tool_msg)
 
         # publish joint state for the arm
         joint_state = JointState()
@@ -683,6 +689,7 @@ class StretchDriver(Node):
         self.power_pub = self.create_publisher(BatteryState, 'battery', 1)
         self.homed_pub = self.create_publisher(Bool, 'is_homed', 1)
         self.mode_pub = self.create_publisher(String, 'mode', 1)
+        self.tool_pub = self.create_publisher(String, 'tool', 1)
 
         self.imu_mobile_base_pub = self.create_publisher(Imu, 'imu_mobile_base', 1)
         self.magnetometer_mobile_base_pub = self.create_publisher(MagneticField, 'magnetometer_mobile_base', 1)
