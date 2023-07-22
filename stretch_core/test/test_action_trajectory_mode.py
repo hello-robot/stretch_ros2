@@ -105,13 +105,11 @@ class TestAction(unittest.TestCase):
         point3.positions = [0.0]
         goal.trajectory.joint_names = ['joint_head_pan']
         goal.trajectory.points = [point1, point2, point3]
-        goal.trajectory.header.stamp = self.node.get_clock().now().to_msg()
         send_goal = self.action_client.send_goal_async(goal)
         rclpy.spin_until_future_complete(self.node, send_goal, timeout_sec=1.0)
         time.sleep(2.0)
         self.assertTrue(send_goal.done()) # Check if goal finished executing
 
-        goal.trajectory.header.stamp = self.node.get_clock().now().to_msg()
         send_goal = self.action_client.send_goal_async(goal)
         rclpy.spin_until_future_complete(self.node, send_goal, timeout_sec=1.0)
         time.sleep(6.0)
@@ -137,7 +135,6 @@ class TestAction(unittest.TestCase):
         point3.positions = [0.0]
         goal.trajectory.joint_names = ['joint_head_pan']
         goal.trajectory.points = [point1, point2, point3]
-        goal.trajectory.header.stamp = self.node.get_clock().now().to_msg()
         send_goal = self.action_client.send_goal_async(goal)
         rclpy.spin_until_future_complete(self.node, send_goal, timeout_sec=1.0)
         time.sleep(2.0)
@@ -180,7 +177,6 @@ class TestAction(unittest.TestCase):
         point5.positions = [0.0]
         goal.trajectory.joint_names = ['joint_head_pan']
         goal.trajectory.points = [point1, point2, point3, point4, point5]
-        goal.trajectory.header.stamp = self.node.get_clock().now().to_msg()
         send_goal = self.action_client.send_goal_async(goal)
         rclpy.spin_until_future_complete(self.node, send_goal, timeout_sec=1.0)
         time.sleep(5.0)

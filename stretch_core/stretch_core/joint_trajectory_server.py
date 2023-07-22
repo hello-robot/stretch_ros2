@@ -244,6 +244,24 @@ class JointTrajectoryAction(Node):
             return self.success_callback(goal_handle, "Achieved all target points.")
         
         elif self.node.robot_mode == 'trajectory':
+            ''' Check trajectory start time:
+            If start time in the past, only preserve points that are in the future and discard rest
+            If start time in the present, discard first waypoint and start from the second
+            If start time in the future, queue to the present trajectory '''
+            traj_start_time = 0 # past is -1, present is 0 and future is 1
+            if hm.to_sec(goal.trajectory.header.stamp) > hm.to_sec(self.node.get_clock().now().to_msg()):
+                traj_start_time = 1
+                self.node.get_logger().info("Trajectory mode does not currently allow execution of goal with start time in the future. Aborting execution.")
+                goal_handle.abort()
+                return FollowJointTrajectory.Result()
+            elif hm.to_sec(goal.trajectory.header.stamp) == 0.0:
+                traj_start_time = 0
+            else:
+                traj_start_time = -1
+                self.node.get_logger().info("Trajectory mode does not currently allow execution of goal with start time in the past. Aborting execution.")
+                goal_handle.abort()
+                return FollowJointTrajectory.Result()
+            
             # pre-process
             try:
                 goal.trajectory = hm.merge_arm_joints(goal.trajectory)
