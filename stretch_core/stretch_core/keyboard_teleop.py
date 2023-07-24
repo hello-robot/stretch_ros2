@@ -169,6 +169,11 @@ class GetKeyboardCommands:
             trigger_request = Trigger.Request() 
             trigger_result = node.trigger_grasp_object_service.call_async(trigger_request)
 
+        # Trigger handover object demo    
+        if ((c == 'y') or (c == 'Y')) and self.handover_object_on:
+            trigger_request = Trigger.Request() 
+            trigger_result = node.trigger_handover_object_service.call_async(trigger_request)
+
         ####################################################
         ## BASIC KEYBOARD TELEOPERATION COMMANDS
         ####################################################
@@ -430,6 +435,11 @@ class KeyboardTeleopNode(Node):
             self.trigger_grasp_object_service = self.create_client(Trigger, '/grasp_object/trigger_grasp_object')
             self.trigger_grasp_object_service.wait_for_service()
             self.get_logger().info('Node ' + self.get_name() + ' connected to /clean_surface/trigger_grasp_surface.')
+
+        if self.handover_object_on:
+            self.trigger_handover_object_service = self.create_client(Trigger, '/handover_object/trigger_handover_object')
+            self.trigger_handover_object_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /handover_object/trigger_handover_object.')
 
         self.keys.print_commands()
         while rclpy.ok():

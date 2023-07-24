@@ -26,7 +26,8 @@ setup(
         'console_scripts': [
             'clean_surface = stretch_demos.clean_surface:main',
             'open_drawer = stretch_demos.open_drawer:main',
-            'grasp_object = stretch_demos.grasp_object:main'
+            'grasp_object = stretch_demos.grasp_object:main',
+            'handover_object = stretch_demos.handover_object:main'
         ],
     },
 )
