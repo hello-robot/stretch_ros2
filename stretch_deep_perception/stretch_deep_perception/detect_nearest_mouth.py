@@ -2,11 +2,11 @@
 
 import cv2
 import sys
-import rospy
+import rclpy.logging
 import numpy as np
-import head_estimator as he
-import detection_node as dn
-import deep_learning_model_options as do
+from . import head_estimator as he
+from . import detection_node as dn
+from . import deep_learning_model_options as do
 
 def faces_3d_to_nearest_mouth_position(detections_3d):
     for d in detections_3d:
@@ -51,19 +51,19 @@ def faces_3d_to_nearest_mouth_position(detections_3d):
         detections_3d = []
     return detections_3d
 
-
-if __name__ == '__main__':    
-    print('cv2.__version__ =', cv2.__version__)
-    print('Python version (must be > 3.0):', sys.version)
+def main():
+    logger = rclpy.logging.get_logger('detect_nearest_mouth')
+    logger.info(f'cv2.__version__ = {cv2.__version__}')
+    logger.info(f'Python version (must be > 3.0) = {sys.version}')
     assert(int(sys.version[0]) >= 3)
 
     models_directory = do.get_directory()
-    print('Using the following directory for deep learning models:', models_directory)        
+    logger.info(f'Using the following directory for deep learning models: {models_directory}')        
     use_neural_compute_stick = do.use_neural_compute_stick()
     if use_neural_compute_stick:
-        print('Attempt to use an Intel Neural Compute Stick 2.')
+        logger.info('Attempt to use an Intel Neural Compute Stick 2.')
     else:
-        print('Not attempting to use an Intel Neural Compute Stick 2.')
+        logger.info('Not attempting to use an Intel Neural Compute Stick 2.')
     
     ##############################################
     # Perform coarse filtering of 3D points using anthropometry
@@ -100,7 +100,6 @@ if __name__ == '__main__':
                             min_box_side_m=min_head_m,
                             max_box_side_m=max_head_m)
     node.main()
-    try:
-        rospy.spin()
-    except KeyboardInterrupt:
-        print('interrupt received, so shutting down')
+
+if __name__ == '__main__': 
+    main()

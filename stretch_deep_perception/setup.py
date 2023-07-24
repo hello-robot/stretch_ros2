@@ -25,6 +25,7 @@ setup(
         'console_scripts': [
             'detect_objects = stretch_deep_perception.detect_objects:main',
             'detect_faces = stretch_deep_perception.detect_faces:main',
+            'detect_nearest_mouth = stretch_deep_perception.detect_nearest_mouth:main'
         ],
     },
 )
