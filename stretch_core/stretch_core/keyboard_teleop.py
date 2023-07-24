@@ -194,7 +194,6 @@ class KeyboardTeleopNode(hm.HelloNode):
                 
                 point.positions = [new_value]
                 trajectory_goal.trajectory.points = [point]
-                trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
                 self.trajectory_client.send_goal_async(trajectory_goal)
 
             elif self.robot_mode == 'trajectory':
@@ -223,7 +222,6 @@ class KeyboardTeleopNode(hm.HelloNode):
                     joint_name = 'position'
                     trajectory_goal.multi_dof_trajectory.joint_names = [joint_name]
                     trajectory_goal.multi_dof_trajectory.points = [point1, point2]
-                    trajectory_goal.multi_dof_trajectory.header.stamp = self.get_clock().now().to_msg()
                     self.trajectory_client.send_goal_async(trajectory_goal)
 
                 # for non-base joints
@@ -240,7 +238,6 @@ class KeyboardTeleopNode(hm.HelloNode):
                     point2.positions = [new_value]
                     trajectory_goal.trajectory.joint_names = [joint_name]
                     trajectory_goal.trajectory.points = [point1, point2]
-                    trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
                     self.trajectory_client.send_goal_async(trajectory_goal)
 
             else:
