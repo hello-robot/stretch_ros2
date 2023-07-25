@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import cv2
+import renamed_cv2
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-import deep_models_shared as dm
+from . import deep_models_shared as dm
 
 class BodyLandmarkDetector:
     def __init__(self, models_directory, confidence_threshold=0.2, landmarks_to_detect=None, use_neural_compute_stick=False):
@@ -17,7 +17,7 @@ class BodyLandmarkDetector:
         print('Loading the following weights file:', skeleton_weights_filename)
         print('Loading the following config file:', skeleton_config_filename)
 
-        self.skeleton_model = cv2.dnn.readNet(skeleton_weights_filename, skeleton_config_filename)
+        self.skeleton_model = renamed_cv2.dnn.readNet(skeleton_weights_filename, skeleton_config_filename)
         
         # attempt to use Neural Compute Stick 2
         if use_neural_compute_stick:
@@ -108,7 +108,7 @@ class BodyLandmarkDetector:
             new_w = target_w
             scale = new_w / orig_w
             new_h = int(round(orig_h * scale))
-        scaled = cv2.resize(rgb_image, (new_w, new_h))
+        scaled = renamed_cv2.resize(rgb_image, (new_w, new_h))
 
         if new_h < target_h:
             new_h_offset = int(round((target_h - new_h) / 2.0))
@@ -120,14 +120,14 @@ class BodyLandmarkDetector:
         zero_padded = np.zeros((target_h, target_w, 3), dtype=np.uint8)
         zero_padded[new_h_offset:new_h_offset+new_h, new_w_offset:new_w_offset+new_w, :] = scaled
 
-        skeleton_image_blob = cv2.dnn.blobFromImage(zero_padded, size = (target_w, target_h))
+        skeleton_image_blob = renamed_cv2.dnn.blobFromImage(zero_padded, size = (target_w, target_h))
 
-        skeleton_image_blob = cv2.dnn.blobFromImage(zero_padded,
+        skeleton_image_blob = renamed_cv2.dnn.blobFromImage(zero_padded,
                                                     size = (target_w, target_h),
                                                     mean = (128.0, 128.0, 128.0),
                                                     swapRB = False,
                                                     crop = False,
-                                                    ddepth = cv2.CV_32F)
+                                                    ddepth = renamed_cv2.CV_32F)
 
         self.skeleton_model.setInput(skeleton_image_blob)
 
@@ -138,7 +138,7 @@ class BodyLandmarkDetector:
         enlarge = 8.0 / scale
         new_c_map_h = int(round(enlarge * c_map_h))
         new_c_map_w = int(round(enlarge * c_map_w))
-        scaled_background_confidence_map = cv2.resize(background_confidence_map, (new_c_map_w, new_c_map_h))
+        scaled_background_confidence_map = renamed_cv2.resize(background_confidence_map, (new_c_map_w, new_c_map_h))
 
         bodies = []
         landmark_dict = {}
@@ -147,8 +147,8 @@ class BodyLandmarkDetector:
             landmark_index = self.landmark_names.index(name)
             confidence_map = confidence_maps[landmark_index]
 
-            scaled_confidence_map = cv2.resize(confidence_map, (new_c_map_w, new_c_map_h))
-            min_val, max_val, (min_x, min_y), (max_x, max_y) = cv2.minMaxLoc(scaled_confidence_map)
+            scaled_confidence_map = renamed_cv2.resize(confidence_map, (new_c_map_w, new_c_map_h))
+            min_val, max_val, (min_x, min_y), (max_x, max_y) = renamed_cv2.minMaxLoc(scaled_confidence_map)
             background_confidence = scaled_background_confidence_map[max_y, max_x]
             if max_val > background_confidence: 
                 landmark_x = int(round((max_x - (new_w_offset/scale))))
@@ -175,12 +175,12 @@ class BodyLandmarkDetector:
             radius = 5
             thickness = 2
             color = [0, 0, 255]
-            cv2.circle(image, (landmark_x, landmark_y), radius, color, thickness)
+            renamed_cv2.circle(image, (landmark_x, landmark_y), radius, color, thickness)
             font_scale = 1.0 #2.0
             line_color = [255, 0, 0]
             line_width = 1 #2
-            font = cv2.FONT_HERSHEY_PLAIN 
-            cv2.putText(image, '{0}'.format(name), (landmark_x, landmark_y), font, font_scale, line_color, line_width, cv2.LINE_AA)
+            font = renamed_cv2.FONT_HERSHEY_PLAIN 
+            renamed_cv2.putText(image, '{0}'.format(name), (landmark_x, landmark_y), font, font_scale, line_color, line_width, renamed_cv2.LINE_AA)
                 
             
 class HandoffPositionDetector(BodyLandmarkDetector):
