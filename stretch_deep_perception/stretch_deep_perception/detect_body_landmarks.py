@@ -2,12 +2,13 @@
 
 import cv2
 import sys
-import rospy
-import body_landmark_detector as bl
-import detection_node as dn
-import deep_learning_model_options as do
+import rclpy
+
+from . import body_landmark_detector as bl
+from . import detection_node as dn
+from . import deep_learning_model_options as do
         
-if __name__ == '__main__':    
+def main():
     print('cv2.__version__ =', cv2.__version__)
     print('Python version (must be > 3.0):', sys.version)
     assert(int(sys.version[0]) >= 3)
@@ -25,8 +26,10 @@ if __name__ == '__main__':
     fit_plane = True
     node = dn.DetectionNode(detector, default_marker_name, node_name, topic_base_name, fit_plane)
     node.main()
-    try:
-        rospy.spin()
-    except KeyboardInterrupt:
-        print('interrupt received, so shutting down')
+    # try:
+    #     rospy.spin()
+    # except KeyboardInterrupt:
+    #     print('interrupt received, so shutting down')
 
+if __name__=="__main__":
+    main()

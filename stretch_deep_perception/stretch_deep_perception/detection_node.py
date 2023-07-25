@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
 
-from unicodedata import name
-import cv2
-import ctypes
 import rclpy
-import sys
+import rclpy.logging
 
+import message_filters
+import ros2_numpy
+from sensor_msgs.msg import CameraInfo, Image, PointCloud2, PointField
 from std_msgs.msg import Header
-from sensor_msgs.msg import Image
-from sensor_msgs.msg import CameraInfo
-# from sensor_msgs import point_cloud2
-from sensor_msgs.msg import PointCloud2, PointField
 from visualization_msgs.msg import MarkerArray
 
-import ros2_numpy
-import message_filters
-
+import ctypes
+import cv2
 import struct
+import sys
+from unicodedata import name
 
 from . import detection_ros_markers as dr
 from . import detection_2d_to_3d as d2
@@ -46,6 +43,8 @@ class DetectionNode:
         self.max_box_side_m = max_box_side_m
         self.modify_3d_detections = modify_3d_detections
         self.image_count = 0
+
+        self.logger = rclpy.logging.get_logger('stretch_deep_perception')
         
         
     def image_callback(self, ros_rgb_image, ros_depth_image, rgb_camera_info):
@@ -68,8 +67,8 @@ class DetectionNode:
         ############
         
         if time_diff > 0.0001:
-            print('WARNING: The rgb image and the depth image were not taken at the same time.')
-            print('         The time difference between their timestamps =', closest_time_diff, 's')
+            self.logger.info('WARNING: The rgb image and the depth image were not taken at the same time.')
+            self.logger.info('         The time difference between their timestamps =', time_diff, 's')
 
         # Rotate the image by 90deg to account for camera
         # orientation. In the future, this may be performed at the
@@ -78,18 +77,16 @@ class DetectionNode:
 
         debug_input = False
         if debug_input: 
-            print('DetectionNode.image_callback: received an image!')
-            print('DetectionNode.image_callback: detection_box_image.shape =', detection_box_image.shape)
+            self.logger.info('DetectionNode.image_callback: received an image!')
+            self.logger.info('DetectionNode.image_callback: detection_box_image.shape =', detection_box_image.shape)
             cv2.imwrite('./output_images/deep_learning_input_' + str(self.image_count).zfill(4) + '.png', detection_box_image)
         
         debug_output = False
         detections_2d, output_image = self.detector.apply_to_image(detection_box_image, draw_output=debug_output)
 
-        output_image = cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB)
-
         if debug_output: 
-            print('DetectionNode.image_callback: processed image with deep network!')
-            print('DetectionNode.image_callback: output_image.shape =', output_image.shape)
+            self.logger.info('DetectionNode.image_callback: processed image with deep network!')
+            self.logger.info('DetectionNode.image_callback: output_image.shape =', output_image.shape)
             cv2.imwrite('./output_images/deep_learning_output_' + str(self.image_count).zfill(4) + '.png', output_image)
 
         if output_image is not None:
@@ -165,6 +162,15 @@ class DetectionNode:
         _DATATYPES[PointField.FLOAT32] = ('f', 4)
         _DATATYPES[PointField.FLOAT64] = ('d', 8)
 
+        _DATATYPES[PointField.INT8]    = ('b', 1)
+        _DATATYPES[PointField.UINT8]   = ('B', 1)
+        _DATATYPES[PointField.INT16]   = ('h', 2)
+        _DATATYPES[PointField.UINT16]  = ('H', 2)
+        _DATATYPES[PointField.INT32]   = ('i', 4)
+        _DATATYPES[PointField.UINT32]  = ('I', 4)
+        _DATATYPES[PointField.FLOAT32] = ('f', 4)
+        _DATATYPES[PointField.FLOAT64] = ('d', 8)
+
         fmt = '>' if is_bigendian else '<'
         offset = 0
         for field in (f for f in sorted(fields, key=lambda f: f.offset) if field_names is None or f.name in field_names):
@@ -172,7 +178,7 @@ class DetectionNode:
                 fmt += 'x' * (field.offset - offset)
                 offset = field.offset
             if field.datatype not in _DATATYPES:
-                print('Skipping unknown PointField datatype [%d]' % field.datatype, file=sys.stderr)
+                self.logger.error('Skipping unknown PointField datatype [%d]' % field.datatype)
             else:
                 datatype_fmt, datatype_length = _DATATYPES[field.datatype]
                 fmt    += field.count * datatype_fmt
@@ -229,7 +235,7 @@ class DetectionNode:
         try:
             rclpy.spin(self.node)
         except KeyboardInterrupt:
-            print('interrupt received, so shutting down')
+            self.logger.info('interrupt received, so shutting down')
 
         self.node.destroy_node()
         rclpy.shutdown()
