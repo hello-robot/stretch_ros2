@@ -231,11 +231,14 @@ class KeyboardTeleopNode(hm.HelloNode):
                     point1.time_from_start = duration1.to_msg()
                     point2.time_from_start = duration2.to_msg()
                     joint_index = joint_state.name.index(joint_name)
-                    joint_value = joint_state.position[joint_index]
+                    joint_pos_value = joint_state.position[joint_index]
+                    joint_vel_value = joint_state.velocity[joint_index]
                     delta = command['delta']
-                    new_value = joint_value + delta
-                    point1.positions = [joint_value]
+                    new_value = joint_pos_value + delta
+                    point1.positions = [joint_pos_value]
                     point2.positions = [new_value]
+                    point1.velocities = [joint_vel_value]
+                    point2.velocities = [0.0]
                     trajectory_goal.trajectory.joint_names = [joint_name]
                     trajectory_goal.trajectory.points = [point1, point2]
                     self.trajectory_client.send_goal_async(trajectory_goal)
