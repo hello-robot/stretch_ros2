@@ -156,6 +156,14 @@ class DetectionNode:
         is_bigendian = False
         field_names = None
         _DATATYPES = {}
+        _DATATYPES[PointField.INT8]    = ('b', 1)
+        _DATATYPES[PointField.UINT8]   = ('B', 1)
+        _DATATYPES[PointField.INT16]   = ('h', 2)
+        _DATATYPES[PointField.UINT16]  = ('H', 2)
+        _DATATYPES[PointField.INT32]   = ('i', 4)
+        _DATATYPES[PointField.UINT32]  = ('I', 4)
+        _DATATYPES[PointField.FLOAT32] = ('f', 4)
+        _DATATYPES[PointField.FLOAT64] = ('d', 8)
 
         fmt = '>' if is_bigendian else '<'
         offset = 0
