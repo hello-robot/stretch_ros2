@@ -107,11 +107,20 @@ class HelloNode(Node):
         self.joint_state = None
         self.point_cloud = None
 
+    @classmethod
+    def quick_create(cls, name, wait_for_first_pointcloud=False):
+        i = cls()
+        i.main(name, name, wait_for_first_pointcloud)
+        return i
+    
     def joint_states_callback(self, joint_state):
         self.joint_state = joint_state
 
     def point_cloud_callback(self, point_cloud):
         self.point_cloud = point_cloud
+
+    def tool_callback(self, tool_string):
+        self.tool = tool_string.data
     
     def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
         joint_names = [key for key in pose]
@@ -142,6 +151,45 @@ class HelloNode(Node):
             #print('Received the following result:')
             #print(self.trajectory_client.get_result())
 
+    def get_tf(self, from_frame, to_frame):
+        """Get current transform between 2 frames. Blocking.
+        """
+        rate = rospy.Rate(10.0)
+        while True:
+            try:
+                return self.tf2_buffer.lookup_transform(from_frame, to_frame, rospy.Time())
+            except:
+                continue
+            rate.sleep()
+
+    def home_the_robot(self):
+        if self.dryrun:
+            return
+
+        trigger_request = TriggerRequest()
+        trigger_result = self.home_the_robot_service(trigger_request)
+        rospy.logdebug(f"{self.node_name}'s HelloNode.home_the_robot: got message {trigger_result.message}")
+        return trigger_result.success
+
+    def stow_the_robot(self):
+        if self.dryrun:
+            return
+
+        trigger_request = TriggerRequest()
+        trigger_result = self.stow_the_robot_service(trigger_request)
+        rospy.logdebug(f"{self.node_name}'s HelloNode.stow_the_robot: got message {trigger_result.message}")
+        return trigger_result.success
+
+    def stop_the_robot(self):
+        trigger_request = TriggerRequest()
+        trigger_result = self.stop_the_robot_service(trigger_request)
+        rospy.logdebug(f"{self.node_name}'s HelloNode.stop_the_robot: got message {trigger_result.message}")
+        return trigger_result.success
+
+    def get_tool(self):
+        assert(self.tool is not None)
+        return self.tool
+    
     def main(self, node_name, node_topic_namespace, wait_for_first_pointcloud=True):
         super().__init__(node_name)
         self.node_name = node_name
