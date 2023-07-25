@@ -84,35 +84,43 @@ class TestAction(unittest.TestCase):
         result = result_promise.result().result
         self.assertEqual(result.error_code, FollowJointTrajectory.Result.INVALID_JOINTS) # Check result error code
 
-    def test_trajectory_goal_replaced(self, proc_output):
+    def test_arm_trajectory_goal_replaced(self, proc_output):
         # Test if a new goal replaces the current goal
         # x --------- x --------- x ....................... current trajectory
         # ....................... o --------- o --------- o new trajectory
         # x --------- x --------- o --------- o --------- o resultant trajectory
-        print("########### Executing test_trajectory_goal_replaced ###########")
+        print("########### Executing test_arm_trajectory_goal_replaced ###########")
         goal = FollowJointTrajectory.Goal()
         point1 = JointTrajectoryPoint()
         point2 = JointTrajectoryPoint()
-        point3 = JointTrajectoryPoint()
         duration1 = Duration(seconds=0.0)
-        duration2 = Duration(seconds=2.0)
-        duration3 = Duration(seconds=5.0)
+        duration2 = Duration(seconds=1.0)
         point1.time_from_start = duration1.to_msg()
         point2.time_from_start = duration2.to_msg()
-        point3.time_from_start = duration3.to_msg()
-        point1.positions = [0.0]
-        point2.positions = [0.5]
-        point3.positions = [0.0]
-        goal.trajectory.joint_names = ['joint_head_pan']
-        goal.trajectory.points = [point1, point2, point3]
+        rclpy.spin_once(self.node)
+        arm_index = self.joint_state.name.index('wrist_extension')
+        arm_pos = self.joint_state.position[arm_index]
+        print("arm pos is: {}".format(arm_pos))
+        point1.positions = [arm_pos]
+        point2.positions = [arm_pos+0.04]
+        goal.trajectory.joint_names = ['wrist_extension']
+        goal.trajectory.points = [point1, point2]
+        send_goal = self.action_client.send_goal_async(goal)
+        rclpy.spin_until_future_complete(self.node, send_goal, timeout_sec=1.0)
+        time.sleep(0.5)
+        self.assertTrue(send_goal.done()) # Check if goal finished executing
+
+        for i in range(1,30):
+            rclpy.spin_once(self.node)
+        arm_pos = self.joint_state.position[arm_index]
+        print("arm pos is: {}".format(arm_pos))
+        point1.positions = [arm_pos]
+        point2.positions = [arm_pos+0.04]
+        goal.trajectory.joint_names = ['wrist_extension']
+        goal.trajectory.points = [point1, point2]
         send_goal = self.action_client.send_goal_async(goal)
         rclpy.spin_until_future_complete(self.node, send_goal, timeout_sec=1.0)
         time.sleep(2.0)
-        self.assertTrue(send_goal.done()) # Check if goal finished executing
-
-        send_goal = self.action_client.send_goal_async(goal)
-        rclpy.spin_until_future_complete(self.node, send_goal, timeout_sec=1.0)
-        time.sleep(6.0)
 
     def test_trajectory_goal_queued(self, proc_output):
         # Test if a new goal in the future gets queued up for execution after the current goal
