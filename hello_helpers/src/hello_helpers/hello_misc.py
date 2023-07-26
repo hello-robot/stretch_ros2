@@ -25,6 +25,7 @@ from geometry_msgs.msg import Transform
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from sensor_msgs.msg import PointCloud2
 from std_srvs.srv import Trigger
+from std_msgs.msg import String
 
 
 #######################
@@ -106,6 +107,8 @@ class HelloNode(Node):
     def __init__(self):
         self.joint_state = None
         self.point_cloud = None
+        self.tool = None
+        self.dryrun = False
 
     @classmethod
     def quick_create(cls, name, wait_for_first_pointcloud=False):
@@ -123,6 +126,9 @@ class HelloNode(Node):
         self.tool = tool_string.data
     
     def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
+        if self.dryrun:
+            return
+        
         joint_names = [key for key in pose]
         point = JointTrajectoryPoint()
         point.time_from_start = Duration(seconds=0).to_msg()
@@ -144,53 +150,54 @@ class HelloNode(Node):
             point.positions = joint_positions
             point.effort = joint_efforts
             trajectory_goal.trajectory.points = [point]
-        trajectory_goal.trajectory.header.stamp = self.get_clock().now()
-        self.trajectory_client.send_goal(trajectory_goal)
+        trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
+        goal_request = self.trajectory_client.send_goal_async(trajectory_goal)
         if not return_before_done: 
-            self.trajectory_client.wait_for_result()
+            rclpy.spin_until_future_complete(self, goal_request, timeout_sec=10.0)
             #print('Received the following result:')
             #print(self.trajectory_client.get_result())
 
     def get_tf(self, from_frame, to_frame):
-        """Get current transform between 2 frames. Blocking.
+        """Get current transform between 2 frames. Blocking for 2 secs at worst.
         """
-        rate = rospy.Rate(10.0)
-        while True:
-            try:
-                return self.tf2_buffer.lookup_transform(from_frame, to_frame, rospy.Time())
-            except:
-                continue
-            rate.sleep()
+        try:
+            return self.tf2_buffer.lookup_transform(from_frame, to_frame, Time(), timeout=Duration(seconds=2.0))
+        except:
+            self.get_logger().warn("Could not find the transform between frames {} and {}".format(from_frame, to_frame))
 
     def home_the_robot(self):
         if self.dryrun:
             return
 
-        trigger_request = TriggerRequest()
-        trigger_result = self.home_the_robot_service(trigger_request)
-        rospy.logdebug(f"{self.node_name}'s HelloNode.home_the_robot: got message {trigger_result.message}")
-        return trigger_result.success
+        trigger_request = Trigger.Request()
+        trigger_result = self.home_the_robot_service.call_async(trigger_request)
+        rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=45.0)
+        self.get_logger().debug(f"{self.node_name}'s HelloNode.home_the_robot: got message {trigger_result.done()}")
+        return trigger_result.done()
 
     def stow_the_robot(self):
         if self.dryrun:
             return
 
-        trigger_request = TriggerRequest()
-        trigger_result = self.stow_the_robot_service(trigger_request)
-        rospy.logdebug(f"{self.node_name}'s HelloNode.stow_the_robot: got message {trigger_result.message}")
-        return trigger_result.success
+        trigger_request = Trigger.Request()
+        trigger_result = self.stow_the_robot_service.call_async(trigger_request)
+        rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=30.0)
+        self.get_logger().debug(f"{self.node_name}'s HelloNode.stow_the_robot: got message {trigger_result.done()}")
+        return trigger_result.done()
 
     def stop_the_robot(self):
-        trigger_request = TriggerRequest()
-        trigger_result = self.stop_the_robot_service(trigger_request)
-        rospy.logdebug(f"{self.node_name}'s HelloNode.stop_the_robot: got message {trigger_result.message}")
-        return trigger_result.success
+        trigger_request = Trigger.Request()
+        trigger_result = self.stop_the_robot_service.call_async(trigger_request)
+        rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=1.0)
+        self.get_logger().debug(f"{self.node_name}'s HelloNode.stop_the_robot: got message {trigger_result.done()}")
+        return trigger_result.done()
 
     def get_tool(self):
         assert(self.tool is not None)
         return self.tool
     
     def main(self, node_name, node_topic_namespace, wait_for_first_pointcloud=True):
+        rclpy.init()
         super().__init__(node_name)
         self.node_name = node_name
         self.get_logger().info("{0} started".format(self.node_name))
@@ -204,11 +211,23 @@ class HelloNode(Node):
         self.tf2_buffer = tf2_ros.Buffer()
         self.tf2_listener = tf2_ros.TransformListener(self.tf2_buffer, self)
         
+        self.tool_subscriber = self.create_subscription(String, '/tool', self.tool_callback, 10)
+        
         self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 10)
         self.point_cloud_pub = self.create_publisher(PointCloud2, '/' + node_topic_namespace + '/point_cloud2', 10)
 
-        self.stop_the_robot_client = self.create_client(Trigger, '/stop_the_robot')
-        while not self.stop_the_robot_client.wait_for_service(timeout_sec=2.0):
+        self.home_the_robot_service = self.create_client(Trigger, '/home_the_robot')
+        while not self.home_the_robot_service.wait_for_service(timeout_sec=2.0):
+            self.get_logger().info("Waiting on '/home_the_robot' service...")
+        self.get_logger().info('Node ' + self.node_name + ' connected to /home_the_robot service.')
+
+        self.stow_the_robot_service = self.create_client(Trigger, '/stow_the_robot')
+        while not self.stow_the_robot_service.wait_for_service(timeout_sec=2.0):
+            self.get_logger().info("Waiting on '/stow_the_robot' service...")
+        self.get_logger().info('Node ' + self.node_name + ' connected to /stow_the_robot service.')
+        
+        self.stop_the_robot_service = self.create_client(Trigger, '/stop_the_robot')
+        while not self.stop_the_robot_service.wait_for_service(timeout_sec=2.0):
             self.get_logger().info("Waiting on '/stop_the_robot' service...")
         self.get_logger().info('Node ' + self.node_name + ' connected to /stop_the_robot service.')
         
