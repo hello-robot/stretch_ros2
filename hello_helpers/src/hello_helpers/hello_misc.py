@@ -26,6 +26,7 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from sensor_msgs.msg import PointCloud2
 from std_srvs.srv import Trigger
 from std_msgs.msg import String
+import threading
 
 
 #######################
@@ -116,6 +117,9 @@ class HelloNode(Node):
         i.main(name, name, wait_for_first_pointcloud)
         return i
     
+    def spin_thread(self):
+        rclpy.spin(self)
+
     def joint_states_callback(self, joint_state):
         self.joint_state = joint_state
 
@@ -125,7 +129,7 @@ class HelloNode(Node):
     def tool_callback(self, tool_string):
         self.tool = tool_string.data
     
-    def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
+    def move_to_pose(self, pose, blocking=False, custom_contact_thresholds=False):
         if self.dryrun:
             return
         
@@ -151,11 +155,10 @@ class HelloNode(Node):
             point.effort = joint_efforts
             trajectory_goal.trajectory.points = [point]
         trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
-        goal_request = self.trajectory_client.send_goal_async(trajectory_goal)
-        if not return_before_done: 
-            rclpy.spin_until_future_complete(self, goal_request, timeout_sec=10.0)
-            #print('Received the following result:')
-            #print(self.trajectory_client.get_result())
+        if blocking:
+            return self.trajectory_client.send_goal(trajectory_goal)
+        else:
+            return self.trajectory_client.send_goal_async(trajectory_goal)
 
     def get_tf(self, from_frame, to_frame):
         """Get current transform between 2 frames. Blocking for 2 secs at worst.
@@ -201,6 +204,9 @@ class HelloNode(Node):
         super().__init__(node_name)
         self.node_name = node_name
         self.get_logger().info("{0} started".format(self.node_name))
+
+        new_thread = threading.Thread(target=self.spin_thread, daemon=True)
+        new_thread.start()
 
         self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
         server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
