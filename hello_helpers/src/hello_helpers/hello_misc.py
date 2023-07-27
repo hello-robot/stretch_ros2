@@ -135,7 +135,39 @@ class HelloNode(Node):
     def tool_callback(self, tool_string):
         self.tool = tool_string.data
     
-    def move_to_pose(self, pose, blocking=False, custom_contact_thresholds=False, duration=2.0):
+    def get_robot_floor_pose_xya(self, floor_frame='odom'):
+        # Returns the current estimated x, y position and angle of the
+        # robot on the floor. This is typically called with respect to
+        # the odom frame or the map frame. x and y are in meters and
+        # the angle is in radians.
+        
+        # Navigation planning is performed with respect to a height of
+        # 0.0, so the heights of transformed points are 0.0. The
+        # simple method of handling the heights below assumes that the
+        # frame is aligned such that the z axis is normal to the
+        # floor, so that ignoring the z coordinate is approximately
+        # equivalent to projecting a point onto the floor.
+        
+        # Query TF2 to obtain the current estimated transformation
+        # from the robot's base_link frame to the frame.
+        robot_to_odom_mat, timestamp = get_p1_to_p2_matrix('base_link', floor_frame, self.tf2_buffer)
+        print('robot_to_odom_mat =', robot_to_odom_mat)
+        print('timestamp =', timestamp)
+
+        # Find the robot's current location in the frame.
+        r0 = np.array([0.0, 0.0, 0.0, 1.0])
+        print('r0 =', r0)
+        r0 = np.matmul(robot_to_odom_mat, r0)[:2]
+
+        # Find the current angle of the robot in the frame.
+        r1 = np.array([1.0, 0.0, 0.0, 1.0])
+        r1 = np.matmul(robot_to_odom_mat, r1)[:2]
+        robot_forward = r1 - r0
+        r_ang = np.arctan2(robot_forward[1], robot_forward[0])
+
+        return [r0[0], r0[1], r_ang], timestamp
+    
+    def move_to_pose(self, pose, blocking=True, custom_contact_thresholds=False, duration=2.0):
         if self.dryrun:
             return
         
