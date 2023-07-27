@@ -135,32 +135,43 @@ class HelloNode(Node):
     def tool_callback(self, tool_string):
         self.tool = tool_string.data
     
-    def move_to_pose(self, pose, blocking=False, custom_contact_thresholds=False):
+    def move_to_pose(self, pose, blocking=False, custom_contact_thresholds=False, duration=2.0):
         if self.dryrun:
             return
         
         joint_names = [key for key in pose]
-        point = JointTrajectoryPoint()
-        point.time_from_start = Duration(seconds=0).to_msg()
+        point1 = JointTrajectoryPoint()
+        point1.time_from_start = Duration(seconds=0).to_msg()
 
         trajectory_goal = FollowJointTrajectory.Goal()
         trajectory_goal.goal_time_tolerance = Duration(seconds=1.0).to_msg()
         trajectory_goal.trajectory.joint_names = joint_names
+
+        if self.mode.data == 'trajectory':
+            point0 = JointTrajectoryPoint()
+            point0.time_from_start = Duration(seconds=0).to_msg()
+            
+            for joint in joint_names:
+                point0.positions.append(self.joint_state.position[self.joint_state.name.index(joint)])
+
+            trajectory_goal.trajectory.points.append(point0)
+            point1.time_from_start = Duration(seconds=duration).to_msg()
+
         if not custom_contact_thresholds: 
             joint_positions = [pose[key] for key in joint_names]
-            point.positions = joint_positions
-            trajectory_goal.trajectory.points = [point]
+            point1.positions = joint_positions
+            trajectory_goal.trajectory.points.append(point1)
         else:
             pose_correct = all([len(pose[key])==2 for key in joint_names])
             if not pose_correct:
-                self.get_logger().error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
+                self.node.get_logger().error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
                 return
             joint_positions = [pose[key][0] for key in joint_names]
             joint_efforts = [pose[key][1] for key in joint_names]
-            point.positions = joint_positions
-            point.effort = joint_efforts
-            trajectory_goal.trajectory.points = [point]
-        trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
+            point1.positions = joint_positions
+            point1.effort = joint_efforts
+            trajectory_goal.trajectory.points = [point1]
+        
         if blocking:
             return self.trajectory_client.send_goal(trajectory_goal)
         else:
