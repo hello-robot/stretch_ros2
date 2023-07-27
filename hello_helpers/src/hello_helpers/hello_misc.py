@@ -171,6 +171,10 @@ class HelloNode(Node):
         if self.dryrun:
             return
         
+        if self.mode not in ['trajectory', 'position']:
+            self.node.get_logger().warn("Currently in {} mode. Recommend switching either to position or trajectory mode".format(self.mode))
+            self.node.get_logger().warn("Commanding joint trajectory server in position mode")
+        
         joint_names = [key for key in pose]
         point1 = JointTrajectoryPoint()
         point1.time_from_start = Duration(seconds=0).to_msg()
@@ -223,7 +227,8 @@ class HelloNode(Node):
 
         trigger_request = Trigger.Request()
         trigger_result = self.home_the_robot_service.call_async(trigger_request)
-        rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=45.0)
+        while not trigger_result.done():
+            time.sleep(0.2)
         self.node.get_logger().debug(f"{self.node_name}'s HelloNode.home_the_robot: got message {trigger_result.done()}")
         return trigger_result.done()
 
@@ -233,35 +238,40 @@ class HelloNode(Node):
 
         trigger_request = Trigger.Request()
         trigger_result = self.stow_the_robot_service.call_async(trigger_request)
-        rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=30.0)
+        while not trigger_result.done():
+            time.sleep(0.2)
         self.node.get_logger().debug(f"{self.node_name}'s HelloNode.stow_the_robot: got message {trigger_result.done()}")
         return trigger_result.done()
 
     def stop_the_robot(self):
         trigger_request = Trigger.Request()
         trigger_result = self.stop_the_robot_service.call_async(trigger_request)
-        rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=1.0)
+        while not trigger_result.done():
+            time.sleep(0.2)
         self.node.get_logger().debug(f"{self.node_name}'s HelloNode.stop_the_robot: got message {trigger_result.done()}")
         return trigger_result.done()
     
     def switch_to_trajectory_mode(self):
         trigger_request = Trigger.Request()
         trigger_result = self.switch_to_trajectory_mode_service.call_async(trigger_request)
-        rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=1.0)
+        while not trigger_result.done():
+            time.sleep(0.2)
         self.node.get_logger().debug(f"{self.node_name}'s HelloNode.switch_to_trajectory_mode: got message {trigger_result.done()}")
         return trigger_result.done()
     
     def switch_to_position_mode(self):
         trigger_request = Trigger.Request()
         trigger_result = self.switch_to_position_mode_service.call_async(trigger_request)
-        rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=1.0)
+        while not trigger_result.done():
+            time.sleep(0.2)
         self.node.get_logger().debug(f"{self.node_name}'s HelloNode.switch_to_position_mode: got message {trigger_result.done()}")
         return trigger_result.done()
     
     def switch_to_navigation_mode(self):
         trigger_request = Trigger.Request()
         trigger_result = self.switch_to_navigation_mode_service.call_async(trigger_request)
-        rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=1.0)
+        while not trigger_result.done():
+            time.sleep(0.2)
         self.node.get_logger().debug(f"{self.node_name}'s HelloNode.switch_to_navigation_mode: got message {trigger_result.done()}")
         return trigger_result.done()
 
