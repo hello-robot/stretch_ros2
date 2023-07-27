@@ -243,6 +243,27 @@ class HelloNode(Node):
         rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=1.0)
         self.node.get_logger().debug(f"{self.node_name}'s HelloNode.stop_the_robot: got message {trigger_result.done()}")
         return trigger_result.done()
+    
+    def switch_to_trajectory_mode(self):
+        trigger_request = Trigger.Request()
+        trigger_result = self.switch_to_trajectory_mode_service.call_async(trigger_request)
+        rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=1.0)
+        self.node.get_logger().debug(f"{self.node_name}'s HelloNode.switch_to_trajectory_mode: got message {trigger_result.done()}")
+        return trigger_result.done()
+    
+    def switch_to_position_mode(self):
+        trigger_request = Trigger.Request()
+        trigger_result = self.switch_to_position_mode_service.call_async(trigger_request)
+        rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=1.0)
+        self.node.get_logger().debug(f"{self.node_name}'s HelloNode.switch_to_position_mode: got message {trigger_result.done()}")
+        return trigger_result.done()
+    
+    def switch_to_navigation_mode(self):
+        trigger_request = Trigger.Request()
+        trigger_result = self.switch_to_navigation_mode_service.call_async(trigger_request)
+        rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=1.0)
+        self.node.get_logger().debug(f"{self.node_name}'s HelloNode.switch_to_navigation_mode: got message {trigger_result.done()}")
+        return trigger_result.done()
 
     def get_logger(self):
         return self.node.get_logger()
@@ -296,6 +317,21 @@ class HelloNode(Node):
         while not self.stop_the_robot_service.wait_for_service(timeout_sec=2.0):
             self.node.get_logger().info("Waiting on '/stop_the_robot' service...")
         self.node.get_logger().info('Node ' + self.node_name + ' connected to /stop_the_robot service.')
+
+        self.switch_to_trajectory_mode_service = self.node.create_client(Trigger, '/switch_to_trajectory_mode', callback_group=reentrant_cb)
+        while not self.switch_to_trajectory_mode_service.wait_for_service(timeout_sec=2.0):
+            self.node.get_logger().info("Waiting on '/switch_to_trajectory_mode' service...")
+        self.node.get_logger().info('Node ' + self.node_name + ' connected to /switch_to_trajectory_mode service.')
+
+        self.switch_to_position_mode_service = self.node.create_client(Trigger, '/switch_to_position_mode', callback_group=reentrant_cb)
+        while not self.switch_to_position_mode_service.wait_for_service(timeout_sec=2.0):
+            self.node.get_logger().info("Waiting on '/switch_to_position_mode' service...")
+        self.node.get_logger().info('Node ' + self.node_name + ' connected to /switch_to_position_mode service.')
+
+        self.switch_to_navigation_mode_service = self.node.create_client(Trigger, '/switch_to_navigation_mode', callback_group=reentrant_cb)
+        while not self.switch_to_navigation_mode_service.wait_for_service(timeout_sec=2.0):
+            self.node.get_logger().info("Waiting on '/switch_to_navigation_mode' service...")
+        self.node.get_logger().info('Node ' + self.node_name + ' connected to /switch_to_navigation_mode service.')
         
         if wait_for_first_pointcloud:
             # Do not start until a point cloud has been received
@@ -303,7 +339,6 @@ class HelloNode(Node):
             self.node.get_logger().info('Node ' + node_name + ' waiting to receive first point cloud.')
             while point_cloud_msg is None:
                 time.sleep(0.1)
-                rclpy.spin_once(self)
                 point_cloud_msg = self.point_cloud
             self.node.get_logger().info('Node ' + node_name + ' received first point cloud, so continuing.')
 
