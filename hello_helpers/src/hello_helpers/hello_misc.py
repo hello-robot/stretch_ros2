@@ -27,7 +27,9 @@ from sensor_msgs.msg import PointCloud2
 from std_srvs.srv import Trigger
 from std_msgs.msg import String
 import threading
-
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
+from sensor_msgs.msg import JointState
 
 #######################
 # initial code copied from stackoverflow.com on 10/20/2019
@@ -106,9 +108,10 @@ def get_robot_floor_pose_xya(tf2_buffer, floor_frame='odom'):
 
 class HelloNode(Node):
     def __init__(self):
-        self.joint_state = None
-        self.point_cloud = None
-        self.tool = None
+        self.joint_state = JointState()
+        self.point_cloud = PointCloud2()
+        self.tool = String()
+        self.mode = String()
         self.dryrun = False
 
     @classmethod
@@ -117,11 +120,14 @@ class HelloNode(Node):
         i.main(name, name, wait_for_first_pointcloud)
         return i
     
-    def spin_thread(self):
-        rclpy.spin(self)
+    def spin_thread(self, executor):
+        executor.spin()
 
     def joint_states_callback(self, joint_state):
         self.joint_state = joint_state
+
+    def mode_callback(self, mode):
+        self.mode = mode
 
     def point_cloud_callback(self, point_cloud):
         self.point_cloud = point_cloud
@@ -166,7 +172,7 @@ class HelloNode(Node):
         try:
             return self.tf2_buffer.lookup_transform(from_frame, to_frame, Time(), timeout=Duration(seconds=2.0))
         except:
-            self.get_logger().warn("Could not find the transform between frames {} and {}".format(from_frame, to_frame))
+            self.node.get_logger().warn("Could not find the transform between frames {} and {}".format(from_frame, to_frame))
 
     def home_the_robot(self):
         if self.dryrun:
@@ -175,7 +181,7 @@ class HelloNode(Node):
         trigger_request = Trigger.Request()
         trigger_result = self.home_the_robot_service.call_async(trigger_request)
         rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=45.0)
-        self.get_logger().debug(f"{self.node_name}'s HelloNode.home_the_robot: got message {trigger_result.done()}")
+        self.node.get_logger().debug(f"{self.node_name}'s HelloNode.home_the_robot: got message {trigger_result.done()}")
         return trigger_result.done()
 
     def stow_the_robot(self):
@@ -185,67 +191,78 @@ class HelloNode(Node):
         trigger_request = Trigger.Request()
         trigger_result = self.stow_the_robot_service.call_async(trigger_request)
         rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=30.0)
-        self.get_logger().debug(f"{self.node_name}'s HelloNode.stow_the_robot: got message {trigger_result.done()}")
+        self.node.get_logger().debug(f"{self.node_name}'s HelloNode.stow_the_robot: got message {trigger_result.done()}")
         return trigger_result.done()
 
     def stop_the_robot(self):
         trigger_request = Trigger.Request()
         trigger_result = self.stop_the_robot_service.call_async(trigger_request)
         rclpy.spin_until_future_complete(self, trigger_result, timeout_sec=1.0)
-        self.get_logger().debug(f"{self.node_name}'s HelloNode.stop_the_robot: got message {trigger_result.done()}")
+        self.node.get_logger().debug(f"{self.node_name}'s HelloNode.stop_the_robot: got message {trigger_result.done()}")
         return trigger_result.done()
 
+    def get_logger(self):
+        return self.node.get_logger()
+    
     def get_tool(self):
         assert(self.tool is not None)
         return self.tool
     
     def main(self, node_name, node_topic_namespace, wait_for_first_pointcloud=True):
         rclpy.init()
-        super().__init__(node_name)
+        self.node = rclpy.create_node(node_name)
         self.node_name = node_name
-        self.get_logger().info("{0} started".format(self.node_name))
+        self.node.get_logger().info("{0} started".format(self.node_name))
+        
+        executor = MultiThreadedExecutor()
+        executor.add_node(self.node)
+        
+        self.new_thread = threading.Thread(target=self.spin_thread, args=(executor, ), daemon=True)
+        self.new_thread.start()
 
-        new_thread = threading.Thread(target=self.spin_thread, daemon=True)
-        new_thread.start()
+        reentrant_cb = ReentrantCallbackGroup()
 
-        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
+        self.trajectory_client = ActionClient(self.node, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory', callback_group=reentrant_cb)
         server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
         if not server_reached:
-            self.get_logger().error('Unable to connect to arm action server. Timeout exceeded.')
+            self.node.get_logger().error('Unable to connect to arm action server. Timeout exceeded.')
             sys.exit()
         
         self.tf2_buffer = tf2_ros.Buffer()
-        self.tf2_listener = tf2_ros.TransformListener(self.tf2_buffer, self)
+        self.tf2_listener = tf2_ros.TransformListener(self.tf2_buffer, self.node)
         
-        self.tool_subscriber = self.create_subscription(String, '/tool', self.tool_callback, 10)
-        
-        self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 10)
-        self.point_cloud_pub = self.create_publisher(PointCloud2, '/' + node_topic_namespace + '/point_cloud2', 10)
+        self.tool_subscriber = self.node.create_subscription(String, '/tool', self.tool_callback, 10, callback_group=reentrant_cb)
 
-        self.home_the_robot_service = self.create_client(Trigger, '/home_the_robot')
+        self.joint_states_subscriber = self.node.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10, callback_group=reentrant_cb)
+        self.mode_subscriber = self.node.create_subscription(String, '/mode', self.mode_callback, 10, callback_group=reentrant_cb)
+        
+        self.point_cloud_subscriber = self.node.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 10, callback_group=reentrant_cb)
+        self.point_cloud_pub = self.node.create_publisher(PointCloud2, '/' + node_topic_namespace + '/point_cloud2', 10, callback_group=reentrant_cb)
+
+        self.home_the_robot_service = self.node.create_client(Trigger, '/home_the_robot', callback_group=reentrant_cb)
         while not self.home_the_robot_service.wait_for_service(timeout_sec=2.0):
-            self.get_logger().info("Waiting on '/home_the_robot' service...")
-        self.get_logger().info('Node ' + self.node_name + ' connected to /home_the_robot service.')
+            self.node.get_logger().info("Waiting on '/home_the_robot' service...")
+        self.node.get_logger().info('Node ' + self.node_name + ' connected to /home_the_robot service.')
 
-        self.stow_the_robot_service = self.create_client(Trigger, '/stow_the_robot')
+        self.stow_the_robot_service = self.node.create_client(Trigger, '/stow_the_robot', callback_group=reentrant_cb)
         while not self.stow_the_robot_service.wait_for_service(timeout_sec=2.0):
-            self.get_logger().info("Waiting on '/stow_the_robot' service...")
-        self.get_logger().info('Node ' + self.node_name + ' connected to /stow_the_robot service.')
+            self.node.get_logger().info("Waiting on '/stow_the_robot' service...")
+        self.node.get_logger().info('Node ' + self.node_name + ' connected to /stow_the_robot service.')
         
-        self.stop_the_robot_service = self.create_client(Trigger, '/stop_the_robot')
+        self.stop_the_robot_service = self.node.create_client(Trigger, '/stop_the_robot', callback_group=reentrant_cb)
         while not self.stop_the_robot_service.wait_for_service(timeout_sec=2.0):
-            self.get_logger().info("Waiting on '/stop_the_robot' service...")
-        self.get_logger().info('Node ' + self.node_name + ' connected to /stop_the_robot service.')
+            self.node.get_logger().info("Waiting on '/stop_the_robot' service...")
+        self.node.get_logger().info('Node ' + self.node_name + ' connected to /stop_the_robot service.')
         
         if wait_for_first_pointcloud:
             # Do not start until a point cloud has been received
             point_cloud_msg = self.point_cloud
-            self.get_logger().info('Node ' + node_name + ' waiting to receive first point cloud.')
+            self.node.get_logger().info('Node ' + node_name + ' waiting to receive first point cloud.')
             while point_cloud_msg is None:
                 time.sleep(0.1)
                 rclpy.spin_once(self)
                 point_cloud_msg = self.point_cloud
-            self.get_logger().info('Node ' + node_name + ' received first point cloud, so continuing.')
+            self.node.get_logger().info('Node ' + node_name + ' received first point cloud, so continuing.')
 
 
 def create_time_string():
