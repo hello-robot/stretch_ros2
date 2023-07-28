@@ -70,7 +70,7 @@ In the images below, examples of good and bad fit between the point cloud and th
 
    - Specify how much data to use and the quality of the fit
    
-     - YAML file with parameters: stretch_ros/stretch_calibration/config/head_calibration_options.yaml
+     - YAML file with parameters: stretch_ros2/stretch_calibration/config/head_calibration_options.yaml
      
      - More data and higher quality fitting result in optimizations that take longer
      
@@ -118,7 +118,7 @@ In the images below, examples of good and bad fit between the point cloud and th
 
 ## Generate a New URDF After Changing the Tool
 
-If you change Stretch's tool attached to the wrist and want to generate a new URDF for it, you can do so with xacro files in the /stretch_ros/stretch_description/urdf/ directory. Specifically, you can edit stretch_description.xacro to include a xacro other than the default stretch_gripper.xacro. 
+If you change Stretch's tool attached to the wrist and want to generate a new URDF for it, you can do so with xacro files in the /stretch_ros2/stretch_description/urdf/ directory. Specifically, you can edit stretch_description.xacro to include a xacro other than the default stretch_gripper.xacro. 
 
 After changing the tool xacro you will need to generate a new URDF and also update this new URDF with the previously optimized calibration parameters. To do so, follow the directions below: 
 
