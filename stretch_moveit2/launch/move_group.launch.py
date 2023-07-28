@@ -1,11 +1,13 @@
-from ament_index_python.packages import get_package_share_path
+import os
+import yaml
 
+from ament_index_python.packages import get_package_share_path
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration
-
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterFile
 
 # Mapping from entry in the stretch_body configuration to joints in the SRDF
 CONFIGURATION_TRANSLATION = {
@@ -45,10 +47,8 @@ def generate_launch_description():
     kinematics_config = str(moveit_config_path / 'config/kinematics.yaml')
     sensors_config = str(moveit_config_path / 'config/sensors_3d.yaml')
     trajectory_config = str(moveit_config_path / 'config/trajectory_execution.yaml')
-
     controller_parameters = [str(moveit_config_path / 'config') + '/',
                              'ros_controllers.yaml']
-
     move_group_configuration = {
         'robot_description': LaunchConfiguration('robot_description'),
         'robot_description_semantic': LaunchConfiguration('semantic_config'),
@@ -63,7 +63,11 @@ def generate_launch_description():
         'publish_state_updates': LaunchConfiguration('publish_monitored_planning_scene'),
         'publish_transforms_updates': LaunchConfiguration('publish_monitored_planning_scene'),
     }
-
+    planning_scene_monitor_parameters = {"publish_planning_scene": True,
+                 "publish_geometry_updates": True,
+                 "publish_state_updates": True,
+                 "publish_transforms_updates": True}
+    octomap_updater_config = os.path.join(moveit_config_path, 'config', 'sensors_3d.yaml')
     move_group_params = [
         planning_parameters,
         sensors_config,
@@ -72,6 +76,8 @@ def generate_launch_description():
         kinematics_config,
         load_joint_limits_from_config(moveit_config_path),
         move_group_configuration,
+        planning_scene_monitor_parameters,
+        ParameterFile(octomap_updater_config)
     ]
     move_group_node = Node(package='moveit_ros_move_group', executable='move_group',
                            output='screen',
