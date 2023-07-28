@@ -22,8 +22,8 @@ from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 
 from .command_groups import HeadPanCommandGroup, HeadTiltCommandGroup, \
-                           WristYawCommandGroup, GripperCommandGroup, \
-                           ArmCommandGroup, LiftCommandGroup, \
+                           WristYawCommandGroup, WristPitchCommandGroup, WristRollCommandGroup, \
+                           GripperCommandGroup, ArmCommandGroup, LiftCommandGroup, \
                            MobileBaseCommandGroup
 
 import hello_helpers.hello_misc as hm
@@ -54,9 +54,9 @@ class JointTrajectoryAction(Node):
             if 'head_tilt' in self.node.robot.head.joints else None
         self.wrist_yaw_cg = WristYawCommandGroup(node=self.node) \
             if 'wrist_yaw' in self.node.robot.end_of_arm.joints else None
-        self.wrist_pitch_cg = WristYawCommandGroup(node=self.node) \
+        self.wrist_pitch_cg = WristPitchCommandGroup(node=self.node) \
             if 'wrist_pitch' in self.node.robot.end_of_arm.joints else None
-        self.wrist_roll_cg = WristYawCommandGroup(node=self.node) \
+        self.wrist_roll_cg = WristRollCommandGroup(node=self.node) \
             if 'wrist_roll' in self.node.robot.end_of_arm.joints else None
         self.gripper_cg = GripperCommandGroup(node=self.node) \
             if 'stretch_gripper' in self.node.robot.end_of_arm.joints else None
