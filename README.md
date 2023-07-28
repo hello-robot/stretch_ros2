@@ -1,8 +1,8 @@
 ![](./images/banner.png)
 
-## ROS 2 Galactic Development Branch
+## ROS 2 Iron Development Branch
 
-This is a development branch that we are using to port [stretch_ros](https://github.com/hello-robot/stretch_ros) to ROS 2 Galactic, Python 3, and Ubuntu 20.04. We plan to begin shipping this version preinstalled on Stretch RE1 robots in the future. It is **not in a usable state**. It is also unstable, since we are actively conducting development in this branch. Since we have performed limited testing, you may encounter unexpected behaviors. Also, installation **requires Ubuntu 20.04 on a second partition** of your robot's hard drive.
+This is a development branch that we are using to port [stretch_ros](https://github.com/hello-robot/stretch_ros) to ROS 2 Iron, Python 3, and Ubuntu 22.04. We plan to begin shipping this version preinstalled on Stretch robots in the future. It is **not in a stable state**, since we are actively conducting development in this branch. Since we have performed limited testing, you may encounter unexpected behaviors. Also, the installation requires [Ubuntu 22.04](https://github.com/hello-robot/stretch_install/blob/master/docs/robot_install.md) on a second partition of your robot's hard drive.
 
 We are beginning to use this port internally at Hello Robot to test it, improve it, and add new capabilities.
 
@@ -17,11 +17,6 @@ We are beginning to use this port internally at Hello Robot to test it, improve 
  - Hello Helpers
  - Stretch Calibration
  - Stretch Description
- - Stretch MoveIt2
-    - Joint Goals not involving base
-    - Pose Goals not involving base
-    - MoveGroup C++ API
-    - Python API (work in progress)
  - Stretch Nav2
     - Mapping with slam_toolbox
     - Navigation with nav2
@@ -29,23 +24,20 @@ We are beginning to use this port internally at Hello Robot to test it, improve 
  - Stretch Deep Perception
     - Object Detection with YOLOv5 using PyTorch
     - Head Pose Estimation with OpenVINO
+ - Stretch Demos
+ - Stretch FUNMAP
 
 ## Known Issues
 
 No support for:
  - Stretch Core 
     - ReSpeaker driver
-    - Dex Wrist
  - Stretch Dashboard
  - Stretch Deep Perception
- - Stretch Demos
- - Stretch FUNMAP
  - Stretch Gazebo
  - Stretch OctoMap
  - Stretch RTABMap
- - The deep perception demos won't work with a default installation, since they require OpenCV compiled with OpenVINO.
  - There is no support for the Respeaker Microphone Array.
- - There is no support for the Dexterous Wrist.
 
 ---
 
