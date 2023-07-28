@@ -94,7 +94,7 @@ This method takes in a dictionary that describes a desired pose for the robot an
 self.move_to_pose({'joint_lift': 0.5})
 ```
 
-Internally, this dictionary is converted into a [FollowJointTrajectoryGoal](http://docs.ros.org/en/diamondback/api/control_msgs/html/msg/FollowJointTrajectoryGoal.html) that is sent to a [FollowJointTrajectory action](http://docs.ros.org/en/noetic/api/control_msgs/html/action/FollowJointTrajectory.html) server in stretch_driver. This method waits by default for the server to report that the goal has completed executing. However, you can return before the goal has completed by setting the `blocking` argument to False. This can be useful for preempting goals.
+Internally, this dictionary is converted into a [JointTrajectory](https://docs.ros2.org/latest/api/trajectory_msgs/msg/JointTrajectory.html) message that is sent to a [FollowJointTrajectory action](http://docs.ros.org/en/noetic/api/control_msgs/html/action/FollowJointTrajectory.html) server in stretch_driver. This method waits by default for the server to report that the goal has completed executing. However, you can return before the goal has completed by setting the `blocking` argument to False. This can be useful for preempting goals.
 
 When the robot is in `position` mode, if you set `custom_contact_thresholds` to True, this method expects a different format dictionary: string/tuple key/value pairs, where the keys are still joint names, but the values are `(position_goal, effort_threshold)`. The addition of a effort threshold enables you to detect when a joint has made contact with something in the environment, which is useful for manipulation or safe movements. For example, `{'joint_arm': (0.5, 20)}` commands the telescoping arm fully out (the arm is nearly fully extended at 0.5 meters) but with a low enough effort threshold (20% of the arm motor's max effort) that the motor will stop when the end of arm has made contact with something. Again, in a node, this would look like:
 
@@ -122,7 +122,7 @@ This is a convenience method to interact with the driver's [`/stop_the_robot` se
 
 ##### `get_tf(from_frame, to_frame)`
 
-Use this method to get the transform ([geometry_msgs/TransformStamped](https://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/TransformStamped.html)) between two frames. This method is blocking. For example, this method can do forward kinematics from the base_link to the link between the gripper fingers, link_grasp_center, using:
+Use this method to get the transform ([geometry_msgs/TransformStamped](https://docs.ros2.org/latest/api/geometry_msgs/msg/TransformStamped.html)) between two frames. This method is blocking. For example, this method can do forward kinematics from the base_link to the link between the gripper fingers, link_grasp_center, using:
 
 ```python
 # launch the stretch driver launch file beforehand
