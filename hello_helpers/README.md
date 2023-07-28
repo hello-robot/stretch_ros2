@@ -2,7 +2,7 @@
 
 ## Overview
 
-*hello_helpers* mostly consists of the hello_helpers Python module. This module provides various Python files used across stretch_ros that have not attained sufficient status to stand on their own.
+*hello_helpers* mostly consists of the hello_helpers Python module. This module provides various Python files used across stretch_ros2 that have not attained sufficient status to stand on their own.
 
 ## Capabilities
 

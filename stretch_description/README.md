@@ -32,7 +32,7 @@ If you wish to remove the default gripper and add a different tool, you will typ
 
 `<xacro:include filename="stretch_gripper.xacro" />`
 
-As an example we provide the xacro `stretch_dry_erase_marker.xacro` and its dependent mesh files with stretch_ros. 
+As an example we provide the xacro `stretch_dry_erase_marker.xacro` and its dependent mesh files with stretch_ros2. 
 
 Some of the tools found in the [Stretch Body Tool Share](https://github.com/hello-robot/stretch_tool_share/) include URDF data. To integrate these tools into the URDF for your Stretch
 
@@ -40,14 +40,14 @@ Some of the tools found in the [Stretch Body Tool Share](https://github.com/hell
 >>$ cd ~/repos
 >>$ git clone https://github.com/hello-robot/stretch_tool_share
 >>$ cd stretch_tool_share/<tool name>
->>$ cp stretch_description/urdf/* ~/catkin_ws/src/stretch_ros/stretch_description/urdf/
->>$ cp stretch_description/meshes/* ~/catkin_ws/src/stretch_ros/stretch_description/meshes/
+>>$ cp stretch_description/urdf/* ~/ament_ws/src/stretch_ros2/stretch_description/urdf/
+>>$ cp stretch_description/meshes/* ~/ament_ws/src/stretch_ros2/stretch_description/meshes/
 ```
 
 Next add the xacro for the particular tool to `/stretch_description/urdf/stretch_description.xacro`. Then you can generate and preview the uncalibrated URDF:
 
 ```bash
->>$ cd ~/catkin_ws/src/stretch_ros/stretch_description/urdf
+>>$ cd ~/ament_ws/src/stretch_ros2/stretch_description/urdf
 >>$ cp stretch.urdf stretch.urdf.bak
 >>$ ros2 run stretch_calibration update_urdf_after_xacro_change.py
 ```

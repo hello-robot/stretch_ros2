@@ -55,7 +55,7 @@ The *stretch_ros2* repository holds ROS 2 related code for the Stretch mobile ma
 
 | Resource                                                     | Description                                                  |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
-[hello_helpers](hello_helpers/README.md) | Miscellaneous helper code used across the stretch_ros repository
+[hello_helpers](hello_helpers/README.md) | Miscellaneous helper code used across the stretch_ros2 repository
 [stretch_calibration](stretch_calibration/README.md) | Creates and updates calibrated URDFs for the Stretch mobile manipulator
 [stretch_core](stretch_core/README.md) | ROS 2 drivers for Stretch
 [stretch_deep_perception](stretch_deep_perception/README.md) | Demonstrations that use open deep learning models to perceive the world
