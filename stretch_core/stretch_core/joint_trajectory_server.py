@@ -54,13 +54,17 @@ class JointTrajectoryAction(Node):
             if 'head_tilt' in self.node.robot.head.joints else None
         self.wrist_yaw_cg = WristYawCommandGroup(node=self.node) \
             if 'wrist_yaw' in self.node.robot.end_of_arm.joints else None
+        self.wrist_pitch_cg = WristYawCommandGroup(node=self.node) \
+            if 'wrist_pitch' in self.node.robot.end_of_arm.joints else None
+        self.wrist_roll_cg = WristYawCommandGroup(node=self.node) \
+            if 'wrist_roll' in self.node.robot.end_of_arm.joints else None
         self.gripper_cg = GripperCommandGroup(node=self.node) \
             if 'stretch_gripper' in self.node.robot.end_of_arm.joints else None
         self.arm_cg = ArmCommandGroup(node=self.node)
         self.lift_cg = LiftCommandGroup(node=self.node)
         self.mobile_base_cg = MobileBaseCommandGroup(node=self.node)
         self.command_groups = [self.arm_cg, self.lift_cg, self.mobile_base_cg, self.head_pan_cg,
-                               self.head_tilt_cg, self.wrist_yaw_cg, self.gripper_cg]
+                               self.head_tilt_cg, self.wrist_yaw_cg, self.wrist_pitch_cg, self.wrist_roll_cg, self.gripper_cg]
         self.command_groups = [cg for cg in self.command_groups if cg is not None]
 
         for joint in self.node.robot.end_of_arm.joints:
@@ -240,7 +244,25 @@ class JointTrajectoryAction(Node):
             return self.success_callback(goal_handle, "Achieved all target points.")
         
         elif self.node.robot_mode == 'trajectory':
-             # pre-process
+            ''' Check trajectory start time:
+            If start time in the past, only preserve points that are in the future and discard rest
+            If start time in the present, discard first waypoint and start from the second
+            If start time in the future, queue to the present trajectory '''
+            traj_start_time = 0 # past is -1, present is 0 and future is 1
+            if hm.to_sec(goal.trajectory.header.stamp) > hm.to_sec(self.node.get_clock().now().to_msg()):
+                traj_start_time = 1
+                self.node.get_logger().info("Trajectory mode does not currently allow execution of goal with start time in the future. Aborting execution.")
+                goal_handle.abort()
+                return FollowJointTrajectory.Result()
+            elif hm.to_sec(goal.trajectory.header.stamp) == 0.0:
+                traj_start_time = 0
+            else:
+                traj_start_time = -1
+                self.node.get_logger().info("Trajectory mode does not currently allow execution of goal with start time in the past. Aborting execution.")
+                goal_handle.abort()
+                return FollowJointTrajectory.Result()
+            
+            # pre-process
             try:
                 goal.trajectory = hm.merge_arm_joints(goal.trajectory)
                 goal.trajectory = hm.preprocess_gripper_trajectory(goal.trajectory)
