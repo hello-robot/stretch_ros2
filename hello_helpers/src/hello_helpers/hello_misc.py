@@ -171,8 +171,8 @@ class HelloNode(Node):
         if self.dryrun:
             return
         
-        if self.mode not in ['trajectory', 'position']:
-            self.node.get_logger().warn("Currently in {} mode. Recommend switching either to position or trajectory mode".format(self.mode))
+        if self.mode.data not in ['trajectory', 'position']:
+            self.node.get_logger().warn("Currently in {} mode. Recommend switching either to position or trajectory mode".format(self.mode.data))
             self.node.get_logger().warn("Commanding joint trajectory server in position mode")
         
         joint_names = [key for key in pose]
