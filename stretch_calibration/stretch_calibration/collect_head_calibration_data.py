@@ -23,7 +23,6 @@ import sys
 import argparse as ap
 
 import numpy as np
-# TODO: build ros2_numpy from source in workspace for the fuctions to be available
 import ros2_numpy
 
 import yaml
@@ -72,7 +71,6 @@ class CollectHeadCalibrationDataNode(Node):
                 # set marker_time to the earliest marker time
                 if self.marker_time is None:
                     self.marker_time = marker.header.stamp
-                # TODO: Look for a better way to handle time comparisons
                 elif (marker.header.stamp.sec + marker.header.stamp.nanosec*pow(10, -9)) < (self.marker_time.sec + self.marker_time.nanosec*pow(10, -9)):
                     self.marker_time = marker.header.stamp
                 
@@ -93,30 +91,18 @@ class CollectHeadCalibrationDataNode(Node):
 
     def move_to_pose(self, pose):
         # Prepare and send a goal pose to which the robot should move.
-        rclpy.spin_once(self)
-        
-        joint_state = self.joint_state
-        point = JointTrajectoryPoint()
-        
-        duration1 = Duration(seconds=0.0)
-        duration2 = Duration(seconds=4.0)
-        point.time_from_start = duration1.to_msg()
-        self.point.time_from_start = duration2.to_msg()
         
         joint_names = [key for key in pose]
         self.trajectory_goal.trajectory.joint_names = joint_names
         
-        joint_indices = [joint_state.name.index(key) for key in pose]
-        point.positions = [joint_state.position[index] for index in joint_indices]
-
         joint_positions = [pose[key] for key in joint_names]
         self.point.positions = joint_positions
 
-        self.trajectory_goal.trajectory.points = [point, self.point]
-        self.trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
-        self.trajectory_client.send_goal_async(self.trajectory_goal)
-        time.sleep(5)
-        # self.trajectory_client.wait_for_result()
+        self.trajectory_goal.trajectory.points = [self.point]
+        goal_future = self.trajectory_client.send_goal_async(self.trajectory_goal)
+        while not goal_future.done():
+            time.sleep(0.1)
+            rclpy.spin_once(self)
         
     def get_samples(self, pan_angle_center, tilt_angle_center, wrist_extension_center, number_of_samples, first_move=False):
         # Collect N observations (samples) centered around the
@@ -252,8 +238,6 @@ class CollectHeadCalibrationDataNode(Node):
                         #rospy.sleep(0.2) #0.1
                         time.sleep(1.0)
                     
-                    # TODO: If this results in error, access secs and nanosecs to calculate difference manually
-                    # timeout = (self.get_clock().now().to_msg() - start_wait) > timeout_duration
                     current_time = self.get_clock().now().to_msg()
                     time_duration = (current_time.sec + current_time.nanosec*pow(10,-9)) - (start_wait.sec + start_wait.nanosec*pow(10,-9))
                     timeout = time_duration > timeout_duration.sec
@@ -704,14 +688,6 @@ def main():
      
     node = CollectHeadCalibrationDataNode()
     node.main(collect_check_data)
-    
-    # TODO: check for a way to deal with ROSInterruptException
-    # try:
-    #     node = CollectHeadCalibrationDataNode()
-    #     node.main(collect_check_data)
-    # except rclpy.ROSInterruptException:
-    #     pass
-
 
 if __name__ == '__main__':    
     main()
