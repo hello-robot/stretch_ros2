@@ -82,9 +82,9 @@ def create_axis_marker(xyz, axis, id_num, frame_id, timestamp, rgba, length=0.02
     start_point.y = y
     start_point.z = z
     end_point = Point()
-    end_point.x = x + (axis[0] * length)
-    end_point.y = y + (axis[1] * length)
-    end_point.z = z + (axis[2] * length)
+    end_point.x = float(x + (axis[0] * length))
+    end_point.y = float(y + (axis[1] * length))
+    end_point.z = float(z + (axis[2] * length))
     marker.points = [start_point, end_point]
     return marker
 
