@@ -1,41 +1,26 @@
 #!/usr/bin/env python3
 
-from sensor_msgs.msg import JointState
-
-import rclpy
-from rclpy.node import Node
-from rclpy.duration import Duration
-from rclpy.action import ActionClient
-from control_msgs.action import FollowJointTrajectory
-from trajectory_msgs.msg import JointTrajectoryPoint
+import argparse as ap
+import math
+import sys
+import threading
+import time
 
 import message_filters
-
+import numpy as np
+import rclpy
+import ros2_numpy
+import yaml
+from control_msgs.action import FollowJointTrajectory
+from rclpy.action import ActionClient
+from rclpy.clock import Clock
+from rclpy.duration import Duration
+from rclpy.node import Node
+from sensor_msgs.msg import Imu, JointState
+from trajectory_msgs.msg import JointTrajectoryPoint
 from visualization_msgs.msg import MarkerArray
 
-from sensor_msgs.msg import Imu
 
-import math
-import time
-import threading
-import sys
-
-import argparse as ap
-
-import numpy as np
-import ros2_numpy
-
-import yaml
-import time
-
-
-'''
-TODO: All sleep() instances are currently implemented using the Python time library,
-this is not the recommended method as ROS uses a separate time source than real time.
-ROS 2 Humble implements this with the sleep_for() method in the Clock class of rclpy.
-This node should be updated when we move to Humble.
-https://github.com/ros2/rclpy/blob/master/rclpy/rclpy/clock.py
-'''
 class CollectHeadCalibrationDataNode(Node):
     def __init__(self):
 
@@ -112,9 +97,9 @@ class CollectHeadCalibrationDataNode(Node):
         # thus benefit from more time to settle prior to collecting a
         # sample.
         
-        head_motion_settle_time = 1.0 #5.0
-        first_pan_tilt_extra_settle_time = 1.0
-        wait_before_each_sample_s = 0.2
+        head_motion_settle_time = Duration(seconds=1.0) #5.0
+        first_pan_tilt_extra_settle_time = Duration(seconds=1.0)
+        wait_before_each_sample_s = Duration(seconds=0.2)
 
         # generate pan and wrist backlash samples
 
@@ -172,7 +157,7 @@ class CollectHeadCalibrationDataNode(Node):
 
 
             # wait for the joints and sensors to settle
-            time.sleep(head_motion_settle_time)
+            self.clock.sleep_for(rel_time=head_motion_settle_time)
             settled_time = self.get_clock().now().to_msg()
             
             for i in range(5):
@@ -182,10 +167,10 @@ class CollectHeadCalibrationDataNode(Node):
             # benefit from more settling time due to induced
             # vibrations.
             if first_move:
-                time.sleep(first_pan_tilt_extra_settle_time)
+                self.clock.sleep_for(rel_time=first_pan_tilt_extra_settle_time)
 
             for sample_number in range(number_of_samples):
-                time.sleep(wait_before_each_sample_s)
+                self.clock.sleep_for(rel_time=wait_before_each_sample_s)
                 observation = {'joints': {'joint_head_pan': None,
                                           'joint_head_tilt': None,
                                           'wrist_extension' : None,
@@ -236,7 +221,7 @@ class CollectHeadCalibrationDataNode(Node):
                                 data_ready = True
                     if not data_ready:
                         #rospy.sleep(0.2) #0.1
-                        time.sleep(1.0)
+                        self.clock.sleep_for(Duration(seconds=1.0))
                     
                     current_time = self.get_clock().now().to_msg()
                     time_duration = (current_time.sec + current_time.nanosec*pow(10,-9)) - (start_wait.sec + start_wait.nanosec*pow(10,-9))
@@ -300,7 +285,8 @@ class CollectHeadCalibrationDataNode(Node):
         
         calibration_data = []
         number_of_samples_per_head_pose = 1 #3
-        wrist_motion_settle_time = 1.0
+        wrist_motion_settle_secs = 1.0
+        wrist_motion_settle_time = Duration(seconds=wrist_motion_settle_secs)
 
         ########################################
         ##
@@ -339,8 +325,8 @@ class CollectHeadCalibrationDataNode(Node):
         self.move_to_pose(lift_pose)
 
         # wait for the joints and sensors to settle
-        self.get_logger().info('Wait {0} seconds for the robot to settle after motion of the arm.'.format(wrist_motion_settle_time))
-        time.sleep(wrist_motion_settle_time)
+        self.get_logger().info('Wait {0} seconds for the robot to settle after motion of the arm.'.format(wrist_motion_settle_secs))
+        self.clock.sleep_for(rel_time=wrist_motion_settle_time)
 
         self.get_logger().info('Starting to collect global head looking down data  (expect to collect {0} samples).'.format(number_of_tilt_steps * number_of_pan_steps))
         first_pan_tilt = True
@@ -377,8 +363,8 @@ class CollectHeadCalibrationDataNode(Node):
             self.move_to_pose(wrist_pose)
 
             # wait for the joints and sensors to settle
-            self.get_logger().info('Wait {0} seconds for the robot to settle after motion of the arm.'.format(wrist_motion_settle_time))
-            time.sleep(wrist_motion_settle_time)
+            self.get_logger().info('Wait {0} seconds for the robot to settle after motion of the arm.'.format(wrist_motion_settle_secs))
+            self.clock.sleep_for(rel_time=wrist_motion_settle_time)
 
             self.get_logger().info('Starting to collect global head looking up data (expect to collect {0} samples).'.format(len(pan_angles_rad) * len(tilt_angles_rad)))
             first_pan_tilt = True
@@ -435,8 +421,8 @@ class CollectHeadCalibrationDataNode(Node):
         pose = {'joint_lift': lift_m}
         self.get_logger().info('Move to first shoulder capture height.')
         self.move_to_pose(pose)
-        self.get_logger().info('Wait {0} seconds for the robot to settle after motion of the arm.'.format(wrist_motion_settle_time))
-        time.sleep(wrist_motion_settle_time)
+        self.get_logger().info('Wait {0} seconds for the robot to settle after motion of the arm.'.format(wrist_motion_settle_secs))
+        self.clock.sleep_for(rel_time=wrist_motion_settle_time)
 
         first_pan_tilt = True
         observation = self.get_samples(pan_angle_rad, tilt_angle_rad_1, wrist_extension, number_of_samples_per_head_pose, first_move=first_pan_tilt)
@@ -456,8 +442,8 @@ class CollectHeadCalibrationDataNode(Node):
         pose = {'joint_lift': lift_m}
         self.get_logger().info('Move to second shoulder capture height.')
         self.move_to_pose(pose)
-        self.get_logger().info('Wait {0} seconds for the robot to settle after motion of the arm.'.format(wrist_motion_settle_time))
-        time.sleep(wrist_motion_settle_time)
+        self.get_logger().info('Wait {0} seconds for the robot to settle after motion of the arm.'.format(wrist_motion_settle_secs))
+        self.clock.sleep_for(rel_time=wrist_motion_settle_time)
 
         first_pan_tilt = True
         observation = self.get_samples(pan_angle_rad, tilt_angle_rad_1, wrist_extension, number_of_samples_per_head_pose, first_move=first_pan_tilt)
@@ -546,8 +532,8 @@ class CollectHeadCalibrationDataNode(Node):
             self.move_to_pose(wrist_pose)
 
             # wait for the joints and sensors to settle
-            self.get_logger().info('Wait {0} seconds for the robot to settle after motion of the arm.'.format(wrist_motion_settle_time))
-            time.sleep(wrist_motion_settle_time)
+            self.get_logger().info('Wait {0} seconds for the robot to settle after motion of the arm.'.format(wrist_motion_settle_secs))
+            self.clock.sleep_for(rel_time=wrist_motion_settle_time)
 
             first_pan_tilt = True
             for pan_angle in wrist_focused_pan_angles_rad:
@@ -601,7 +587,6 @@ class CollectHeadCalibrationDataNode(Node):
         self.move_to_pose(initial_pose)
    
     def main(self, collect_check_data):
-        time.sleep(20) # Allows time for realsense camera to boot up before this node becomes active
         rclpy.init()
         super().__init__('collect_head_calibration_data',
                         allow_undeclared_parameters=True,
@@ -609,6 +594,10 @@ class CollectHeadCalibrationDataNode(Node):
         self.node_name = self.get_name()        
         self.get_logger().info("{0} started".format(self.node_name))
 
+        self.clock = Clock()
+
+        self.clock.sleep_for(rel_time=Duration(seconds=20)) # Allows time for realsense camera to boot up before this node becomes active
+        
         # Obtain the ArUco marker ID numbers.
         # Reading parameters from the stretch_marker_dict.yaml file and storing values
         # in a dictionary called marker_info
