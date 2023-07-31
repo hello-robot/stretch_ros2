@@ -596,8 +596,6 @@ class CollectHeadCalibrationDataNode(Node):
 
         self.clock = Clock()
 
-        self.clock.sleep_for(rel_time=Duration(seconds=20)) # Allows time for realsense camera to boot up before this node becomes active
-        
         # Obtain the ArUco marker ID numbers.
         # Reading parameters from the stretch_marker_dict.yaml file and storing values
         # in a dictionary called marker_info
@@ -650,18 +648,18 @@ class CollectHeadCalibrationDataNode(Node):
         if not server_reached:
             self.get_logger().error('Unable to connect to arm action server. Timeout exceeded.')
             sys.exit()
+        
         self.trajectory_goal = FollowJointTrajectory.Goal()
-
         goal_time_tolerance = Duration(seconds=1.0)
         self.trajectory_goal.goal_time_tolerance = goal_time_tolerance.to_msg()
 
-        # Spin a few times to get current joint states, accel, marker_array
-        for i in range(10):
-            rclpy.spin_once(self)
-        
         self.point = JointTrajectoryPoint()
         time_from_start = Duration(seconds=0.0)
         self.point.time_from_start = time_from_start.to_msg()
+
+        # Spin to get current joint states, accel, marker_array
+        while self.joint_state is None:
+            rclpy.spin_once(self)
         
         self.move_to_initial_configuration()
 
