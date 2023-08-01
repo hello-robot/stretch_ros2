@@ -79,8 +79,7 @@ class HandoverObjectNode(Node):
         self.lift_position = lift_position
 
     def goal_response(self, future: rclpy.task.Future):
-        if not future.result():
-            # self.logger.info("Future goal result is not set")
+        if not future or not future.result():
             return False
         goal_handle = future.result()
         if not goal_handle.accepted:
@@ -90,12 +89,11 @@ class HandoverObjectNode(Node):
         self._get_result_future = goal_handle.get_result_async()
 
     def get_result(self, future: rclpy.task.Future):
-        if not future.result():
+        if not future or not future.result():
             return
 
         result = future.result().result
         error_code = result.error_code
-        # self.logger.info('The Action Server has finished, it returned: "%s"' % str(error_code))
         self.move_to_pose_complete = True
 
     def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
