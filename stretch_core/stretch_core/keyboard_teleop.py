@@ -149,6 +149,11 @@ class GetKeyboardCommands:
         ## OTHER CAPABILITIES
         ####################################################
 
+        # Trigger Hello World whiteboard writing demo
+        if ((c == '`') or (c == '~')) and self.hello_world_on:
+            trigger_request = Trigger.Request() 
+            trigger_result = node.trigger_write_hello_service.call_async(trigger_request)
+
         # Trigger open drawer demo with downward hook motion
         if ((c == 'z') or (c == 'Z')) and self.open_drawer_on:
             trigger_request = Trigger.Request() 
@@ -416,6 +421,11 @@ class KeyboardTeleopNode(Node):
             self.trigger_lower_until_contact_service = self.create_client(Trigger, '/funmap/trigger_lower_until_contact')
             self.trigger_lower_until_contact_service.wait_for_service()
             self.get_logger().info('Node ' + self.get_name() + ' connected to /funmap/trigger_lower_until_contact.')
+
+        if self.hello_world_on: 
+            self.trigger_write_hello_service = self.create_client(Trigger, '/hello_world/trigger_write_hello')
+            self.trigger_write_hello_service.wait_for_service()
+            self.get_logger().info('Node ' + self.get_name() + ' connected to /hello_world/trigger_write_hello.')
 
         if self.open_drawer_on:
             self.trigger_open_drawer_down_service = self.create_client(Trigger, '/open_drawer/trigger_open_drawer_down')
