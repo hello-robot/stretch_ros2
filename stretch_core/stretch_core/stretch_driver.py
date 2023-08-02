@@ -408,8 +408,9 @@ class StretchDriver(Node):
         self.prev_runstop_state = runstop_event.data
         
         self.robot.non_dxl_thread.step()
-        self.robot.push_command() # Main push command
-        self.dirty_command = False
+        if not self.robot_mode == 'trajectory':
+            self.robot.push_command() # Main push command
+            self.dirty_command = False
 
     # CHANGE MODES ################
 
