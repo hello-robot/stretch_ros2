@@ -34,6 +34,11 @@ Now that the robot is ready, launch the demo with the following command:
 ros2 launch stretch_demos grasp_object.launch.py
 ```
 
+Launch the keyboard teleop node with the grasp_object_param set as True in a separate terminal:
+```
+ros2 run stretch_core keyboard_teleop --ros-args -p grasp_object_on:=True
+```
+
 Then, press the key with ‘ and “ on it while in the terminal to initiate a grasp attempt.
 
 While attempting the grasp the demo will save several images under the ./stretch_user/debug/ directory within various grasping related directories. You can view these images to see some of what the robot did to make its decisions.
