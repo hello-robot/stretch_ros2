@@ -50,9 +50,16 @@ def generate_launch_description():
             parameters=grasp_object_params,
     )
 
+    static_tf_straight_gripper_aligned = Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            arguments = ['--x', '0', '--y', '0', '--z', '0', '--yaw', '0', '--pitch', '1.5707963', '--roll', '1.5707963', '--frame-id', 'link_straight_gripper', '--child-frame-id', 'link_straight_gripper_aligned']
+        )
+
     return LaunchDescription(declare_configurable_parameters(configurable_parameters) + [
         d435i_high_res_launch,
         stretch_driver,
         stretch_funmap,
-        grasp_object
+        grasp_object,
+        static_tf_straight_gripper_aligned
         ])
