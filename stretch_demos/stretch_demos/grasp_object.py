@@ -1,31 +1,15 @@
 #!/usr/bin/env python3
 
 from sensor_msgs.msg import JointState
-from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry
 
 import rclpy
-from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
-from rclpy.action import ActionClient, ActionServer
-from rclpy.duration import Duration
-from rclpy.executors import MultiThreadedExecutor
 import rclpy.logging
-from rclpy.time import Time
 
-from control_msgs.action import FollowJointTrajectory
-from trajectory_msgs.msg import JointTrajectoryPoint
-
-from sensor_msgs.msg import PointCloud2
-from std_msgs.msg import String
 from std_srvs.srv import Trigger
 
-import math
 import time
 import threading
-import sys
-import tf2_ros
-import argparse as ap        
 import numpy as np
 import os
 
