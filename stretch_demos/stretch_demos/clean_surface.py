@@ -12,9 +12,8 @@ import os
 
 import hello_helpers.hello_misc as hm
 import stretch_funmap.manipulation_planning as mp
-from hello_helpers.hello_misc import HelloNode
 
-class CleanSurfaceNode(HelloNode):
+class CleanSurfaceNode(hm.HelloNode):
     def __init__(self):
         hm.HelloNode.__init__(self)
         self.rate = 10.0
