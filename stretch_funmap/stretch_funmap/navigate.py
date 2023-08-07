@@ -320,7 +320,7 @@ class MoveBase():
             pose = {'translate_mobile_base': forward_distance_m}
             self.at_goal = False
             self.unsuccessful_action = False
-            self._future_goal = self.node.move_to_pose(pose, return_before_done=True)
+            self._future_goal = self.node.move_to_pose(pose, blocking=False)
 
             # Check if goal has been successfully sent to the joint trajectory server
             pose_sent = False
@@ -384,7 +384,7 @@ class MoveBase():
             pose = {'rotate_mobile_base': turn_angle_error_rad}
             self.at_goal = False
             self.unsuccessful_action = False
-            self._future_goal = self.node.move_to_pose(pose, return_before_done=True)
+            self._future_goal = self.node.move_to_pose(pose, blocking=False)
 
             # Check if goal has been successfully sent to the joint trajectory server
             pose_sent = False
