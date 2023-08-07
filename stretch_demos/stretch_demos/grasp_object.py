@@ -219,28 +219,28 @@ class GraspObjectNode(hm.HelloNode):
 
         self.callback_group = ReentrantCallbackGroup()
 
-        self.debug_directory = self.node.get_parameter('debug_directory').value
+        self.debug_directory = self.get_parameter('debug_directory').value
         self.logger.info('Using the following directory for debugging files: {0}'.format(self.debug_directory))
 
-        self.dryrun = self.node.get_parameter('dryrun').value
+        self.dryrun = self.get_parameter('dryrun').value
 
-        self.joint_states_subscriber = self.node.create_subscription(JointState, '/stretch/joint_states', callback=self.joint_states_callback, qos_profile=1, callback_group=self.callback_group)
+        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', callback=self.joint_states_callback, qos_profile=1, callback_group=self.callback_group)
 
-        self.trigger_grasp_object_service = self.node.create_service(Trigger,
+        self.trigger_grasp_object_service = self.create_service(Trigger,
                                                                 '/grasp_object/trigger_grasp_object',
                                                                 callback=self.trigger_grasp_object_callback,
                                                                 callback_group=self.callback_group)
 
-        self.trigger_reach_until_contact_service = self.node.create_client(Trigger, '/funmap/trigger_reach_until_contact', callback_group=self.callback_group)
+        self.trigger_reach_until_contact_service = self.create_client(Trigger, '/funmap/trigger_reach_until_contact', callback_group=self.callback_group)
         self.logger.info("Waiting for /funmap/trigger_reach_until_contact' service")
         self.trigger_reach_until_contact_service.wait_for_service()
-        self.logger.info('Node ' + self.node.get_name() + ' connected to /funmap/trigger_reach_until_contact.')
+        self.logger.info('Node ' + self.get_name() + ' connected to /funmap/trigger_reach_until_contact.')
 
 
-        self.trigger_lower_until_contact_service = self.node.create_client(Trigger, '/funmap/trigger_lower_until_contact', callback_group=self.callback_group)
+        self.trigger_lower_until_contact_service = self.create_client(Trigger, '/funmap/trigger_lower_until_contact', callback_group=self.callback_group)
         self.logger.info("Waiting for /funmap/trigger_lower_until_contact' service")
         self.trigger_lower_until_contact_service.wait_for_service()
-        self.logger.info('Node ' + self.node.get_name() + ' connected to /funmap/trigger_lower_until_contact.')
+        self.logger.info('Node ' + self.get_name() + ' connected to /funmap/trigger_lower_until_contact.')
 
         self.logger.info("Grasp object node is ready!")
 
