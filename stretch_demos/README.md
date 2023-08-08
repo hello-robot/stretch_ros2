@@ -69,6 +69,25 @@ ros2 run stretch_core keyboard_teleop --ros-args -p clean_surface_on:=True
 ```
 Then, press the key with the / and ? on it while in the terminal to initiate a surface cleaning attempt.
 
+### Open Drawer Demo
+
+For this demonstration, the robot will use contact detection with its arm to attempt to open a drawer. Prior to running the demo, you should move the robot so that its workspace will be able to move its arm towards a drawer while extending its arm. 
+
+The robot will not use the camera to detect the drawer, so ensure that there are no obstacles in the way.
+
+Now that the robot is ready, launch the demo with the following command:
+
+```
+ros2 launch stretch_demos open_drawer.launch.py
+```
+
+Launch the keyboard teleop node with the open_drawer param set as True in a separate terminal:
+```
+ros2 run stretch_core keyboard_teleop --ros-args -p open_drawer_on:=True
+```
+Then, press the 'z' or 'Z' key while in the terminal to initiate an open drawer with downward hook motion.
+Alternatively, press the '.' or '>' key while in the terminal to initiate an open drawer with upward hook motion.
+
 <!-- ### Autodocking with Nav Stack
 
 For this demo, the robot will look for a docking station with an ArUco marker, align itself to the docking station using the ROS Nav Stack, and then back up into the docking station using an error-based controller. Prior to running this demo, you should stow the robot, ensure that you have a pregenerated map and the docking station is resting against a wall. Go through [this](https://docs.hello-robot.com/0.2/stretch-tutorials/ros1/autodocking_nav_stack/) tutorial to understand how the demo works.
