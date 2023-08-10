@@ -1408,7 +1408,6 @@ class FunmapNode(hm.HelloNode):
 
 def main():
     try:
-        rclpy.init()
         node = FunmapNode()
         node.main()
     except KeyboardInterrupt:
