@@ -193,7 +193,7 @@ class ContactDetector():
                 if position is not None:
                     new_target = self.get_position() + move_increment
                     pose = {joint_name: new_target}
-                    move_to_pose(pose, return_before_done=True)
+                    move_to_pose(pose, blocking=False)
                 time.sleep(0.2)
 
             if self.is_in_contact():
@@ -205,7 +205,7 @@ class ContactDetector():
                 else:
                     new_target = self.get_position() - 0.001  # - 0.002
                 pose = {joint_name: new_target}
-                move_to_pose(pose, return_before_done=False)
+                move_to_pose(pose, blocking=True)
                 self.logger.info(
                     'backing off after contact: moving away from surface to decrease force')
                 success = True
@@ -219,10 +219,10 @@ class ContactDetector():
         return success, message
 
 
-class FunmapNode(Node):
+class FunmapNode(hm.HelloNode):
 
     def __init__(self):
-        super().__init__('stretch_funmap')
+        hm.HelloNode.__init__(self)
 
         self.map_filename = None
         self.debug_directory = None
@@ -243,12 +243,6 @@ class FunmapNode(Node):
         self.wrist_position = None
 
         self.use_hook = False  # True #False
-
-        self.logger = self.get_logger()
-        self.clock = self.get_clock()
-        self.move_to_pose_complete = False
-        self.unsuccessful_status = [-100, 100, FollowJointTrajectory.Result.PATH_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.INVALID_JOINTS, FollowJointTrajectory.Result.INVALID_GOAL, FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED, FollowJointTrajectory.Result.OLD_HEADER_TIMESTAMP]
-        self._get_result_future = None
 
         self.point_cloud_lock = threading.Lock()
         self.map_odom_tf_lock = threading.Lock()
@@ -469,7 +463,7 @@ class FunmapNode(Node):
                     safe_target_m = safe_target_m + 0.03
                 if safe_target_m > self.wrist_position:
                     pose = {'wrist_extension': safe_target_m}
-                    self.move_to_pose(pose, return_before_done=False)
+                    self.move_to_pose(pose, blocking=True)
 
                 # target depth within the surface
                 target_depth_m = 0.08
@@ -1289,100 +1283,6 @@ class FunmapNode(Node):
             self.logger.error(message)
         return result
 
-    def goal_response(self, future: rclpy.task.Future):
-        if not future or not future.result():
-            # self.logger.info("Future goal result is not set")
-            return False
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.move_to_pose_complete = True
-            return
-
-        self._get_result_future = goal_handle.get_result_async()
-
-    def get_result(self, future: rclpy.task.Future):
-        if not future or not future.result():
-            return
-
-        result = future.result().result
-        error_code = result.error_code
-        # self.logger.info('The Action Server has finished, it returned: "%s"' % str(error_code))
-        self.move_to_pose_complete = True
-    
-    def move_to_pose(self, pose, return_before_done=False, custom_contact_thresholds=False):
-        self.move_to_pose_complete = False
-        joint_names = [key for key in pose]
-        point = JointTrajectoryPoint()
-        point.time_from_start = Duration(seconds=0.0).to_msg()
-
-        trajectory_goal = FollowJointTrajectory.Goal()
-        trajectory_goal.goal_time_tolerance = Duration(seconds=1.0).to_msg()
-        trajectory_goal.trajectory.joint_names = joint_names
-        if not custom_contact_thresholds: 
-            joint_positions = [pose[key] for key in joint_names]
-            point.positions = joint_positions
-            trajectory_goal.trajectory.points = [point]
-        else:
-            pose_correct = all([len(pose[key])==2 for key in joint_names])
-            if not pose_correct:
-                self.logger.error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
-                return
-            joint_positions = [pose[key][0] for key in joint_names]
-            joint_efforts = [pose[key][1] for key in joint_names]
-            point.positions = joint_positions
-            point.effort = joint_efforts
-            trajectory_goal.trajectory.points = [point]
-        trajectory_goal.trajectory.header.stamp = self.get_clock().now().to_msg()
-        self._send_goal_future = self.trajectory_client.send_goal_async(trajectory_goal)
-
-        if not return_before_done:
-            time_start = time.time()
-            self._get_result_future = None
-
-            while not self._get_result_future and (time.time() - time_start) < 10:
-                self.goal_response(self._send_goal_future)
-
-            if not self._get_result_future:
-                return self._send_goal_future
-
-            time_start = time.time()
-            while not self.move_to_pose_complete and (time.time() - time_start) < 10:
-                self.get_result(self._get_result_future)
-        
-        return self._send_goal_future
-
-    def get_robot_floor_pose_xya(self, floor_frame='odom'):
-        # Returns the current estimated x, y position and angle of the
-        # robot on the floor. This is typically called with respect to
-        # the odom frame or the map frame. x and y are in meters and
-        # the angle is in radians.
-        
-        # Navigation planning is performed with respect to a height of
-        # 0.0, so the heights of transformed points are 0.0. The
-        # simple method of handling the heights below assumes that the
-        # frame is aligned such that the z axis is normal to the
-        # floor, so that ignoring the z coordinate is approximately
-        # equivalent to projecting a point onto the floor.
-        
-        # Query TF2 to obtain the current estimated transformation
-        # from the robot's base_link frame to the frame.
-        robot_to_odom_mat, timestamp = hm.get_p1_to_p2_matrix('base_link', floor_frame, self.tf2_buffer)
-        print('robot_to_odom_mat =', robot_to_odom_mat)
-        print('timestamp =', timestamp)
-
-        # Find the robot's current location in the frame.
-        r0 = np.array([0.0, 0.0, 0.0, 1.0])
-        print('r0 =', r0)
-        r0 = np.matmul(robot_to_odom_mat, r0)[:2]
-
-        # Find the current angle of the robot in the frame.
-        r1 = np.array([1.0, 0.0, 0.0, 1.0])
-        r1 = np.matmul(robot_to_odom_mat, r1)[:2]
-        robot_forward = r1 - r0
-        r_ang = np.arctan2(robot_forward[1], robot_forward[0])
-
-        return [r0[0], r0[1], r_ang], timestamp
-
     def publish_map_to_odom_tf(self):
         while rclpy.ok():
             with self.map_odom_tf_lock:
@@ -1391,10 +1291,13 @@ class FunmapNode(Node):
                 time.sleep(0.2)
 
     def main(self):
-        self.declare_parameter('debug_directory', '')
+        hm.HelloNode.main(self, 'funmap', 'funmap')
+        
+        self.logger = self.get_logger()
+        self.clock = self.get_clock()
+        
         self.debug_directory = self.get_parameter('debug_directory').value
 
-        self.declare_parameter('map_yaml', '')
         self.map_filename = self.get_parameter('map_yaml').value
 
         self.merged_map = None
@@ -1485,45 +1388,12 @@ class FunmapNode(Node):
             JointState, '/stretch/joint_states', self.joint_states_callback, 1, callback_group=self.callback_group)
 
         self.move_base = nv.MoveBase(self, self.debug_directory)
-        
-        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
-        server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
-        if not server_reached:
-            self.logger.error('Unable to connect to arm action server. Timeout exceeded.')
-            sys.exit()
-
-        self.tf2_buffer = tf2_ros.Buffer()
-        self.tf2_listener = tf2_ros.TransformListener(self.tf2_buffer, self)
-
-        self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 1, callback_group=self.callback_group)
-        # self.point_cloud_pub = self.create_publisher(PointCloud2, '/funmap/point_cloud2', 1)
-
-        self.stop_the_robot_service = self.create_client(Trigger, '/stop_the_robot', callback_group=self.callback_group)
-        while not self.stop_the_robot_service.wait_for_service(timeout_sec=2.0):
-            self.get_logger().info("Waiting on '/stop_the_robot' service...")
-        self.logger.info('Node ' + self.get_name() + ' connected to /stop_the_robot service.')
 
         hz = 5.0
         self.rate = self.create_rate(hz, self.get_clock())
 
-        # Do not start until a point cloud has been received
-        with self.point_cloud_lock:
-            point_cloud_msg = self.point_cloud
-        self.get_logger().info('Node ' + self.get_name() + ' waiting to receive first point cloud.')
-        while point_cloud_msg is None:
-            # self.rate.sleep()
-            time.sleep(0.2)
-            # self.get_logger().info("Spinning...")
-            rclpy.spin_once(self)
-            with self.point_cloud_lock:
-                point_cloud_msg = self.point_cloud
-        self.get_logger().info('Node ' + self.get_name() + ' received first point cloud, so continuing.')
-
         with self.map_odom_tf_lock:
             self.map_to_odom_transform_mat = np.identity(4)
-
-        executor = MultiThreadedExecutor(num_threads=6)
-        executor.add_node(self)
 
         self.map_odom_tf_thread = threading.Thread(target=self.publish_map_to_odom_tf)
         self.map_odom_tf_thread.start()
@@ -1531,7 +1401,7 @@ class FunmapNode(Node):
         self.publish_map_point_cloud_thread = threading.Thread(target=self.publish_map_point_cloud)
         self.publish_map_point_cloud_thread.start()
 
-        executor.spin()
+        self.new_thread.join()
 
         self.map_odom_tf_thread.join()
         self.publish_map_point_cloud_thread.join()
