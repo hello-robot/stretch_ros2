@@ -292,17 +292,15 @@ class FunmapNode(hm.HelloNode):
             hm.get_lift_state, lift_contact_func)
 
     def publish_map_point_cloud(self):
-        while rclpy.ok():
-            if self.merged_map is not None:
-                max_height_point_cloud = self.merged_map.max_height_im.to_point_cloud()
-                self.point_cloud_pub.publish(max_height_point_cloud)
+        if self.merged_map is not None:
+            max_height_point_cloud = self.merged_map.max_height_im.to_point_cloud()
+            self.point_cloud_pub.publish(max_height_point_cloud)
 
-                pub_voi = True
-                if pub_voi:
-                    marker = self.merged_map.max_height_im.voi.get_ros_marker(max_height_point_cloud.header.stamp,
-                        duration=1000.0)
-                    self.voi_marker_pub.publish(marker)
-            time.sleep(0.2)
+            pub_voi = True
+            if pub_voi:
+                marker = self.merged_map.max_height_im.voi.get_ros_marker(max_height_point_cloud.header.stamp,
+                    duration=1000.0)
+                self.voi_marker_pub.publish(marker)
 
     def publish_nav_plan_markers(self, line_segment_path, image_to_points_mat, clicked_frame_id):
         path_height_m = 0.2
@@ -1275,11 +1273,9 @@ class FunmapNode(hm.HelloNode):
         return result
 
     def publish_map_to_odom_tf(self):
-        while rclpy.ok():
-            with self.map_odom_tf_lock:
-                self.tf2_broadcaster.sendTransform(
-                create_map_to_odom_transform(self.map_to_odom_transform_mat, self.clock.now().to_msg()))
-                time.sleep(0.2)
+        with self.map_odom_tf_lock:
+            self.tf2_broadcaster.sendTransform(
+            create_map_to_odom_transform(self.map_to_odom_transform_mat, self.clock.now().to_msg()))
 
     def main(self):
         hm.HelloNode.main(self, 'funmap', 'funmap')
@@ -1381,16 +1377,15 @@ class FunmapNode(hm.HelloNode):
         self.move_base = nv.MoveBase(self, self.debug_directory)
 
         hz = 5.0
+        timer_period = 1/hz
         self.rate = self.create_rate(hz, self.get_clock())
 
         with self.map_odom_tf_lock:
             self.map_to_odom_transform_mat = np.identity(4)
 
-        self.map_odom_tf_thread = threading.Thread(target=self.publish_map_to_odom_tf)
-        self.map_odom_tf_thread.start()
+        self.map_odom_tf_timer = self.create_timer(timer_period, self.publish_map_to_odom_tf, callback_group=self.callback_group)
 
-        self.publish_map_point_cloud_thread = threading.Thread(target=self.publish_map_point_cloud)
-        self.publish_map_point_cloud_thread.start()
+        self.publish_map_point_cloud_timer = self.create_timer(timer_period, self.publish_map_point_cloud, callback_group=self.callback_group)
 
         self.new_thread.join()
 
