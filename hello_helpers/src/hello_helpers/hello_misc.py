@@ -172,8 +172,8 @@ class HelloNode(Node):
             return
         
         if self.mode.data not in ['trajectory', 'position']:
-            self.node.get_logger().warn("Currently in {} mode. Recommend switching either to position or trajectory mode".format(self.mode.data))
-            self.node.get_logger().warn("Commanding joint trajectory server in position mode")
+            self.get_logger().warn("Currently in {} mode. Recommend switching either to position or trajectory mode".format(self.mode.data))
+            self.get_logger().warn("Commanding joint trajectory server in position mode")
         
         joint_names = [key for key in pose]
         point1 = JointTrajectoryPoint()
@@ -200,7 +200,7 @@ class HelloNode(Node):
         else:
             pose_correct = all([len(pose[key])==2 for key in joint_names])
             if not pose_correct:
-                self.node.get_logger().error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
+                self.get_logger().error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
                 return
             joint_positions = [pose[key][0] for key in joint_names]
             joint_efforts = [pose[key][1] for key in joint_names]
@@ -219,7 +219,7 @@ class HelloNode(Node):
         try:
             return self.tf2_buffer.lookup_transform(from_frame, to_frame, Time(), timeout=Duration(seconds=2.0))
         except:
-            self.node.get_logger().warn("Could not find the transform between frames {} and {}".format(from_frame, to_frame))
+            self.get_logger().warn("Could not find the transform between frames {} and {}".format(from_frame, to_frame))
 
     def home_the_robot(self):
         if self.dryrun:
@@ -229,7 +229,7 @@ class HelloNode(Node):
         trigger_result = self.home_the_robot_service.call_async(trigger_request)
         while not trigger_result.done():
             time.sleep(0.2)
-        self.node.get_logger().debug(f"{self.node_name}'s HelloNode.home_the_robot: got message {trigger_result.done()}")
+        self.get_logger().debug(f"{self.node_name}'s HelloNode.home_the_robot: got message {trigger_result.done()}")
         return trigger_result.done()
 
     def stow_the_robot(self):
@@ -240,7 +240,7 @@ class HelloNode(Node):
         trigger_result = self.stow_the_robot_service.call_async(trigger_request)
         while not trigger_result.done():
             time.sleep(0.2)
-        self.node.get_logger().debug(f"{self.node_name}'s HelloNode.stow_the_robot: got message {trigger_result.done()}")
+        self.get_logger().debug(f"{self.node_name}'s HelloNode.stow_the_robot: got message {trigger_result.done()}")
         return trigger_result.done()
 
     def stop_the_robot(self):
@@ -248,7 +248,7 @@ class HelloNode(Node):
         trigger_result = self.stop_the_robot_service.call_async(trigger_request)
         while not trigger_result.done():
             time.sleep(0.2)
-        self.node.get_logger().debug(f"{self.node_name}'s HelloNode.stop_the_robot: got message {trigger_result.done()}")
+        self.get_logger().debug(f"{self.node_name}'s HelloNode.stop_the_robot: got message {trigger_result.done()}")
         return trigger_result.done()
     
     def switch_to_trajectory_mode(self):
@@ -256,7 +256,7 @@ class HelloNode(Node):
         trigger_result = self.switch_to_trajectory_mode_service.call_async(trigger_request)
         while not trigger_result.done():
             time.sleep(0.2)
-        self.node.get_logger().debug(f"{self.node_name}'s HelloNode.switch_to_trajectory_mode: got message {trigger_result.done()}")
+        self.get_logger().debug(f"{self.node_name}'s HelloNode.switch_to_trajectory_mode: got message {trigger_result.done()}")
         return trigger_result.done()
     
     def switch_to_position_mode(self):
@@ -264,7 +264,7 @@ class HelloNode(Node):
         trigger_result = self.switch_to_position_mode_service.call_async(trigger_request)
         while not trigger_result.done():
             time.sleep(0.2)
-        self.node.get_logger().debug(f"{self.node_name}'s HelloNode.switch_to_position_mode: got message {trigger_result.done()}")
+        self.get_logger().debug(f"{self.node_name}'s HelloNode.switch_to_position_mode: got message {trigger_result.done()}")
         return trigger_result.done()
     
     def switch_to_navigation_mode(self):
@@ -272,11 +272,11 @@ class HelloNode(Node):
         trigger_result = self.switch_to_navigation_mode_service.call_async(trigger_request)
         while not trigger_result.done():
             time.sleep(0.2)
-        self.node.get_logger().debug(f"{self.node_name}'s HelloNode.switch_to_navigation_mode: got message {trigger_result.done()}")
+        self.get_logger().debug(f"{self.node_name}'s HelloNode.switch_to_navigation_mode: got message {trigger_result.done()}")
         return trigger_result.done()
 
-    def get_logger(self):
-        return self.node.get_logger()
+    # def get_logger(self):
+    #     return self.get_logger()
     
     def get_tool(self):
         assert(self.tool is not None)
@@ -284,73 +284,74 @@ class HelloNode(Node):
     
     def main(self, node_name, node_topic_namespace, wait_for_first_pointcloud=True):
         rclpy.init()
-        self.node = rclpy.create_node(node_name)
+        super().__init__(node_name, allow_undeclared_parameters=True, automatically_declare_parameters_from_overrides=True)
+        
         self.node_name = node_name
-        self.node.get_logger().info("{0} started".format(self.node_name))
+        self.get_logger().info("{0} started".format(self.node_name))
         
         executor = MultiThreadedExecutor()
-        executor.add_node(self.node)
+        executor.add_node(self)
         
         self.new_thread = threading.Thread(target=self.spin_thread, args=(executor, ), daemon=True)
         self.new_thread.start()
 
         reentrant_cb = ReentrantCallbackGroup()
 
-        self.trajectory_client = ActionClient(self.node, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory', callback_group=reentrant_cb)
+        self.trajectory_client = ActionClient(self, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory', callback_group=reentrant_cb)
         server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
         if not server_reached:
-            self.node.get_logger().error('Unable to connect to arm action server. Timeout exceeded.')
+            self.get_logger().error('Unable to connect to arm action server. Timeout exceeded.')
             sys.exit()
         
         self.tf2_buffer = tf2_ros.Buffer()
-        self.tf2_listener = tf2_ros.TransformListener(self.tf2_buffer, self.node)
+        self.tf2_listener = tf2_ros.TransformListener(self.tf2_buffer, self)
         
-        self.tool_subscriber = self.node.create_subscription(String, '/tool', self.tool_callback, 10, callback_group=reentrant_cb)
+        self.tool_subscriber = self.create_subscription(String, '/tool', self.tool_callback, 10, callback_group=reentrant_cb)
 
-        self.joint_states_subscriber = self.node.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10, callback_group=reentrant_cb)
-        self.mode_subscriber = self.node.create_subscription(String, '/mode', self.mode_callback, 10, callback_group=reentrant_cb)
+        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 10, callback_group=reentrant_cb)
+        self.mode_subscriber = self.create_subscription(String, '/mode', self.mode_callback, 10, callback_group=reentrant_cb)
         
-        self.point_cloud_subscriber = self.node.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 10, callback_group=reentrant_cb)
-        self.point_cloud_pub = self.node.create_publisher(PointCloud2, '/' + node_topic_namespace + '/point_cloud2', 10, callback_group=reentrant_cb)
+        self.point_cloud_subscriber = self.create_subscription(PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 10, callback_group=reentrant_cb)
+        self.point_cloud_pub = self.create_publisher(PointCloud2, '/' + node_topic_namespace + '/point_cloud2', 10, callback_group=reentrant_cb)
 
-        self.home_the_robot_service = self.node.create_client(Trigger, '/home_the_robot', callback_group=reentrant_cb)
+        self.home_the_robot_service = self.create_client(Trigger, '/home_the_robot', callback_group=reentrant_cb)
         while not self.home_the_robot_service.wait_for_service(timeout_sec=2.0):
-            self.node.get_logger().info("Waiting on '/home_the_robot' service...")
-        self.node.get_logger().info('Node ' + self.node_name + ' connected to /home_the_robot service.')
+            self.get_logger().info("Waiting on '/home_the_robot' service...")
+        self.get_logger().info('Node ' + self.node_name + ' connected to /home_the_robot service.')
 
-        self.stow_the_robot_service = self.node.create_client(Trigger, '/stow_the_robot', callback_group=reentrant_cb)
+        self.stow_the_robot_service = self.create_client(Trigger, '/stow_the_robot', callback_group=reentrant_cb)
         while not self.stow_the_robot_service.wait_for_service(timeout_sec=2.0):
-            self.node.get_logger().info("Waiting on '/stow_the_robot' service...")
-        self.node.get_logger().info('Node ' + self.node_name + ' connected to /stow_the_robot service.')
+            self.get_logger().info("Waiting on '/stow_the_robot' service...")
+        self.get_logger().info('Node ' + self.node_name + ' connected to /stow_the_robot service.')
         
-        self.stop_the_robot_service = self.node.create_client(Trigger, '/stop_the_robot', callback_group=reentrant_cb)
+        self.stop_the_robot_service = self.create_client(Trigger, '/stop_the_robot', callback_group=reentrant_cb)
         while not self.stop_the_robot_service.wait_for_service(timeout_sec=2.0):
-            self.node.get_logger().info("Waiting on '/stop_the_robot' service...")
-        self.node.get_logger().info('Node ' + self.node_name + ' connected to /stop_the_robot service.')
+            self.get_logger().info("Waiting on '/stop_the_robot' service...")
+        self.get_logger().info('Node ' + self.node_name + ' connected to /stop_the_robot service.')
 
-        self.switch_to_trajectory_mode_service = self.node.create_client(Trigger, '/switch_to_trajectory_mode', callback_group=reentrant_cb)
+        self.switch_to_trajectory_mode_service = self.create_client(Trigger, '/switch_to_trajectory_mode', callback_group=reentrant_cb)
         while not self.switch_to_trajectory_mode_service.wait_for_service(timeout_sec=2.0):
-            self.node.get_logger().info("Waiting on '/switch_to_trajectory_mode' service...")
-        self.node.get_logger().info('Node ' + self.node_name + ' connected to /switch_to_trajectory_mode service.')
+            self.get_logger().info("Waiting on '/switch_to_trajectory_mode' service...")
+        self.get_logger().info('Node ' + self.node_name + ' connected to /switch_to_trajectory_mode service.')
 
-        self.switch_to_position_mode_service = self.node.create_client(Trigger, '/switch_to_position_mode', callback_group=reentrant_cb)
+        self.switch_to_position_mode_service = self.create_client(Trigger, '/switch_to_position_mode', callback_group=reentrant_cb)
         while not self.switch_to_position_mode_service.wait_for_service(timeout_sec=2.0):
-            self.node.get_logger().info("Waiting on '/switch_to_position_mode' service...")
-        self.node.get_logger().info('Node ' + self.node_name + ' connected to /switch_to_position_mode service.')
+            self.get_logger().info("Waiting on '/switch_to_position_mode' service...")
+        self.get_logger().info('Node ' + self.node_name + ' connected to /switch_to_position_mode service.')
 
-        self.switch_to_navigation_mode_service = self.node.create_client(Trigger, '/switch_to_navigation_mode', callback_group=reentrant_cb)
+        self.switch_to_navigation_mode_service = self.create_client(Trigger, '/switch_to_navigation_mode', callback_group=reentrant_cb)
         while not self.switch_to_navigation_mode_service.wait_for_service(timeout_sec=2.0):
-            self.node.get_logger().info("Waiting on '/switch_to_navigation_mode' service...")
-        self.node.get_logger().info('Node ' + self.node_name + ' connected to /switch_to_navigation_mode service.')
+            self.get_logger().info("Waiting on '/switch_to_navigation_mode' service...")
+        self.get_logger().info('Node ' + self.node_name + ' connected to /switch_to_navigation_mode service.')
         
         if wait_for_first_pointcloud:
             # Do not start until a point cloud has been received
             point_cloud_msg = self.point_cloud
-            self.node.get_logger().info('Node ' + node_name + ' waiting to receive first point cloud.')
+            self.get_logger().info('Node ' + node_name + ' waiting to receive first point cloud.')
             while point_cloud_msg is None:
                 time.sleep(0.1)
                 point_cloud_msg = self.point_cloud
-            self.node.get_logger().info('Node ' + node_name + ' received first point cloud, so continuing.')
+            self.get_logger().info('Node ' + node_name + ' received first point cloud, so continuing.')
 
 
 def create_time_string():

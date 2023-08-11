@@ -12,7 +12,6 @@ import scipy.signal as si
 import skimage as sk
 from skimage.morphology import convex_hull_image
 
-from . import max_height_image as mh
 from . import navigation_planning as na
 from .numba_height_image import numba_create_segment_image_uint8
 

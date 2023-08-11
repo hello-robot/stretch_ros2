@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 
-import rclpy
-from rclpy.clock import Clock
-from rclpy.duration import Duration
-import rclpy.logging
-import rclpy.time
-
 from builtin_interfaces.msg import Time
 import ros2_numpy as rn
 import tf_transformations
@@ -21,9 +15,7 @@ import numpy as np
 import scipy.ndimage as nd
 
 from . import merge_maps as mm
-from . import navigation_planning as na
 from . import ros_max_height_image as rm
-from . import segment_max_height_image as sm
 
 def stow_and_lower_arm(node):
     pose = {'joint_gripper_finger_left': -0.15}

@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
 
-from collections import deque
 from copy import deepcopy
 import gzip
-import math
-import struct
-import sys
-import threading
 import yaml
 
 import cv2
 import numpy as np
-from scipy.spatial.transform import Rotation
 
 from . import numba_height_image as nh
-from .numba_create_plane_image import numba_create_plane_image, numba_correct_height_image, transform_original_to_corrected, transform_corrected_to_original
+from .numba_create_plane_image import numba_correct_height_image
 
 class Colormap:
     def __init__(self, colormap=cv2.COLORMAP_HSV):
