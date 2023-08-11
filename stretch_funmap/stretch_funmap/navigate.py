@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 import rclpy
-from rclpy.duration import Duration
-from rclpy.clock import Clock, ClockType
 import rclpy.logging
 import rclpy.task
 
@@ -12,7 +10,6 @@ from std_srvs.srv import Trigger
 
 import hello_helpers.hello_misc as hm
 
-from functools import partial
 import os
 import time
 

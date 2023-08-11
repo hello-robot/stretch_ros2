@@ -8,7 +8,6 @@ from rclpy.time import Time
 import hello_helpers.hello_misc as hm
 import ros2_numpy as rn
 
-import math
 import os
 import time
 
@@ -18,7 +17,6 @@ import scipy.ndimage as nd
 import scipy.signal as si
 import skimage as sk
 
-from . import max_height_image as mh
 from .numba_manipulation_planning import numba_find_base_poses_that_reach_target, numba_check_that_tool_can_deploy
 from .numba_check_line_path import numba_find_contact_along_line_path, numba_find_line_path_on_surface
 from . import ros_max_height_image as rm

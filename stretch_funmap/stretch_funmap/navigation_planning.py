@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-import hello_helpers.hello_misc as hm
-
-import copy
-
 import cv2
 import numpy as np
 import scipy.ndimage as nd
