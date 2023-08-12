@@ -70,6 +70,10 @@ class StretchDriver(Node):
         self.control_modes = ['position', 'navigation', 'trajectory']
         self.prev_runstop_state = None
 
+        self.voltage_history = []
+        self.charging_state_history = [BatteryState.POWER_SUPPLY_STATUS_UNKNOWN] * 10
+        self.charging_state = BatteryState.POWER_SUPPLY_STATUS_UNKNOWN
+
         self.ros_setup()
 
     # MOBILE BASE VELOCITY METHODS ############
@@ -252,20 +256,65 @@ class StretchDriver(Node):
         odom.twist.twist.angular.z = theta_vel
         self.odom_pub.publish(odom)
 
+        ##################################################
+        # obtain battery state
+        pimu_hardware_id = self.robot.pimu.board_info['hardware_id']
+        invalid_reading = float('NaN')
+        v = float(robot_status['pimu']['voltage'])
+        self.voltage_history.append(v)
+        if len(self.voltage_history) > 100:
+            self.voltage_history.pop(0)
+            self.charging_state_history.pop(0)
+            if v > np.mean(self.voltage_history) + 3 * np.std(self.voltage_history):
+                self.charging_state_history.append(BatteryState.POWER_SUPPLY_STATUS_CHARGING)
+            elif v < np.mean(self.voltage_history) - 3 * np.std(self.voltage_history):
+                self.charging_state_history.append(BatteryState.POWER_SUPPLY_STATUS_DISCHARGING)
+            else:
+                self.charging_state_history.append(BatteryState.POWER_SUPPLY_STATUS_UNKNOWN)
+        filtered_charging_state = max(set(self.charging_state_history), key=self.charging_state_history.count)
+        if filtered_charging_state != BatteryState.POWER_SUPPLY_STATUS_UNKNOWN:
+            if pimu_hardware_id == 0:
+                self.charging_state = filtered_charging_state
+            elif pimu_hardware_id == 1:
+                if robot_status['pimu']['charger_connected'] == True and filtered_charging_state == BatteryState.POWER_SUPPLY_STATUS_CHARGING:
+                    self.charging_state = BatteryState.POWER_SUPPLY_STATUS_CHARGING
+                elif robot_status['pimu']['charger_connected'] == False and filtered_charging_state == BatteryState.POWER_SUPPLY_STATUS_DISCHARGING:
+                    self.charging_state = BatteryState.POWER_SUPPLY_STATUS_DISCHARGING
+            elif pimu_hardware_id == 2:
+                if robot_status['pimu']['charger_connected'] == True and filtered_charging_state == BatteryState.POWER_SUPPLY_STATUS_CHARGING:
+                    self.charging_state = BatteryState.POWER_SUPPLY_STATUS_CHARGING
+                elif robot_status['pimu']['charger_connected'] == False and filtered_charging_state == BatteryState.POWER_SUPPLY_STATUS_DISCHARGING:
+                    self.charging_state = BatteryState.POWER_SUPPLY_STATUS_DISCHARGING
+
+        i = float(robot_status['pimu']['current'])
+        if self.charging_state == BatteryState.POWER_SUPPLY_STATUS_CHARGING:
+            i = float(robot_status['pimu']['current'])
+        elif self.charging_state == BatteryState.POWER_SUPPLY_STATUS_DISCHARGING:
+            i = -1 * float(robot_status['pimu']['current'])
+
+        # publish battery state
         # TODO: Add way to determine if the robot is charging
         # TODO: Calculate the percentage
         battery_state = BatteryState()
-        invalid_reading = float('NaN')
         battery_state.header.stamp = current_time
-        battery_state.voltage = float(robot_status['pimu']['voltage'])
-        battery_state.current = float(robot_status['pimu']['current'])
+        battery_state.voltage = v
+        battery_state.temperature = invalid_reading
+        battery_state.current = i
         battery_state.charge = invalid_reading
         battery_state.capacity = invalid_reading
-        battery_state.percentage = invalid_reading
         battery_state.design_capacity = 18.0
-        battery_state.present = True
+        battery_state.percentage = invalid_reading
+        battery_state.power_supply_status = self.charging_state
+        battery_state.power_supply_health = BatteryState.POWER_SUPPLY_HEALTH_UNKNOWN
+        battery_state.power_supply_technology = BatteryState.POWER_SUPPLY_TECHNOLOGY_UNKNOWN
+        # misuse the 'present' flag to indicated whether the barrel jack button is pressed (i.e. charger is present, but may or may not be providing power)
+        if pimu_hardware_id == 0:
+            battery_state.present = False
+        elif pimu_hardware_id == 1 or pimu_hardware_id == 2:
+            battery_state.present = robot_status['pimu']['charger_connected']
         self.power_pub.publish(battery_state)
-
+        
+        ##################################################
         # publish homed status
         homed_status = Bool()
         homed_status.data = bool(self.robot.is_calibrated())
