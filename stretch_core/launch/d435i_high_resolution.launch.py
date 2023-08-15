@@ -3,7 +3,6 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, LogInfo
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.conditions import LaunchConfigurationEquals
 
 configurable_parameters = [{'name': 'depth_module.profile',         'default': '1280x720x15', 'description': 'depth module profile'},                           
                            {'name': 'rgb_camera.profile',           'default': '1280x720x15', 'description': 'color image width'},
