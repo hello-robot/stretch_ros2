@@ -2,7 +2,6 @@ import os
 
 import launch
 import launch_pytest
-from launch_pytest.tools import process as process_tools
 import pytest
 
 import rclpy
@@ -21,6 +20,8 @@ from tf2_msgs.msg import TFMessage
 
 from threading import Thread
 from threading import Event
+
+from hello_helpers.hello_misc import HelloNode
 
 
 @pytest.fixture
@@ -79,29 +80,37 @@ def test_check_if_core_topics_published():
 
 @pytest.mark.launch(fixture=launch_description)
 def test_check_if_mode_sevices_callable():
-    rclpy.init()
     try:
-        pass
+        node = HelloNode.quick_create('test_node')
+
+        navigation_mode_srv_call = node.switch_to_navigation_mode()
+        assert navigation_mode_srv_call == True
+
+        trajectory_mode_srv_call = node.switch_to_trajectory_mode()
+        assert trajectory_mode_srv_call == True
+
+        position_mode_srv_call = node.switch_to_position_mode()
+        assert position_mode_srv_call == True
+
     finally:
         rclpy.shutdown()
 
 @pytest.mark.launch(fixture=launch_description)
 def test_check_if_robot_sevices_callable():
-    rclpy.init()
     try:
-        pass
+        node = HelloNode.quick_create('test_node')
+
+        home_robot_srv_call = node.home_the_robot()
+        assert home_robot_srv_call == True
+
+        stow_robot_srv_call = node.stow_the_robot()
+        assert stow_robot_srv_call == True
+
+        stop_robot_srv_call = node.stop_the_robot()
+        assert stop_robot_srv_call == True
     finally:
         rclpy.shutdown()
 
-@pytest.mark.launch(fixture=launch_description)
-def test_read_stdout(stretch_driver_proc, launch_context):
-    def validate_output(output):
-        return output == 'this will never happen'
-    assert not process_tools.wait_for_output_sync(
-        launch_context, stretch_driver_proc, validate_output, timeout=0.1)
-    yield
-    # this is executed after launch service shutdown
-    assert stretch_driver_proc.return_code == 0
 
 class MakeTestNode(Node):
 
@@ -115,7 +124,7 @@ class MakeTestNode(Node):
         self.odom_msg_event_object = Event()
         self.tool_msg_event_object = Event()
         self.tf_msg_event_object = Event()
-
+    
     def start_subscribers(self):
         # Create subscribers
         self.battery_subscription = self.create_subscription(
