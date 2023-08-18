@@ -29,7 +29,7 @@ def aruco_detection_proc():
         )
 
 @pytest.fixture
-def aruco_rosbag_proc():
+def d435i_high_res_proc():
     # Launch a process to test
     return IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
@@ -39,11 +39,11 @@ def aruco_rosbag_proc():
 
 # This function specifies the processes to be run for our test.
 @launch_pytest.fixture
-def launch_description(aruco_detection_proc, aruco_rosbag_proc):
+def launch_description(aruco_detection_proc, d435i_high_res_proc):
     """Launch process to run aruco detection."""
     return launch.LaunchDescription([
         aruco_detection_proc,
-        aruco_rosbag_proc,
+        d435i_high_res_proc,
         # Tell launch when to start the test
         # If no ReadyToTest action is added, one will be appended automatically.
         launch_pytest.actions.ReadyToTest()
