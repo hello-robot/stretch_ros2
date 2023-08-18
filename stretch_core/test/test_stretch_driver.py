@@ -1,4 +1,5 @@
 import os
+import time
 
 import launch
 import launch_pytest
@@ -45,7 +46,7 @@ def launch_description(stretch_driver_proc):
     ])
 
 @pytest.mark.launch(fixture=launch_description)
-def test_check_if_core_topics_published():
+def test_core_topics_published():
     rclpy.init()
     try:
         node = MakeTestNode('test_node')
@@ -79,7 +80,28 @@ def test_check_if_core_topics_published():
         rclpy.shutdown()
 
 @pytest.mark.launch(fixture=launch_description)
-def test_check_if_mode_sevices_callable():
+def test_joint_states_rate():
+    rclpy.init()
+    try:
+        node = MakeTestNode('test_node')
+        node.start_subscribers()
+
+        joint_state_msgs_received_flag = node.joint_state_msg_event_object.wait(timeout=5.0)
+        assert joint_state_msgs_received_flag, 'Did not receive aruco marker array msg!'
+    
+        ts = time.time()
+        node.count_joint_state = 0
+        while rclpy.ok() and time.time() - ts < 1.0:
+            pass
+        count_joint_state = node.count_joint_state
+        
+        assert count_joint_state >= 14, 'Joint states detection frequency is: {0}Hz'.format(count_joint_state)
+
+    finally:
+        rclpy.shutdown()
+
+@pytest.mark.launch(fixture=launch_description)
+def test_mode_sevices_callable():
     try:
         node = HelloNode.quick_create('test_node')
 
@@ -96,7 +118,7 @@ def test_check_if_mode_sevices_callable():
         rclpy.shutdown()
 
 @pytest.mark.launch(fixture=launch_description)
-def test_check_if_robot_sevices_callable():
+def test_robot_sevices_callable():
     try:
         node = HelloNode.quick_create('test_node')
 
@@ -124,6 +146,7 @@ class MakeTestNode(Node):
         self.odom_msg_event_object = Event()
         self.tool_msg_event_object = Event()
         self.tf_msg_event_object = Event()
+        self.count_joint_state = 0
     
     def start_subscribers(self):
         # Create subscribers
@@ -195,6 +218,7 @@ class MakeTestNode(Node):
 
     def joint_state_subscriber_callback(self, data):
         self.joint_state_msg_event_object.set()
+        self.count_joint_state += 1
 
     def is_homed_subscriber_callback(self, data):
         self.is_homed_msg_event_object.set()
