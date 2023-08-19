@@ -5,19 +5,17 @@ import rclpy
 import cv2
 import numpy as np
 import math
-import ctypes
 import click
 
 from rclpy.node import Node
 from rclpy.duration import Duration
-from builtin_interfaces.msg import Time
 
 import message_filters
 from std_msgs.msg import Header
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 from geometry_msgs.msg import TransformStamped
-# from sensor_msgs_py import point_cloud2
+from sensor_msgs_py import point_cloud2
 from sensor_msgs.msg import PointCloud2, PointField
 from visualization_msgs.msg import Marker
 from visualization_msgs.msg import MarkerArray
@@ -32,8 +30,6 @@ from hello_helpers.hello_misc import compare_versions
 import struct
 import cv2.aruco as aruco
 import hello_helpers.fit_plane as fp
-import threading
-from collections import deque
 
 
 class ArucoMarker:
@@ -750,49 +746,7 @@ class DetectArucoNode(Node):
         rgba = struct.unpack('I', struct.pack('BBBB', b, g, r, a))[0]
         points = [[x, y, z, rgba] for x, y, z in self.all_points]
         
-        # TODO: The following code chunk is a substitute for the create_cloud method
-        # in point_cloud2.py file in sensor_msgs in ROS 1; no equivalent in ROS 2
-        # Check 'from sensor_msgs import point_cloud2' in ROS 1
-        ###############
-        is_bigendian = False
-        field_names = None
-        _DATATYPES = {}
-
-        fmt = '>' if is_bigendian else '<'
-        offset = 0
-        for field in (f for f in sorted(fields, key=lambda f: f.offset) if field_names is None or f.name in field_names):
-            if offset < field.offset:
-                fmt += 'x' * (field.offset - offset)
-                offset = field.offset
-            if field.datatype not in _DATATYPES:
-                print('Skipping unknown PointField datatype [%d]' % field.datatype, file=sys.stderr)
-            else:
-                datatype_fmt, datatype_length = _DATATYPES[field.datatype]
-                fmt    += field.count * datatype_fmt
-                offset += field.count * datatype_length
-        cloud_struct = struct.Struct(fmt)
-
-        buff = ctypes.create_string_buffer(cloud_struct.size * len(points))
-
-        point_step, pack_into = cloud_struct.size, cloud_struct.pack_into
-        offset = 0
-
-        for p in points:
-            pack_into(buff, offset, *p)
-            offset += point_step
-        ###############
-
-        point_cloud = PointCloud2(
-                        header=header,
-                        height=1,
-                        width=len(points),
-                        is_dense=False,
-                        is_bigendian=False,
-                        fields=fields,
-                        point_step=cloud_struct.size,
-                        row_step=cloud_struct.size * len(points),
-                        data=buff.raw)
-
+        point_cloud = point_cloud2.create_cloud(header, fields, points)
         self.visualize_point_cloud_pub.publish(point_cloud)
         self.all_points = []
 
