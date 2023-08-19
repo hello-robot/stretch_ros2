@@ -37,6 +37,8 @@
   <depend>trajectory_msgs</depend>
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>sensor_msgs_py</depend>
   <depend>std_srvs</depend>
   <depend>tf_transformations</depend>
   <depend>tf2_ros</depend>
