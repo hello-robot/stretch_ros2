@@ -113,6 +113,89 @@ This service can put Stretch into runstop or take Stretch out of runstop. It's c
 
 **Deprecated:** This service has been renamed to [home_the_robot](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html) because we often use the terms "calibrate" or "calibration" in context of [URDF calibrations](../stretch_calibration/README.md), whereas this service homes the robot's encoders. -->
 
+### [keyboard_teleop](./stretch_core/keyboard_teleop.py)
+
+#### Parameters
+##### mapping_on
+
+Parameter to enable various [FUNMAP](../stretch_funmap/stretch_funmap/funmap.py) mapping related capabilities like head and drive scan, global and local localization, aligning with a nearby cliff, and executing a motion until contact from stretch_funmap.
+
+##### hello_world_on
+
+Parameter to enable the [hello world](../stretch_demos/stretch_demos/hello_world.py) demo from stretch_demos.
+
+##### open_drawer_on
+
+Parameter to enable the [open drawer](../stretch_demos/stretch_demos/open_drawer.py) demo from stretch_demos.
+
+##### clean_surface_on
+
+Parameter to enable the [clean surface](../stretch_demos/stretch_demos/clean_surface.py) demo from stretch_demos.
+
+##### grasp_object_on
+
+Parameter to enable the [grasp object](../stretch_demos/stretch_demos/grasp_object.py) demo from stretch_demos.
+
+##### handover_object_on
+
+Parameter to enable the [handover object](../stretch_demos/stretch_demos/handover_object.py) demo from stretch_demos.
+
+#### Subscribed Services
+##### /funmap/trigger_head_scan ([std_srvs/Trigger](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html))
+
+This service client can be called to trigger a head scan while running keyboard teleop along with FUNMAP.
+
+##### /funmap/trigger_drive_to_scan ([std_srvs/Trigger](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html))
+
+This service client can be called to trigger a drive scan while running keyboard teleop along with FUNMAP.
+
+##### /funmap/trigger_global_localization ([std_srvs/Trigger](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html))
+
+This service client can be called to trigger global localization while running keyboard teleop along with FUNMAP.
+
+##### /funmap/trigger_local_localization ([std_srvs/Trigger](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html))
+
+This service client can be called to trigger local localization while running keyboard teleop along with FUNMAP.
+
+##### /funmap/trigger_align_with_nearest_cliff ([std_srvs/Trigger](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html))
+
+This service client can be called to enable Stretch to align to the nearest cliff while running keyboard teleop along with FUNMAP.
+
+##### /funmap/trigger_reach_until_contact ([std_srvs/Trigger](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html))
+
+This service client can be called to enable Stretch to reach a surface with its arm and stop upon contact while running keyboard teleop along with FUNMAP. The capability uses Stretch's arm contact sesitivity to implement the reach until contact behavior.
+
+##### /funmap/trigger_lower_until_contact ([std_srvs/Trigger](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html))
+
+This service client can be called to enable Stretch to lower its arm and stop upon contact while running keyboard teleop along with FUNMAP.
+The capability uses Stretch's lift contact sesitivity to implement the lower until contact behavior.
+
+##### /hello_world/trigger_write_hello ([std_srvs/Trigger](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html))
+
+This service client can be called to trigger the hello world demo while running keyboard teleop along with the hello world demo launch.
+
+##### /open_drawer/trigger_open_drawer_down ([std_srvs/Trigger](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html))
+
+This service client can be called to trigger the open drawer demo while running keyboard teleop along with the open drawer demo launch.
+This service is specifically useful when the hook needs to make contact with the drawer while the arm is descending.
+
+##### /open_drawer/trigger_open_drawer_up ([std_srvs/Trigger](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html))
+
+This service client can be called to trigger the open drawer demo while running keyboard teleop along with the open drawer demo launch.
+This service is specifically useful when the hook needs to make contact with the drawer while the arm is ascending.
+
+##### /clean_surface/trigger_clean_surface ([std_srvs/Trigger](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html))
+
+This service client can be called to trigger the clean surface demo while running keyboard teleop along with the clean surface demo launch.
+
+##### /clean_surface/trigger_grasp_surface ([std_srvs/Trigger](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html))
+
+This service client can be called to trigger the grasp object demo while running keyboard teleop along with the grasp object launch.
+
+##### /handover_object/trigger_handover_object ([std_srvs/Trigger](https://docs.ros2.org/latest/api/std_srvs/srv/Trigger.html))
+
+This service client can be called to trigger the handover object demo while running keyboard teleop along with the handover object launch.
+
 ## Testing
 
 Colcon is used to run the integration tests in the */test* folder. The command to run the entire suite of tests is:
