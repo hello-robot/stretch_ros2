@@ -378,12 +378,7 @@ class FunmapNode(hm.HelloNode):
             message=message
         )
 
-    def point_cloud_callback(self, point_cloud):
-        # self.logger.info("New pc2 received")
-        with self.point_cloud_lock:
-            self.point_cloud = point_cloud
-
-    def joint_states_callback(self, joint_states):
+    def joint_states_cb(self, joint_states):
         self.joint_state = joint_states
         self.extension_contact_detector.update(
             joint_states, self.stop_the_robot_service)
@@ -1372,7 +1367,7 @@ class FunmapNode(hm.HelloNode):
             PointCloud2, '/funmap/obstacle_point_cloud2', 1)
 
         self.joint_states_subscriber = self.create_subscription(
-            JointState, '/stretch/joint_states', self.joint_states_callback, 1, callback_group=self.callback_group)
+            JointState, '/stretch/joint_states', self.joint_states_cb, 1, callback_group=self.callback_group)
 
         self.move_base = nv.MoveBase(self, self.debug_directory)
 
