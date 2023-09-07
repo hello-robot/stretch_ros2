@@ -23,7 +23,7 @@ from geometry_msgs.msg import Point
 
 from cv_bridge import CvBridge, CvBridgeError
 
-from tf2_ros.static_transform_broadcaster import TransformBroadcaster
+from tf2_ros.transform_broadcaster import TransformBroadcaster
 from tf_transformations import quaternion_from_matrix
 from hello_helpers.hello_misc import compare_versions
 
