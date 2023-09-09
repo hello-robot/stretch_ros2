@@ -12,6 +12,7 @@ We are beginning to use this port internally at Hello Robot to test it, improve 
     - Stretch driver
     - RPLidar driver
     - D435i driver
+    - ReSpeaker driver
     - Aruco Detection
     - Keyboard teleop (known bugs)
  - Hello Helpers
@@ -22,22 +23,16 @@ We are beginning to use this port internally at Hello Robot to test it, improve 
     - Navigation with nav2
     - Simple Commander Python API
  - Stretch Deep Perception
-    - Object Detection with YOLOv5 using PyTorch
-    - Head Pose Estimation with OpenVINO
  - Stretch Demos
  - Stretch FUNMAP
 
 ## Known Issues
 
 No support for:
- - Stretch Core 
-    - ReSpeaker driver
  - Stretch Dashboard
- - Stretch Deep Perception
  - Stretch Gazebo
  - Stretch OctoMap
  - Stretch RTABMap
- - There is no support for the Respeaker Microphone Array.
 
 ---
 
