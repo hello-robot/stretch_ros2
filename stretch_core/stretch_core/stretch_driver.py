@@ -487,6 +487,7 @@ class StretchDriver(Node):
         def code_to_run():
             self.linear_velocity_mps = 0.0
             self.angular_velocity_radps = 0.0
+            self.gamepad_teleop.gamepad_controller.stop()
         self.change_mode('navigation', code_to_run)
         return True, 'Now in navigation mode.'
 
@@ -498,6 +499,7 @@ class StretchDriver(Node):
         # joint. The frames associated with 'floor_link' and
         # 'base_link' become identical in this mode.
         def code_to_run():
+            self.gamepad_teleop.gamepad_controller.stop()
             self.robot.base.enable_pos_incr_mode()
         self.change_mode('position', code_to_run)
         return True, 'Now in position mode.'
@@ -514,6 +516,7 @@ class StretchDriver(Node):
         def code_to_run():
             try:
                 self.robot.stop_trajectory()
+                self.gamepad_teleop.gamepad_controller.stop()
             except NotImplementedError as e:
                 return False, str(e)
             self.robot.base.first_step = True
@@ -526,8 +529,10 @@ class StretchDriver(Node):
         def code_to_run():
             try:
                 self.robot.stop_trajectory()
+                self.gamepad_teleop.gamepad_controller.start()
             except NotImplementedError as e:
                 return False, str(e)
+            self.gamepad_teleop.do_double_beep()
             self.robot.base.pull_status()
 
         self.change_mode('gamepad', code_to_run)
@@ -585,6 +590,12 @@ class StretchDriver(Node):
 
     def trajectory_mode_service_callback(self, request, response):
         success, message = self.turn_on_trajectory_mode()
+        response.success = success
+        response.message = message
+        return response
+
+    def gamepad_mode_service_callback(self, request, response):
+        success, message = self.turn_on_gamepad_mode()
         response.success = success
         response.message = message
         return response
@@ -811,6 +822,10 @@ class StretchDriver(Node):
         self.switch_to_trajectory_mode_service = self.create_service(Trigger,
                                                                        '/switch_to_trajectory_mode',
                                                                        self.trajectory_mode_service_callback)
+
+        self.switch_to_gamepad_mode_service = self.create_service(Trigger,
+                                                                    '/switch_to_gamepad_mode',
+                                                                    self.gamepad_mode_service_callback)
 
         self.stop_the_robot_service = self.create_service(Trigger,
                                                           '/stop_the_robot',
