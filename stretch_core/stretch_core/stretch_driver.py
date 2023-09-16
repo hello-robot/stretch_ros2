@@ -6,6 +6,7 @@ import numpy as np
 import threading
 from .rwlock import RWLock
 import stretch_body.robot as rb
+from stretch_body import gamepad_teleop
 from stretch_body.hello_utils import ThreadServiceExit
 
 import tf2_ros
@@ -67,13 +68,14 @@ class StretchDriver(Node):
         self.robot_mode_rwlock = RWLock()
         self.robot_mode = None
 
-        self.control_modes = ['position', 'navigation', 'trajectory']
+        self.control_modes = ['position', 'navigation', 'trajectory', 'gamepad']
         self.prev_runstop_state = None
 
         self.voltage_history = []
         self.charging_state_history = [BatteryState.POWER_SUPPLY_STATUS_UNKNOWN] * 10
         self.charging_state = BatteryState.POWER_SUPPLY_STATUS_UNKNOWN
-
+        
+        self.gamepad_teleop = None
         self.ros_setup()
 
     # MOBILE BASE VELOCITY METHODS ############
@@ -96,7 +98,11 @@ class StretchDriver(Node):
         if BACKLASH_DEBUG:
             print('***')
             print('self.backlash_state =', self.backlash_state)
-
+        
+        if self.robot_mode == 'gamepad':
+            self.gamepad_teleop.step()
+            self.robot.push_command()
+            
         # set new mobile base velocities, if appropriate
         # check on thread safety for this with callback that sets velocity command values
         if self.robot_mode == 'navigation':
@@ -516,6 +522,18 @@ class StretchDriver(Node):
         self.change_mode('trajectory', code_to_run)
         return True, 'Now in trajectory mode.'
 
+    def turn_on_gamepad_mode(self):
+        def code_to_run():
+            try:
+                self.robot.stop_trajectory()
+            except NotImplementedError as e:
+                return False, str(e)
+            self.robot.base.pull_status()
+
+        self.change_mode('gamepad', code_to_run)
+        return True, 'Now in gamepad mode.'
+    
+
     # SERVICE CALLBACKS ##############
 
     def stop_the_robot_callback(self, request, response):
@@ -655,6 +673,8 @@ class StretchDriver(Node):
             exit()
         if not self.robot.is_calibrated():
             self.get_logger().warn("Robot not homed. Call /home_the_robot service.")
+        self.gamepad_teleop = gamepad_teleop.GamePadTeleop(self.robot)
+        self.gamepad_teleop.startup()
 
         self.declare_parameter('mode', "position")
         mode = self.get_parameter('mode').value
@@ -668,6 +688,8 @@ class StretchDriver(Node):
             self.turn_on_navigation_mode()
         elif mode == "trajectory":
             self.turn_on_trajectory_mode()
+        elif mode ==  "gamepad":
+            self.turn_on_gamepad_mode()
 
         self.declare_parameter('broadcast_odom_tf', False)
         self.broadcast_odom_tf = self.get_parameter('broadcast_odom_tf').value
@@ -827,6 +849,7 @@ def main():
             joint_trajectory_action.destroy_node()
             node.destroy_node()
     except (KeyboardInterrupt, ThreadServiceExit):
+        node.gamepad_controller.stop()
         node.robot.stop()
 
 
