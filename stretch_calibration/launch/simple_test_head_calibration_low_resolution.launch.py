@@ -26,7 +26,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource([os.path.join(
             get_package_share_directory('stretch_core'), 'launch'),
             '/stretch_driver.launch.py']),
-        launch_arguments={'broadcast_odom_tf': 'true'}.items()
+        launch_arguments={'broadcast_odom_tf': 'True'}.items()
         )
     
     aruco_marker_detector = IncludeLaunchDescription(
