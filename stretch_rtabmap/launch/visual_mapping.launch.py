@@ -19,17 +19,24 @@ def generate_launch_description():
         PythonLaunchDescriptionSource([stretch_core_path, '/launch/stretch_driver.launch.py']),
         launch_arguments={'mode': 'navigation', 'broadcast_odom_tf': 'True'}.items())
 
+    rplidar_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([stretch_core_path, '/launch/rplidar.launch.py']))
+    
     d435i_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_core_path, '/launch/d435i_high_resolution.launch.py']))
 
     rtabmap_mapping_node = Node(
         package='rtabmap_slam',
         executable='rtabmap',
+        arguments=['-d'],
+        # parameters=[{'subscribe_scan': True,
+        #              'Grid/Sensor': "1"}],
         remappings=[
             ('rgb/image', '/camera/camera/color/image_raw'),
             ('depth/image', '/camera/camera/aligned_depth_to_color/image_raw'),
             ('rgb/camera_info', '/camera/camera/color/camera_info'),
-            ('grid_map', 'map')
+            ('grid_map', 'map'),
+            # ('scan', 'scan_filtered')
         ],
         output='screen',
         )
@@ -45,6 +52,7 @@ def generate_launch_description():
         rviz_param,
         rviz_config,
         stretch_driver_launch,
+        # rplidar_launch,
         d435i_launch,
         rtabmap_mapping_node,
         rviz_launch,
