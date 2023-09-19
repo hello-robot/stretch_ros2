@@ -487,7 +487,6 @@ class StretchDriver(Node):
         def code_to_run():
             self.linear_velocity_mps = 0.0
             self.angular_velocity_radps = 0.0
-            self.gamepad_teleop.gamepad_controller.stop()
         self.change_mode('navigation', code_to_run)
         return True, 'Now in navigation mode.'
 
@@ -499,7 +498,6 @@ class StretchDriver(Node):
         # joint. The frames associated with 'floor_link' and
         # 'base_link' become identical in this mode.
         def code_to_run():
-            self.gamepad_teleop.gamepad_controller.stop()
             self.robot.base.enable_pos_incr_mode()
         self.change_mode('position', code_to_run)
         return True, 'Now in position mode.'
@@ -516,7 +514,6 @@ class StretchDriver(Node):
         def code_to_run():
             try:
                 self.robot.stop_trajectory()
-                self.gamepad_teleop.gamepad_controller.stop()
             except NotImplementedError as e:
                 return False, str(e)
             self.robot.base.first_step = True
@@ -529,7 +526,6 @@ class StretchDriver(Node):
         def code_to_run():
             try:
                 self.robot.stop_trajectory()
-                self.gamepad_teleop.gamepad_controller.start()
             except NotImplementedError as e:
                 return False, str(e)
             self.gamepad_teleop.do_double_beep()
@@ -684,7 +680,7 @@ class StretchDriver(Node):
             exit()
         if not self.robot.is_calibrated():
             self.get_logger().warn("Robot not homed. Call /home_the_robot service.")
-        self.gamepad_teleop = gamepad_teleop.GamePadTeleop(self.robot)
+        self.gamepad_teleop = gamepad_teleop.GamePadTeleop(self.robot, print_dongle_status=False)
         self.gamepad_teleop.startup()
 
         self.declare_parameter('mode', "position")
@@ -864,7 +860,7 @@ def main():
             joint_trajectory_action.destroy_node()
             node.destroy_node()
     except (KeyboardInterrupt, ThreadServiceExit):
-        node.gamepad_controller.stop()
+        node.gamepad_teleop.stop()
         node.robot.stop()
 
 
