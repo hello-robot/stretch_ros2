@@ -25,7 +25,7 @@ from std_srvs.srv import Trigger
 from std_srvs.srv import SetBool
 
 from nav_msgs.msg import Odometry
-from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField
+from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField, Joy
 from std_msgs.msg import Bool, String
 
 from hello_helpers.gripper_conversion import GripperConversion
@@ -76,8 +76,20 @@ class StretchDriver(Node):
         self.charging_state = BatteryState.POWER_SUPPLY_STATUS_UNKNOWN
         
         self.gamepad_teleop = None
+        self.gamepad_joy_state = [None]*21 ## Remove hard codings
         self.ros_setup()
 
+    def set_gamepad_motion_callback(self, joy):
+        self.robot_mode_rwlock.acquire_read()
+        if self.robot_mode != 'gamepad':
+            self.get_logger().error('{0} Stretch Driver must be in gamepad mode to '
+                                    'receive a Joy msg on stretch_gamepad. '
+                                    'Current mode = {1}.'.format(self.node_name, self.robot_mode))
+            return
+        self.gamepad_joy_state = joy
+        self.last_gamepad_joy_time = self.get_clock().now()
+        self.robot_mode_rwlock.release_read()
+        
     # MOBILE BASE VELOCITY METHODS ############
 
     def set_mobile_base_velocity_callback(self, twist):
@@ -100,7 +112,11 @@ class StretchDriver(Node):
             print('self.backlash_state =', self.backlash_state)
         
         if self.robot_mode == 'gamepad':
-            self.gamepad_teleop.step()
+            time_since_last_joy = self.get_clock().now() - self.last_gamepad_joy_time
+            if time_since_last_joy < self.timeout:
+                self.gamepad_teleop.step() #TODO step(unpacked_state)
+            else:
+                self.gamepad_teleop.step()
             self.robot.push_command()
             
         # set new mobile base velocities, if appropriate
@@ -776,6 +792,8 @@ class StretchDriver(Node):
 
         self.group = MutuallyExclusiveCallbackGroup()
         self.create_subscription(Twist, "cmd_vel", self.set_mobile_base_velocity_callback, 1, callback_group=self.group)
+        
+        self.create_subscription(Joy, "stretch_gamepad", self.set_gamepad_motion_callback, 1, callback_group=self.group)
 
         self.declare_parameter('rate', 15.0)
         self.joint_state_rate = self.get_parameter('rate').value
@@ -797,6 +815,7 @@ class StretchDriver(Node):
         self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 1)
 
         self.last_twist_time = self.get_clock().now()
+        self.last_gamepad_joy_time = self.get_clock().now()
 
         # start action server for joint trajectories
         self.declare_parameter('fail_out_of_range_goal', True)
