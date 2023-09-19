@@ -37,30 +37,33 @@ def configure_wrist(wrist_type):
     print(bashCommand)
     run_cmd(bashCommand)
 
-    # Update SRDF in stretch_moveit_config
+       # Update SRDF in stretch_moveit_config
     bashCommand = "ros2 pkg prefix stretch_moveit_config"
-    process = run_cmd(bashCommand)
-    installpath = process.stdout
-
-    if lsb_release.get_os_release()["RELEASE"] == "20.04":
-        addpath = "/src/stretch_ros2/stretch_moveit_config/config/stretch_description_{}.srdf".format(wrist_type)
-    else: # Humble on 22.04
-        addpath = "/src/stretch_ros2/stretch_moveit2/stretch_moveit_config/config/stretch_description_{}.srdf".format(wrist_type)
-    minuspath = "/install/stretch_moveit_config"
-    installpath = installpath[0 : len(installpath) - len(minuspath) - 1]
-    srcpath = "{0}{1}".format(installpath, addpath)
-    print(srcpath)
-
-    if lsb_release.get_os_release()["RELEASE"] == "20.04":
-        addpath = "/src/stretch_ros2/stretch_moveit_config/config/stretch_description.srdf"
-    else: # Humble on 22.04
-        addpath = "/src/stretch_ros2/stretch_moveit2/stretch_moveit_config/config/stretch_description.srdf"
-    srdf_path = "{0}{1}".format(installpath, addpath)
-    print(xacro_path)
-
-    bashCommand = "cp {0} {1}".format(srcpath, srdf_path)
     print(bashCommand)
-    run_cmd(bashCommand)
+    process = subprocess.run(shlex.split(bashCommand), capture_output=True, text=True)
+
+    if process.returncode == 0:
+        installpath = process.stdout
+
+        if lsb_release.get_os_release()["RELEASE"] == "20.04":
+            addpath = "/src/stretch_ros2/stretch_moveit_config/config/stretch_description_{}.srdf".format(wrist_type)
+        else: # Humble on 22.04
+            addpath = "/src/stretch_ros2/stretch_moveit2/stretch_moveit_config/config/stretch_description_{}.srdf".format(wrist_type)
+        minuspath = "/install/stretch_moveit_config"
+        installpath = installpath[0 : len(installpath) - len(minuspath) - 1]
+        srcpath = "{0}{1}".format(installpath, addpath)
+        print(srcpath)
+
+        if lsb_release.get_os_release()["RELEASE"] == "20.04":
+            addpath = "/src/stretch_ros2/stretch_moveit_config/config/stretch_description.srdf"
+        else: # Humble on 22.04
+            addpath = "/src/stretch_ros2/stretch_moveit2/stretch_moveit_config/config/stretch_description.srdf"
+        srdf_path = "{0}{1}".format(installpath, addpath)
+        print(xacro_path)
+
+        bashCommand = "cp {0} {1}".format(srcpath, srdf_path)
+        print(bashCommand)
+        run_cmd(bashCommand)
 
 def main():
     try:

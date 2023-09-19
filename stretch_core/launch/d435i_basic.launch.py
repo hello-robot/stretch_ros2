@@ -9,7 +9,9 @@ from launch_ros.actions import Node
 
 json_path = os.path.join(get_package_share_directory('stretch_core'), 'config', 'HighAccuracyPreset.json')
 
-configurable_parameters = [{'name': 'json_file_path',               'default': json_path, 'description': 'allows advanced configuration'},
+configurable_parameters = [{'name': 'camera_namespace',             'default': '', 'description': 'namespace for camera'},
+                           {'name': 'camera_name',                  'default': 'camera', 'description': 'camera unique name'},
+                           {'name': 'json_file_path',               'default': json_path, 'description': 'allows advanced configuration'},
                            {'name': 'depth_module.profile',         'default': '848x480x15', 'description': 'depth module profile'},                           
                            {'name': 'enable_depth',                 'default': 'true', 'description': 'enable depth stream'},
                            {'name': 'rgb_camera.profile',           'default': '1280x720x15', 'description': 'color image width'},

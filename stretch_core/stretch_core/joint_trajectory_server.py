@@ -67,13 +67,6 @@ class JointTrajectoryAction(Node):
                                self.head_tilt_cg, self.wrist_yaw_cg, self.wrist_pitch_cg, self.wrist_roll_cg, self.gripper_cg]
         self.command_groups = [cg for cg in self.command_groups if cg is not None]
 
-        for joint in self.node.robot.end_of_arm.joints:
-            module_name = self.node.robot.end_of_arm.params['devices'][joint].get('ros_py_module_name')
-            class_name = self.node.robot.end_of_arm.params['devices'][joint].get('ros_py_class_name')
-            if module_name and class_name:
-                endofarm_cg = getattr(importlib.import_module(module_name), class_name)(node=self.node)
-                self.command_groups.append(endofarm_cg)
-        
         # Trajectory mode init
         self.joints = get_trajectory_components(self.node.robot)
         self.node.robot._update_trajectory_dynamixel = lambda : None
