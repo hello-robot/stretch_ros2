@@ -29,6 +29,7 @@ from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField, Joy
 from std_msgs.msg import Bool, String
 
 from hello_helpers.gripper_conversion import GripperConversion
+from hello_helpers.gamepad_conversion import unpack_joy_to_gamepad_state, get_default_gamepad_state
 from .joint_trajectory_server import JointTrajectoryAction
 from .stretch_diagnostics import StretchDiagnostics
 
@@ -76,7 +77,7 @@ class StretchDriver(Node):
         self.charging_state = BatteryState.POWER_SUPPLY_STATUS_UNKNOWN
         
         self.gamepad_teleop = None
-        self.gamepad_joy_state = [None]*21 ## Remove hard codings
+        self.gamepad_joy_state = get_default_gamepad_state()
         self.ros_setup()
 
     def set_gamepad_motion_callback(self, joy):
@@ -114,7 +115,7 @@ class StretchDriver(Node):
         if self.robot_mode == 'gamepad':
             time_since_last_joy = self.get_clock().now() - self.last_gamepad_joy_time
             if time_since_last_joy < self.timeout:
-                self.gamepad_teleop.step() #TODO step(unpacked_state)
+                self.gamepad_teleop.step(unpack_joy_to_gamepad_state(self.gamepad_joy_state)) #TODO step(unpacked_state)
             else:
                 self.gamepad_teleop.step()
             self.robot.push_command()
