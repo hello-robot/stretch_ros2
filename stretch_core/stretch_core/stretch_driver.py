@@ -7,6 +7,7 @@ import threading
 from .rwlock import RWLock
 import stretch_body.robot as rb
 from stretch_body import gamepad_teleop
+import stretch_body
 from stretch_body.hello_utils import ThreadServiceExit
 
 import tf2_ros
@@ -71,6 +72,7 @@ class StretchDriver(Node):
 
         self.control_modes = ['position', 'navigation', 'trajectory', 'gamepad']
         self.prev_runstop_state = None
+        self.dirty_command = False
 
         self.voltage_history = []
         self.charging_state_history = [BatteryState.POWER_SUPPLY_STATUS_UNKNOWN] * 10
@@ -126,11 +128,11 @@ class StretchDriver(Node):
             time_since_last_twist = self.get_clock().now() - self.last_twist_time
             if time_since_last_twist < self.timeout:
                 self.robot.base.set_velocity(self.linear_velocity_mps, self.angular_velocity_radps)
-                self.robot.push_command()
+                # self.robot.push_command() #Moved to main
             else:
                 # Too much information in general, although it could be blocked, since it's just INFO.
                 self.robot.base.set_velocity(0.0, 0.0)
-                self.robot.push_command()
+                # self.robot.push_command() #Moved to main
 
         # get copy of the current robot status (uses lock held by the robot)
         robot_status = self.robot.get_status()
@@ -482,6 +484,11 @@ class StretchDriver(Node):
         if (self.prev_runstop_state == None and runstop_event.data) or (self.prev_runstop_state != None and runstop_event.data != self.prev_runstop_state):
             self.runstop_the_robot(runstop_event.data, just_change_mode=True)
         self.prev_runstop_state = runstop_event.data
+        
+        self.robot.non_dxl_thread.step()
+        if not self.robot_mode == 'trajectory':
+            self.robot.push_command() # Main push command
+            self.dirty_command = False
 
     # CHANGE MODES ################
 
@@ -560,13 +567,13 @@ class StretchDriver(Node):
             self.robot.base.rotate_by(0.0)
             self.robot.arm.move_by(0.0)
             self.robot.lift.move_by(0.0)
-            self.robot.push_command()
+            # self.robot.push_command() #Moved to main
 
             self.robot.head.move_by('head_pan', 0.0)
             self.robot.head.move_by('head_tilt', 0.0)
             self.robot.end_of_arm.move_by('wrist_yaw', 0.0)
             self.robot.end_of_arm.move_by('stretch_gripper', 0.0)
-            self.robot.push_command()
+            # self.robot.push_command() #Moved to main
 
         self.get_logger().info('Received stop_the_robot service call, so commanded all actuators to stop.')
         response.success = True
@@ -667,7 +674,7 @@ class StretchDriver(Node):
             self.change_mode('runstopped', code_to_run)
             if not just_change_mode:
                 self.robot.pimu.runstop_event_trigger()
-                self.robot.push_command()
+                # self.robot.push_command()#Moved to main
         else:
             self.robot_mode_rwlock.acquire_read()
             already_not_runstopped = self.robot_mode != 'runstopped'
@@ -680,7 +687,7 @@ class StretchDriver(Node):
             self.change_mode(self.prerunstop_mode, code_to_run)
             if not just_change_mode:
                 self.robot.pimu.runstop_event_reset()
-                self.robot.push_command()
+                # self.robot.push_command() #Moved to main
 
     # ROS Setup #################
     def ros_setup(self):
@@ -689,9 +696,17 @@ class StretchDriver(Node):
         self.get_logger().info("For use with S T R E T C H (TM) RESEARCH EDITION from Hello Robot Inc.")
 
         self.get_logger().info("{0} started".format(self.node_name))
-
+        
+        if int(stretch_body.__version__.split('.')[1]) < 5:
+            self.get_logger().fatal("ERROR: Found old stretch_body version. Please upgrade stretch_body to v0.5.0 or above.")
+            rclpy.shutdown()
+            exit()
+        
         self.robot = rb.Robot()
-        if not self.robot.startup():
+        #Handle the non_dxl status in local loop, not thread
+        if not self.robot.startup(start_non_dxl_thread=False,
+                                  start_dxl_thread=True,
+                                  start_sys_mon_thread=True):
             self.get_logger().fatal('Robot startup failed.')
             rclpy.shutdown()
             exit()
@@ -796,7 +811,7 @@ class StretchDriver(Node):
         
         self.create_subscription(Joy, "stretch_gamepad", self.set_gamepad_motion_callback, 1, callback_group=self.group)
 
-        self.declare_parameter('rate', 15.0)
+        self.declare_parameter('rate', 30.0)
         self.joint_state_rate = self.get_parameter('rate').value
         self.declare_parameter('timeout', 0.5)
         self.timeout_s = self.get_parameter('timeout').value
@@ -822,7 +837,7 @@ class StretchDriver(Node):
         self.declare_parameter('fail_out_of_range_goal', True)
         self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
         
-        self.declare_parameter('action_server_rate', 15.0)
+        self.declare_parameter('action_server_rate', 30.0)
         self.action_server_rate = self.get_parameter('action_server_rate').value
 
         self.diagnostics = StretchDiagnostics(self, self.robot)

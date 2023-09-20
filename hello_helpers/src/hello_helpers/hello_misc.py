@@ -418,17 +418,23 @@ def bound_ros_command(bounds, ros_pos, fail_out_of_range_goal, clip_ros_toleranc
     """Clip the command with clip_ros_tolerance, instead of
     invalidating it, if it is close enough to the valid ranges.
     """
-    if ros_pos < bounds[0]:
-        if fail_out_of_range_goal:
-            return bounds[0] if (bounds[0] - ros_pos) < clip_ros_tolerance else None
-        else:
-            return bounds[0]
+    # Positions of joint limit values in the bounds tuple can be reversed for some joints; addressing them with tuple index 
+    # introduces a bug where the left-hand value could be the positive upper bound and the right-hand value could be the negative
+    # lower bound. Hence, it is best to compute the min and max values explicitly.
+    l_bound = min(bounds) # lower bound
+    u_bound = max(bounds) # upper bound
 
-    if ros_pos > bounds[1]:
+    if ros_pos < l_bound:
         if fail_out_of_range_goal:
-            return bounds[1] if (ros_pos - bounds[1]) < clip_ros_tolerance else None
+            return l_bound if (l_bound - ros_pos) < clip_ros_tolerance else None
         else:
-            return bounds[1]
+            return l_bound
+
+    if ros_pos > u_bound:
+        if fail_out_of_range_goal:
+            return u_bound if (ros_pos - u_bound) < clip_ros_tolerance else None
+        else:
+            return u_bound
 
     return ros_pos
 

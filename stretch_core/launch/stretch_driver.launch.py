@@ -41,13 +41,13 @@ def generate_launch_description():
                                  executable='joint_state_publisher',
                                  output='log',
                                  parameters=[{'source_list': ['/stretch/joint_states']},
-                                             {'rate': 15}])
+                                             {'rate': 30.0}])
 
     robot_state_publisher = Node(package='robot_state_publisher',
                                  executable='robot_state_publisher',
                                  output='both',
                                  parameters=[{'robot_description': robot_description_content},
-                                             {'publish_frequency': 15.0}])
+                                             {'publish_frequency': 30.0}])
 
     aggregator = Node(package='diagnostic_aggregator',
                       executable='aggregator_node',
@@ -55,7 +55,7 @@ def generate_launch_description():
                       parameters=[str(stretch_core_path / 'config/diagnostics.yaml')])
 
     stretch_driver_params = [
-        {'rate': 25.0,
+        {'rate': 30.0,
          'timeout': 0.5,
          'controller_calibration_file': LaunchConfiguration('calibrated_controller_yaml_file'),
          'broadcast_odom_tf': LaunchConfiguration('broadcast_odom_tf'),
