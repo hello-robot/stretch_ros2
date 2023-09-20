@@ -79,7 +79,7 @@ class StretchDriver(Node):
         self.charging_state = BatteryState.POWER_SUPPLY_STATUS_UNKNOWN
         
         self.gamepad_teleop = None
-        self.gamepad_joy_state = get_default_gamepad_state()
+        self.received_gamepad_joy_msg = get_default_gamepad_state()
         self.ros_setup()
 
     def set_gamepad_motion_callback(self, joy):
@@ -89,7 +89,7 @@ class StretchDriver(Node):
                                     'receive a Joy msg on stretch_gamepad. '
                                     'Current mode = {1}.'.format(self.node_name, self.robot_mode))
             return
-        self.gamepad_joy_state = joy
+        self.received_gamepad_joy_msg = joy
         self.last_gamepad_joy_time = self.get_clock().now()
         self.robot_mode_rwlock.release_read()
         
@@ -117,10 +117,10 @@ class StretchDriver(Node):
         if self.robot_mode == 'gamepad':
             time_since_last_joy = self.get_clock().now() - self.last_gamepad_joy_time
             if time_since_last_joy < self.timeout:
-                self.gamepad_teleop.step(unpack_joy_to_gamepad_state(self.gamepad_joy_state)) #TODO step(unpacked_state)
+                self.gamepad_teleop.step(unpack_joy_to_gamepad_state(self.received_gamepad_joy_msg))
             else:
                 self.gamepad_teleop.step()
-            self.robot.push_command()
+            # self.robot.push_command() #Moved to main
             
         # set new mobile base velocities, if appropriate
         # check on thread safety for this with callback that sets velocity command values
