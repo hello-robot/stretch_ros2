@@ -115,6 +115,7 @@ class StretchDriver(Node):
             print('***')
             print('self.backlash_state =', self.backlash_state)
         
+        self.gamepad_teleop.update_state()
         if self.robot_mode == 'gamepad':
             time_since_last_joy = self.get_clock().now() - self.last_gamepad_joy_time
             if time_since_last_joy < self.timeout:
@@ -122,7 +123,8 @@ class StretchDriver(Node):
             else:
                 self.gamepad_teleop.step()
             # self.robot.push_command() #Moved to main
-            
+        
+        print(self.gamepad_teleop.controller_state)
         # set new mobile base velocities, if appropriate
         # check on thread safety for this with callback that sets velocity command values
         if self.robot_mode == 'navigation':
@@ -713,7 +715,7 @@ class StretchDriver(Node):
             exit()
         if not self.robot.is_calibrated():
             self.get_logger().warn("Robot not homed. Call /home_the_robot service.")
-        self.gamepad_teleop = gamepad_teleop.GamePadTeleop(self.robot, print_dongle_status=False)
+        self.gamepad_teleop = gamepad_teleop.GamePadTeleop(self.robot, print_dongle_status=False, lock=self.robot_stop_lock)
         self.gamepad_teleop.startup()
 
         self.declare_parameter('mode', "position")
