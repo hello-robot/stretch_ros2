@@ -86,6 +86,7 @@ class StretchDriver(Node):
             self.get_logger().error('{0} action server must be in navigation mode to '
                                     'receive a twist on cmd_vel. '
                                     'Current mode = {1}.'.format(self.node_name, self.robot_mode))
+            self.robot_mode_rwlock.release_read()
             return
         self.linear_velocity_mps = twist.linear.x
         self.angular_velocity_radps = twist.angular.z
