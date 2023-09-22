@@ -53,7 +53,11 @@ def get_default_gamepad_state():
             'right_pad_pressed': False}
     return state
 
-
+def get_default_joy_msg():
+    out_msg = Joy()
+    out_msg.axes = [0.0]*6
+    out_msg.buttons = [0]*14
+    return out_msg
 
 def unpack_joy_to_gamepad_state(joy_msg):
     stretch_gamepad_state = get_default_gamepad_state()
@@ -76,7 +80,33 @@ def unpack_joy_to_gamepad_state(joy_msg):
         value = True if joy_msg.buttons[i]==1 else False
         stretch_gamepad_state[name] = value
     return stretch_gamepad_state
-        
+
+def unpack_gamepad_state_to_joy(gamepad_state):
+    msg = get_default_joy_msg()
+    
+    msg.axes[0] = gamepad_state['left_stick_x']
+    msg.axes[1] = gamepad_state['left_stick_y']
+    msg.axes[2] = gamepad_state['right_stick_x']
+    msg.axes[3] = gamepad_state['right_stick_y']
+    msg.axes[4] = gamepad_state['left_trigger_pulled']
+    msg.axes[5] = gamepad_state['right_trigger_pulled']
+    
+    msg.buttons[0] = 1 if gamepad_state['left_stick_button_pressed'] else 0
+    msg.buttons[1] = 1 if gamepad_state['right_stick_button_pressed'] else 0
+    msg.buttons[2] = 1 if gamepad_state['bottom_button_pressed'] else 0
+    msg.buttons[3] = 1 if gamepad_state['right_button_pressed'] else 0
+    msg.buttons[4] = 1 if gamepad_state['left_button_pressed'] else 0
+    msg.buttons[5] = 1 if gamepad_state['top_button_pressed'] else 0
+    msg.buttons[6] = 1 if gamepad_state['left_shoulder_button_pressed'] else 0
+    msg.buttons[7] = 1 if gamepad_state['right_shoulder_button_pressed'] else 0
+    msg.buttons[8] = 1 if gamepad_state['select_button_pressed'] else 0
+    msg.buttons[9] = 1 if gamepad_state['start_button_pressed'] else 0
+    msg.buttons[10] = 1 if gamepad_state['bottom_pad_pressed'] else 0
+    msg.buttons[11] = 1 if gamepad_state['top_pad_pressed'] else 0
+    msg.buttons[12] = 1 if gamepad_state['left_pad_pressed'] else 0
+    msg.buttons[13] = 1 if gamepad_state['right_pad_pressed'] else 0
+    
+    return msg
         
         
 def is_value_between_bounds(value, r):

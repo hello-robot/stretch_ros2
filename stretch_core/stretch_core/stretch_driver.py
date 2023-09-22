@@ -122,9 +122,9 @@ class StretchDriver(Node):
         if self.robot_mode == 'gamepad':
             time_since_last_joy = self.get_clock().now() - self.last_gamepad_joy_time
             if time_since_last_joy < self.timeout:
-                self.gamepad_teleop.step(unpack_joy_to_gamepad_state(self.received_gamepad_joy_msg),robot=self.robot)
+                self.gamepad_teleop.do_motion(unpack_joy_to_gamepad_state(self.received_gamepad_joy_msg),robot=self.robot)
             else:
-                self.gamepad_teleop.step(robot=self.robot)
+                self.gamepad_teleop.do_motion(robot=self.robot)
         else:
             self.gamepad_teleop.update_gamepad_state() # Update gamepad input readings within gamepad_teleop instance
         
