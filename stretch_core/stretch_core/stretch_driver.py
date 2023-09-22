@@ -30,7 +30,7 @@ from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField, Joy
 from std_msgs.msg import Bool, String
 
 from hello_helpers.gripper_conversion import GripperConversion
-from hello_helpers.gamepad_conversion import unpack_joy_to_gamepad_state, get_default_gamepad_state, unpack_gamepad_state_to_joy
+from hello_helpers.gamepad_conversion import unpack_joy_to_gamepad_state, unpack_gamepad_state_to_joy, get_default_joy_msg
 from .joint_trajectory_server import JointTrajectoryAction
 from .stretch_diagnostics import StretchDiagnostics
 
@@ -79,7 +79,7 @@ class StretchDriver(Node):
         self.charging_state = BatteryState.POWER_SUPPLY_STATUS_UNKNOWN
         
         self.gamepad_teleop = None
-        self.received_gamepad_joy_msg = get_default_gamepad_state()
+        self.received_gamepad_joy_msg = get_default_joy_msg()
         self.ros_setup()
 
     def set_gamepad_motion_callback(self, joy):
