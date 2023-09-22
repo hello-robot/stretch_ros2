@@ -30,7 +30,7 @@ from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField, Joy
 from std_msgs.msg import Bool, String
 
 from hello_helpers.gripper_conversion import GripperConversion
-from hello_helpers.gamepad_conversion import unpack_joy_to_gamepad_state, get_default_gamepad_state
+from hello_helpers.gamepad_conversion import unpack_joy_to_gamepad_state, get_default_gamepad_state, unpack_gamepad_state_to_joy
 from .joint_trajectory_server import JointTrajectoryAction
 from .stretch_diagnostics import StretchDiagnostics
 
@@ -86,7 +86,7 @@ class StretchDriver(Node):
         self.robot_mode_rwlock.acquire_read()
         if self.robot_mode != 'gamepad':
             self.get_logger().error('{0} Stretch Driver must be in gamepad mode to '
-                                    'receive a Joy msg on stretch_gamepad. '
+                                    'receive a Joy msg on gamepad_joy topic. '
                                     'Current mode = {1}.'.format(self.node_name, self.robot_mode))
             self.robot_mode_rwlock.release_read()
             return
@@ -483,6 +483,13 @@ class StretchDriver(Node):
         i.linear_acceleration.z = az
         self.imu_wrist_pub.publish(i)
         ##################################################
+        # Publish Stretch Gamepad status
+        b = Bool()
+        b.data = True if self.gamepad_teleop.is_gamepad_dongle else False
+        self.is_gamepad_dongle_pub.publish(b)
+        j = unpack_gamepad_state_to_joy(self.gamepad_teleop.controller_state)
+        j.header.stamp = current_time
+        self.gamepad_state_pub.publish(j)
 
         self.robot_mode_rwlock.release_read()
 
@@ -556,7 +563,7 @@ class StretchDriver(Node):
         # Gamepad mode enables the provided gamepad with stretch
         # to control the robot motions. If the gamepad USB dongle is plugged out
         # the robot would stop making any motions in this mode and could plugged in back in reltime.
-        # Alternatively in this mode, stretch driver also listens to `stretch_gamepad` topic
+        # Alternatively in this mode, stretch driver also listens to `gamepad_joy` topic
         # for valid Joy type message from a remote gamepad to control stretch.
         # The Joy message format is described in the gamepad_conversion.py
         def code_to_run():
@@ -819,11 +826,14 @@ class StretchDriver(Node):
         self.magnetometer_mobile_base_pub = self.create_publisher(MagneticField, 'magnetometer_mobile_base', 1)
         self.imu_wrist_pub = self.create_publisher(Imu, 'imu_wrist', 1)
         self.runstop_event_pub = self.create_publisher(Bool, 'is_runstopped', 1)
+        
+        self.is_gamepad_dongle_pub = self.create_publisher(Bool,'is_gamepad_dongle', 1)
+        self.gamepad_state_pub = self.create_publisher(Joy,'stretch_gamepad_state', 1) # decode using gamepad_conversion.unpack_joy_to_gamepad_state() on client side
 
         self.group = MutuallyExclusiveCallbackGroup()
         self.create_subscription(Twist, "cmd_vel", self.set_mobile_base_velocity_callback, 1, callback_group=self.group)
         
-        self.create_subscription(Joy, "stretch_gamepad", self.set_gamepad_motion_callback, 1, callback_group=self.group)
+        self.create_subscription(Joy, "gamepad_joy", self.set_gamepad_motion_callback, 1, callback_group=self.group)
 
         self.declare_parameter('rate', 30.0)
         self.joint_state_rate = self.get_parameter('rate').value

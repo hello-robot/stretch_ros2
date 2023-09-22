@@ -14,7 +14,7 @@ class StretchRemoteGamepad(Node):
     def __init__(self):
         super().__init__('stretch_remote_gamepad')
         print("Starting Stretch Remote Gamepad....")
-        self.joy_publisher = self.create_publisher(Joy, 'stretch_gamepad', 10)  
+        self.joy_publisher = self.create_publisher(Joy, 'gamepad_joy', 10)  
         timer_period = 0.1
         self.timer = self.create_timer(timer_period, self.publish_message)
         self.gamepad_controller = GamePadController()
