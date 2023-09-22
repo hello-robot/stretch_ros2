@@ -88,6 +88,7 @@ class StretchDriver(Node):
             self.get_logger().error('{0} Stretch Driver must be in gamepad mode to '
                                     'receive a Joy msg on stretch_gamepad. '
                                     'Current mode = {1}.'.format(self.node_name, self.robot_mode))
+            self.robot_mode_rwlock.release_read()
             return
         self.received_gamepad_joy_msg = joy
         self.last_gamepad_joy_time = self.get_clock().now()
@@ -115,16 +116,18 @@ class StretchDriver(Node):
             print('***')
             print('self.backlash_state =', self.backlash_state)
         
-        self.gamepad_teleop.update_state()
+        # During gamepad mode, the robot can be controlled with provided gamepad dongle plugged into the robot
+        # Or a Joy message type could also be published which can be used for controlling robot with an remote gamepad.
+        # The Joy message should follow the format described in gamepad_conversion.py 
         if self.robot_mode == 'gamepad':
             time_since_last_joy = self.get_clock().now() - self.last_gamepad_joy_time
             if time_since_last_joy < self.timeout:
-                self.gamepad_teleop.step(unpack_joy_to_gamepad_state(self.received_gamepad_joy_msg))
+                self.gamepad_teleop.step(unpack_joy_to_gamepad_state(self.received_gamepad_joy_msg),robot=self.robot)
             else:
-                self.gamepad_teleop.step()
-            # self.robot.push_command() #Moved to main
+                self.gamepad_teleop.step(robot=self.robot)
+        else:
+            self.gamepad_teleop.update_gamepad_state() # Update gamepad input readings within gamepad_teleop instance
         
-        print(self.gamepad_teleop.controller_state)
         # set new mobile base velocities, if appropriate
         # check on thread safety for this with callback that sets velocity command values
         if self.robot_mode == 'navigation':
@@ -550,12 +553,18 @@ class StretchDriver(Node):
         return True, 'Now in trajectory mode.'
 
     def turn_on_gamepad_mode(self):
+        # Gamepad mode enables the provided gamepad with stretch
+        # to control the robot motions. If the gamepad USB dongle is plugged out
+        # the robot would stop making any motions in this mode and could plugged in back in reltime.
+        # Alternatively in this mode, stretch driver also listens to `stretch_gamepad` topic
+        # for valid Joy type message from a remote gamepad to control stretch.
+        # The Joy message format is described in the gamepad_conversion.py
         def code_to_run():
             try:
                 self.robot.stop_trajectory()
             except NotImplementedError as e:
                 return False, str(e)
-            self.gamepad_teleop.do_double_beep()
+            self.gamepad_teleop.do_double_beep(self.robot)
             self.robot.base.pull_status()
 
         self.change_mode('gamepad', code_to_run)
@@ -715,8 +724,10 @@ class StretchDriver(Node):
             exit()
         if not self.robot.is_calibrated():
             self.get_logger().warn("Robot not homed. Call /home_the_robot service.")
-        self.gamepad_teleop = gamepad_teleop.GamePadTeleop(self.robot, print_dongle_status=False, lock=self.robot_stop_lock)
-        self.gamepad_teleop.startup()
+            
+        # Create Gamepad Teleop instance    
+        self.gamepad_teleop = gamepad_teleop.GamePadTeleop(robot_instance=False,print_dongle_status=False, lock=self.robot_stop_lock)
+        self.gamepad_teleop.startup(self.robot)
 
         self.declare_parameter('mode', "position")
         mode = self.get_parameter('mode').value
