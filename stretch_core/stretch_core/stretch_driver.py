@@ -126,7 +126,7 @@ class StretchDriver(Node):
             else:
                 self.gamepad_teleop.do_motion(robot=self.robot)
         else:
-            self.gamepad_teleop.update_gamepad_state() # Update gamepad input readings within gamepad_teleop instance
+            self.gamepad_teleop.update_gamepad_state(self.robot) # Update gamepad input readings within gamepad_teleop instance
         
         # set new mobile base velocities, if appropriate
         # check on thread safety for this with callback that sets velocity command values
