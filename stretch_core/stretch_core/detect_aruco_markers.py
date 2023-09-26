@@ -622,17 +622,16 @@ class DetectArucoNode(Node):
         self.show_debug_images = False
         self.publish_marker_point_clouds = False
 
-        # Reading parameters from the stretch_marker_dict.yaml file and storing values
+        # Reading node parameters prefixed as 'aruco_marker_info' and storing values
         # in a dictionary called marker_info
-        param_list = ['130', '131', '132', '133', '134', '246', '247', '248', '249', '10', '21', 'default']
-        key_list = ['length_mm', 'use_rgb_only', 'name', 'link']
-        dict = {}
+        param_dict = self.get_parameters_by_prefix('aruco_marker_info')
         self.marker_info = {}
-        for aruco_id in param_list:
-            for key in key_list:
-                dict[key] = self.get_parameter_or('aruco_marker_info.{0}.{1}'.format(aruco_id, key)).value
-            self.marker_info[aruco_id] = dict
-            dict = {}
+        for key in param_dict:
+            try:
+                self.marker_info[key.split('.')[0]][key.split('.')[1]] = self.get_parameter_or('aruco_marker_info.{}'.format(key)).value
+            except KeyError:
+                self.marker_info[key.split('.')[0]] = {}
+                self.marker_info[key.split('.')[0]][key.split('.')[1]] = self.get_parameter_or('aruco_marker_info.{}'.format(key)).value
 
         self.aruco_marker_collection = ArucoMarkerCollection(self.marker_info, self.show_debug_images)
 
