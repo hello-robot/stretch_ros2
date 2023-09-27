@@ -10,7 +10,8 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     stretch_core_path = get_package_share_directory('stretch_core')
     stretch_rtabmap_path = get_package_share_directory('stretch_rtabmap')
-    
+    stretch_navigation_path = get_package_share_directory('stretch_nav2')
+
     rviz_param = DeclareLaunchArgument('use_rviz', default_value='true', choices=['true', 'false'])
     rviz_config = DeclareLaunchArgument('rviz_config',
                                         default_value=stretch_rtabmap_path + '/' + 'rviz/rtabmap.rviz')
@@ -19,9 +20,6 @@ def generate_launch_description():
         PythonLaunchDescriptionSource([stretch_core_path, '/launch/stretch_driver.launch.py']),
         launch_arguments={'mode': 'navigation', 'broadcast_odom_tf': 'True'}.items())
 
-    rplidar_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([stretch_core_path, '/launch/rplidar.launch.py']))
-    
     d435i_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_core_path, '/launch/d435i_high_resolution.launch.py']))
 
@@ -29,17 +27,18 @@ def generate_launch_description():
         package='rtabmap_slam',
         executable='rtabmap',
         arguments=['-d'],
-        # parameters=[{'subscribe_scan': True,
-        #              'Grid/Sensor': "1"}],
         remappings=[
             ('rgb/image', '/camera/camera/color/image_raw'),
             ('depth/image', '/camera/camera/aligned_depth_to_color/image_raw'),
             ('rgb/camera_info', '/camera/camera/color/camera_info'),
             ('grid_map', 'map'),
-            # ('scan', 'scan_filtered')
         ],
         output='screen',
         )
+    
+    base_teleop_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([stretch_navigation_path, '/launch/teleop_twist.launch.py']),
+        launch_arguments={'teleop_type': LaunchConfiguration('teleop_type')}.items())
     
     rviz_launch = Node(package='rviz2', executable='rviz2',
         output='log',
@@ -52,8 +51,8 @@ def generate_launch_description():
         rviz_param,
         rviz_config,
         stretch_driver_launch,
-        # rplidar_launch,
         d435i_launch,
         rtabmap_mapping_node,
+        base_teleop_launch,
         rviz_launch,
     ])
