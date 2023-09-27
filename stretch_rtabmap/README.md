@@ -12,7 +12,20 @@ The first step is to map the space that the robot will navigate in. The `visual_
 ros2 launch stretch_rtabmap visual_mapping.launch.py
 ```
 
-Rviz will show the robot and the visual map that is being constructed. With the terminal open, use the joystick (see instructions below for using a keyboard) to teleoperate the robot around. Avoid sharp turns and revisit previously visited spots to form loop closures. In Rviz, once you see a map that has reconstructed the space well enough, open a new terminal and run the following commands to save the map to the `stretch_user/` directory.
+Rviz will show the robot and the visual map that is being constructed. With the terminal open, use the joystick (see instructions below for using a keyboard) to teleoperate the robot around. Since mapping is being achieved visually using the RGBD camera, it is necessary to pan the head camera around to capture landmarks. Avoid sharp turns and revisit previously visited spots to form loop closures. In Rviz, once you see a map that has reconstructed the space well enough, open a new terminal and run the following commands to save the map to the `stretch_user/` directory.
+
+```bash
+mkdir ${HELLO_FLEET_PATH}/maps
+ros2 run nav2_map_server map_saver_cli -f ${HELLO_FLEET_PATH}/maps/<map_name>
+```
+
+**NOTE**: The `<map_name>` does not include an extension. The map_saver node will save two files as `<map_name>.pgm` and `<map_name>.yaml`.
+
+**Tip**: For a quick sanity check, you can inspect the saved map using a pre-installed tool called Eye of Gnome (eog) by running the following command:
+
+```bash
+eog ${HELLO_FLEET_PATH}/maps/<map_name>.pgm
+```
 
 Next, we can navigate the robot around the mapped space. Run:
 
