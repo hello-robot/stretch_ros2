@@ -12,6 +12,10 @@ The first step is to map the space that the robot will navigate in. The `visual_
 ros2 launch stretch_rtabmap visual_mapping.launch.py
 ```
 
+<p align="center">
+  <img height=500 src="https://github.com/hello-robot/stretch_ros2/assets/97639181/3f01a470-5fd1-4e97-80dc-65ea39832afa"/>
+</p>
+
 Rviz will show the robot and the visual map that is being constructed. With the terminal open, use the joystick (see instructions below for using a keyboard) to teleoperate the robot around. Since mapping is being achieved visually using the RGBD camera, it is necessary to pan the head camera around to capture landmarks. Avoid sharp turns and revisit previously visited spots to form loop closures. In Rviz, once you see a map that has reconstructed the space well enough, open a new terminal and run the following commands to save the map to the `stretch_user/` directory. 
 
 !!! note
@@ -37,6 +41,10 @@ Next, let's navigate the robot around the mapped space. Run:
 ```bash
 ros2 launch stretch_rtabmap visual_navigation.launch.py
 ```
+
+<p align="center">
+  <img height=500 src="https://github.com/hello-robot/stretch_ros2/assets/97639181/b9cd7189-2d82-41b0-b5ba-4f12cac63c4b"/>
+</p>
 
 A new RViz window should pop and show the robot in the previously mapped space, however, it's likely that the robot's location on the map does not match the robot's location in the real space. To correct this, from the top bar of Rviz, use `2D Pose Estimate` to lay an arrow down roughly where the robot is located in the real space. This gives an initial estimate of the robot's location to RTABmap.
 
