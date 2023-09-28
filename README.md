@@ -1,8 +1,8 @@
 ![](./images/banner.png)
 
-## ROS 2 Iron Development Branch
+## ROS 2 Humble Development Branch
 
-This is a development branch that we are using to port [stretch_ros](https://github.com/hello-robot/stretch_ros) to ROS 2 Iron, Python 3, and Ubuntu 22.04. We plan to begin shipping this version preinstalled on Stretch robots in the future. It is **not in a stable state**, since we are actively conducting development in this branch. Since we have performed limited testing, you may encounter unexpected behaviors. Also, the installation requires [Ubuntu 22.04](https://github.com/hello-robot/stretch_install/blob/master/docs/robot_install.md) on a second partition of your robot's hard drive.
+This is a development branch that we are using to port [stretch_ros](https://github.com/hello-robot/stretch_ros) to ROS 2 Humble, Python 3, and Ubuntu 22.04. We plan to begin shipping this version preinstalled on Stretch robots in the future. It is **not in a stable state**, since we are actively conducting development in this branch. Since we have performed limited testing, you may encounter unexpected behaviors. Also, the installation requires [Ubuntu 22.04](https://github.com/hello-robot/stretch_install/blob/master/docs/robot_install.md) on a second partition of your robot's hard drive.
 
 We are beginning to use this port internally at Hello Robot to test it, improve it, and add new capabilities.
 
@@ -25,14 +25,14 @@ We are beginning to use this port internally at Hello Robot to test it, improve 
  - Stretch Deep Perception
  - Stretch Demos
  - Stretch FUNMAP
+ - Stretch OctoMap
+ - Stretch RTABMap
 
 ## Known Issues
 
 No support for:
  - Stretch Dashboard
  - Stretch Gazebo
- - Stretch OctoMap
- - Stretch RTABMap
 
 ---
 
