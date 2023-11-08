@@ -424,6 +424,10 @@ class StretchDriver(Node):
         gx = imu_status['gx']
         gy = imu_status['gy']
         gz = imu_status['gz']
+        qw = imu_status['qw']
+        qx = imu_status['qx']
+        qy = imu_status['qy']
+        qz = imu_status['qz']
 
         i = Imu()
         i.header.stamp = current_time
@@ -431,6 +435,15 @@ class StretchDriver(Node):
         i.angular_velocity.x = gx
         i.angular_velocity.y = gy
         i.angular_velocity.z = gz
+
+        i.orientation.w = qw
+        print(imu_status['qw'])
+        i.orientation.x = qx
+        print(imu_status['qx'])
+        i.orientation.y = qy
+        print(imu_status['qy'])
+        i.orientation.z = qz
+        print(imu_status['qz'])
 
         i.linear_acceleration.x = ax
         i.linear_acceleration.y = ay
