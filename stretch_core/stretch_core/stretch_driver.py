@@ -437,13 +437,9 @@ class StretchDriver(Node):
         i.angular_velocity.z = gz
 
         i.orientation.w = qw
-        print(imu_status['qw'])
         i.orientation.x = qx
-        print(imu_status['qx'])
         i.orientation.y = qy
-        print(imu_status['qy'])
         i.orientation.z = qz
-        print(imu_status['qz'])
 
         i.linear_acceleration.x = ax
         i.linear_acceleration.y = ay
