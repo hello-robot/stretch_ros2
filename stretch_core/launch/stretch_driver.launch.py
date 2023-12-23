@@ -3,8 +3,9 @@ from ament_index_python.packages import get_package_share_path
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import Command, LaunchConfiguration
-
+import launch_ros.descriptions
 from launch_ros.actions import Node
+import launch_ros
 
 
 def generate_launch_description():
@@ -34,8 +35,7 @@ def generate_launch_description():
         description='Path to the calibrated controller args file'
     )
 
-    robot_description_content = Command(['xacro ',
-                                         str(get_package_share_path('stretch_description') / 'urdf' / 'stretch.urdf')])
+    robot_description_content = launch_ros.parameter_descriptions.ParameterValue( Command(['xacro ', str(get_package_share_path('stretch_description') / 'urdf' / 'stretch.urdf')]), value_type=str)
 
     joint_state_publisher = Node(package='joint_state_publisher',
                                  executable='joint_state_publisher',
