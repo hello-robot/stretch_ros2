@@ -6,6 +6,7 @@ import numpy as np
 import threading
 from .rwlock import RWLock
 import stretch_body.robot as rb
+from stretch_body import gamepad_teleop
 import stretch_body
 from stretch_body.hello_utils import ThreadServiceExit
 
@@ -25,10 +26,11 @@ from std_srvs.srv import Trigger
 from std_srvs.srv import SetBool
 
 from nav_msgs.msg import Odometry
-from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField
+from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField, Joy
 from std_msgs.msg import Bool, String
 
 from hello_helpers.gripper_conversion import GripperConversion
+from hello_helpers.gamepad_conversion import unpack_joy_to_gamepad_state, unpack_gamepad_state_to_joy, get_default_joy_msg
 from .joint_trajectory_server import JointTrajectoryAction
 from .stretch_diagnostics import StretchDiagnostics
 
@@ -68,16 +70,30 @@ class StretchDriver(Node):
         self.robot_mode_rwlock = RWLock()
         self.robot_mode = None
 
-        self.control_modes = ['position', 'navigation', 'trajectory']
+        self.control_modes = ['position', 'navigation', 'trajectory', 'gamepad']
         self.prev_runstop_state = None
         self.dirty_command = False
 
         self.voltage_history = []
         self.charging_state_history = [BatteryState.POWER_SUPPLY_STATUS_UNKNOWN] * 10
         self.charging_state = BatteryState.POWER_SUPPLY_STATUS_UNKNOWN
-
+        
+        self.gamepad_teleop = None
+        self.received_gamepad_joy_msg = get_default_joy_msg()
         self.ros_setup()
 
+    def set_gamepad_motion_callback(self, joy):
+        self.robot_mode_rwlock.acquire_read()
+        if self.robot_mode != 'gamepad':
+            self.get_logger().error('{0} Stretch Driver must be in gamepad mode to '
+                                    'receive a Joy msg on gamepad_joy topic. '
+                                    'Current mode = {1}.'.format(self.node_name, self.robot_mode))
+            self.robot_mode_rwlock.release_read()
+            return
+        self.received_gamepad_joy_msg = joy
+        self.last_gamepad_joy_time = self.get_clock().now()
+        self.robot_mode_rwlock.release_read()
+        
     # MOBILE BASE VELOCITY METHODS ############
 
     def set_mobile_base_velocity_callback(self, twist):
@@ -99,7 +115,19 @@ class StretchDriver(Node):
         if BACKLASH_DEBUG:
             print('***')
             print('self.backlash_state =', self.backlash_state)
-
+        
+        # During gamepad mode, the robot can be controlled with provided gamepad dongle plugged into the robot
+        # Or a Joy message type could also be published which can be used for controlling robot with an remote gamepad.
+        # The Joy message should follow the format described in gamepad_conversion.py 
+        if self.robot_mode == 'gamepad':
+            time_since_last_joy = self.get_clock().now() - self.last_gamepad_joy_time
+            if time_since_last_joy < self.timeout:
+                self.gamepad_teleop.do_motion(unpack_joy_to_gamepad_state(self.received_gamepad_joy_msg),robot=self.robot)
+            else:
+                self.gamepad_teleop.do_motion(robot=self.robot)
+        else:
+            self.gamepad_teleop.update_gamepad_state(self.robot) # Update gamepad input readings within gamepad_teleop instance
+        
         # set new mobile base velocities, if appropriate
         # check on thread safety for this with callback that sets velocity command values
         if self.robot_mode == 'navigation':
@@ -455,6 +483,13 @@ class StretchDriver(Node):
         i.linear_acceleration.z = az
         self.imu_wrist_pub.publish(i)
         ##################################################
+        # Publish Stretch Gamepad status
+        b = Bool()
+        b.data = True if self.gamepad_teleop.is_gamepad_dongle else False
+        self.is_gamepad_dongle_pub.publish(b)
+        j = unpack_gamepad_state_to_joy(self.gamepad_teleop.controller_state)
+        j.header.stamp = current_time
+        self.gamepad_state_pub.publish(j)
 
         self.robot_mode_rwlock.release_read()
 
@@ -525,6 +560,25 @@ class StretchDriver(Node):
         self.change_mode('trajectory', code_to_run)
         return True, 'Now in trajectory mode.'
 
+    def turn_on_gamepad_mode(self):
+        # Gamepad mode enables the provided gamepad with stretch
+        # to control the robot motions. If the gamepad USB dongle is plugged out
+        # the robot would stop making any motions in this mode and could plugged in back in reltime.
+        # Alternatively in this mode, stretch driver also listens to `gamepad_joy` topic
+        # for valid Joy type message from a remote gamepad to control stretch.
+        # The Joy message format is described in the gamepad_conversion.py
+        def code_to_run():
+            try:
+                self.robot.stop_trajectory()
+            except NotImplementedError as e:
+                return False, str(e)
+            self.gamepad_teleop.do_double_beep(self.robot)
+            self.robot.base.pull_status()
+
+        self.change_mode('gamepad', code_to_run)
+        return True, 'Now in gamepad mode.'
+    
+
     # SERVICE CALLBACKS ##############
 
     def stop_the_robot_callback(self, request, response):
@@ -576,6 +630,12 @@ class StretchDriver(Node):
 
     def trajectory_mode_service_callback(self, request, response):
         success, message = self.turn_on_trajectory_mode()
+        response.success = success
+        response.message = message
+        return response
+
+    def gamepad_mode_service_callback(self, request, response):
+        success, message = self.turn_on_gamepad_mode()
         response.success = success
         response.message = message
         return response
@@ -672,6 +732,10 @@ class StretchDriver(Node):
             exit()
         if not self.robot.is_homed():
             self.get_logger().warn("Robot not homed. Call /home_the_robot service.")
+            
+        # Create Gamepad Teleop instance    
+        self.gamepad_teleop = gamepad_teleop.GamePadTeleop(robot_instance=False,print_dongle_status=False, lock=self.robot_stop_lock)
+        self.gamepad_teleop.startup(self.robot)
 
         self.declare_parameter('mode', "position")
         mode = self.get_parameter('mode').value
@@ -685,6 +749,8 @@ class StretchDriver(Node):
             self.turn_on_navigation_mode()
         elif mode == "trajectory":
             self.turn_on_trajectory_mode()
+        elif mode ==  "gamepad":
+            self.turn_on_gamepad_mode()
 
         self.declare_parameter('broadcast_odom_tf', False)
         self.broadcast_odom_tf = self.get_parameter('broadcast_odom_tf').value
@@ -761,9 +827,14 @@ class StretchDriver(Node):
         self.magnetometer_mobile_base_pub = self.create_publisher(MagneticField, 'magnetometer_mobile_base', 1)
         self.imu_wrist_pub = self.create_publisher(Imu, 'imu_wrist', 1)
         self.runstop_event_pub = self.create_publisher(Bool, 'is_runstopped', 1)
+        
+        self.is_gamepad_dongle_pub = self.create_publisher(Bool,'is_gamepad_dongle', 1)
+        self.gamepad_state_pub = self.create_publisher(Joy,'stretch_gamepad_state', 1) # decode using gamepad_conversion.unpack_joy_to_gamepad_state() on client side
 
         self.group = MutuallyExclusiveCallbackGroup()
         self.create_subscription(Twist, "cmd_vel", self.set_mobile_base_velocity_callback, 1, callback_group=self.group)
+        
+        self.create_subscription(Joy, "gamepad_joy", self.set_gamepad_motion_callback, 1, callback_group=self.group)
 
         self.declare_parameter('rate', 30.0)
         self.joint_state_rate = self.get_parameter('rate').value
@@ -785,6 +856,7 @@ class StretchDriver(Node):
         self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 1)
 
         self.last_twist_time = self.get_clock().now()
+        self.last_gamepad_joy_time = self.get_clock().now()
 
         # start action server for joint trajectories
         self.declare_parameter('fail_out_of_range_goal', True)
@@ -806,6 +878,10 @@ class StretchDriver(Node):
         self.switch_to_trajectory_mode_service = self.create_service(Trigger,
                                                                        '/switch_to_trajectory_mode',
                                                                        self.trajectory_mode_service_callback)
+
+        self.switch_to_gamepad_mode_service = self.create_service(Trigger,
+                                                                    '/switch_to_gamepad_mode',
+                                                                    self.gamepad_mode_service_callback)
 
         self.stop_the_robot_service = self.create_service(Trigger,
                                                           '/stop_the_robot',
@@ -844,6 +920,7 @@ def main():
             joint_trajectory_action.destroy_node()
             node.destroy_node()
     except (KeyboardInterrupt, ThreadServiceExit):
+        node.gamepad_teleop.stop()
         node.robot.stop()
 
 

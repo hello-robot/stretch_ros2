@@ -24,7 +24,7 @@ def generate_launch_description():
 
     declare_mode_arg = DeclareLaunchArgument(
         'mode',
-        default_value='position', choices=['position', 'navigation', 'trajectory'],
+        default_value='position', choices=['position', 'navigation', 'trajectory', 'gamepad'],
         description='The mode in which the ROS driver commands the robot'
     )
 
