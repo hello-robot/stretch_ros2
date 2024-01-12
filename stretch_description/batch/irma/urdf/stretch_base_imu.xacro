@@ -2,7 +2,7 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="stretch_base_imu">
 
 <link
-    name="base_imu">
+    name="imu_mobile_base">
     <inertial>
       <origin
         xyz="0.00300349280517617 0.00149777182047641 -0.00193103885249443"
@@ -50,7 +50,7 @@
     <parent
       link="base_link" />
     <child
-      link="base_imu" />
+      link="imu_mobile_base" />
     <axis
       xyz="0 0 0" />
   </joint>
