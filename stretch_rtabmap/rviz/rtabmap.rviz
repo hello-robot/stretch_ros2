@@ -65,7 +65,7 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        base_imu:
+        imu_mobile_base:
           Alpha: 1
           Show Axes: false
           Show Trail: false
