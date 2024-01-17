@@ -479,7 +479,7 @@ class StretchDriver(Node):
         if code_to_run:
             code_to_run()
 
-        self.get_logger().info('{0}: Changed to mode = {1}'.format(self.node_name, self.robot_mode))
+        self.get_logger().info(f'Changed to mode = {self.robot_mode}')
         self.robot_mode_rwlock.release_write()
 
     # TODO : add a freewheel mode or something comparable for the mobile base?
@@ -695,38 +695,38 @@ class StretchDriver(Node):
 
         large_ang = np.radians(45.0)
 
-        self.declare_parameter('controller_calibration_file')
+        self.declare_parameter('controller_calibration_file', 'NOT SET')
         filename = self.get_parameter('controller_calibration_file').value
         self.get_logger().info('Loading controller calibration parameters for the head from YAML file named {0}'.format(filename))
         with open(filename, 'r') as fid:
             self.controller_parameters = yaml.safe_load(fid)
 
-            self.get_logger().info('controller parameters loaded = {0}'.format(self.controller_parameters))
+            self.get_logger().debug('controller parameters loaded = {0}'.format(self.controller_parameters))
 
             self.head_tilt_calibrated_offset_rad = self.controller_parameters['tilt_angle_offset']
             ang = self.head_tilt_calibrated_offset_rad
             if (abs(ang) > large_ang):
                 self.get_logger().warn('self.head_tilt_calibrated_offset_rad HAS AN UNUSUALLY LARGE MAGNITUDE')
-            self.get_logger().info('self.head_tilt_calibrated_offset_rad in degrees ='
+            self.get_logger().debug('self.head_tilt_calibrated_offset_rad in degrees ='
                                    ' {0}'.format(np.degrees(self.head_tilt_calibrated_offset_rad)))
 
             self.head_pan_calibrated_offset_rad = self.controller_parameters['pan_angle_offset']
             ang = self.head_pan_calibrated_offset_rad
             if (abs(ang) > large_ang):
                 self.get_logger().warn('self.head_pan_calibrated_offset_rad HAS AN UNUSUALLY LARGE MAGNITUDE')
-            self.get_logger().info('self.head_pan_calibrated_offset_rad in degrees ='
+            self.get_logger().debug('self.head_pan_calibrated_offset_rad in degrees ='
                                    ' {0}'.format(np.degrees(self.head_pan_calibrated_offset_rad)))
 
             self.head_pan_calibrated_looked_left_offset_rad = self.controller_parameters['pan_looked_left_offset']
             ang = self.head_pan_calibrated_looked_left_offset_rad
             if (abs(ang) > large_ang):
                 self.get_logger().warn('self.head_pan_calibrated_looked_left_offset_rad HAS AN UNUSUALLY LARGE MAGNITUDE')
-            self.get_logger().info(
+            self.get_logger().debug(
                 'self.head_pan_calibrated_looked_left_offset_rad in degrees = {0}'.format(
                     np.degrees(self.head_pan_calibrated_looked_left_offset_rad)))
 
             self.head_tilt_backlash_transition_angle_rad = self.controller_parameters['tilt_angle_backlash_transition']
-            self.get_logger().info(
+            self.get_logger().debug(
                 'self.head_tilt_backlash_transition_angle_rad in degrees = {0}'.format(
                     np.degrees(self.head_tilt_backlash_transition_angle_rad)))
 
@@ -734,7 +734,7 @@ class StretchDriver(Node):
             ang = self.head_tilt_calibrated_looking_up_offset_rad
             if (abs(ang) > large_ang):
                 self.get_logger().warn('self.head_tilt_calibrated_looking_up_offset_rad HAS AN UNUSUALLY LARGE MAGNITUDE')
-            self.get_logger().info(
+            self.get_logger().debug(
                 'self.head_tilt_calibrated_looking_up_offset_rad in degrees = {0}'.format(
                     np.degrees(self.head_tilt_calibrated_looking_up_offset_rad)))
 
@@ -742,7 +742,7 @@ class StretchDriver(Node):
             m = self.wrist_extension_calibrated_retracted_offset_m
             if (abs(m) > 0.05):
                 self.get_logger().warn('self.wrist_extension_calibrated_retracted_offset_m HAS AN UNUSUALLY LARGE MAGNITUDE')
-            self.get_logger().info(
+            self.get_logger().debug(
                 'self.wrist_extension_calibrated_retracted_offset_m in meters = {0}'.format(
                     self.wrist_extension_calibrated_retracted_offset_m))
 
@@ -771,17 +771,13 @@ class StretchDriver(Node):
         self.declare_parameter('timeout', 0.5)
         self.timeout_s = self.get_parameter('timeout').value
         self.timeout = Duration(seconds=self.timeout_s)
-        self.get_logger().info("{0} rate = {1} Hz".format(self.node_name, self.joint_state_rate))
-        self.get_logger().info("{0} timeout = {1} s".format(self.node_name, self.timeout_s))
-
-        self.declare_parameter('use_fake_mechaduinos', False)
-        self.use_fake_mechaduinos = self.get_parameter('use_fake_mechaduinos').value
-        self.get_logger().info("{0} use_fake_mechaduinos = {1}".format(self.node_name, self.use_fake_mechaduinos))
+        self.get_logger().info(f"rate = {self.joint_state_rate} Hz")
+        self.get_logger().info(f"twist timeout = {self.timeout_s} s")
 
         self.base_frame_id = 'base_link'
-        self.get_logger().info("{0} base_frame_id = {1}".format(self.node_name, self.base_frame_id))
+        self.get_logger().info(f"base_frame_id = {self.base_frame_id}")
         self.odom_frame_id = 'odom'
-        self.get_logger().info("{0} odom_frame_id = {1}".format(self.node_name, self.odom_frame_id))
+        self.get_logger().info(f"odom_frame_id = {self.odom_frame_id}")
 
         self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 1)
 

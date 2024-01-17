@@ -41,13 +41,15 @@ def generate_launch_description():
                                  executable='joint_state_publisher',
                                  output='log',
                                  parameters=[{'source_list': ['/stretch/joint_states']},
-                                             {'rate': 30.0}])
+                                             {'rate': 30.0}],
+                                 arguments=['--ros-args', '--log-level', 'error'],)
 
     robot_state_publisher = Node(package='robot_state_publisher',
                                  executable='robot_state_publisher',
                                  output='both',
                                  parameters=[{'robot_description': robot_description_content},
-                                             {'publish_frequency': 30.0}])
+                                             {'publish_frequency': 30.0}],
+                                 arguments=['--ros-args', '--log-level', 'error'],)
 
     stretch_driver_params = [
         {'rate': 30.0,
