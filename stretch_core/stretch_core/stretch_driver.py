@@ -462,8 +462,9 @@ class StretchDriver(Node):
         if (self.prev_runstop_state == None and runstop_event.data) or (self.prev_runstop_state != None and runstop_event.data != self.prev_runstop_state):
             self.runstop_the_robot(runstop_event.data, just_change_mode=True)
         self.prev_runstop_state = runstop_event.data
-        
-        self.robot.pimu.set_fan_on()
+
+        if self.robot.pimu.params.get('ros_fan_on', True):
+            self.robot.pimu.set_fan_on()
         self.robot.non_dxl_thread.step()
         if not self.robot_mode == 'trajectory':
             self.robot.push_command() # Main push command
