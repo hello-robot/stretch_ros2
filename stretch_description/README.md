@@ -28,35 +28,29 @@ The exported URDF will be found within an exported_urdf directory. It is also co
 
 ## Changing the Tool
 
-If you wish to remove the default gripper and add a different tool, you will typically edit /stretch_description/urdf/stretch_description.xacro. Specifically, you will replace the following line in order to include the xacro for the new tool and then follow directions within stretch_ros2/stretch_calibration to generate a new calibrated urdf file (stretch.urdf) that includes the new tool.
+If you want to generate a new URDF for Stretch (e.g. after attaching a new tool to Stretch), you can:
 
-`<xacro:include filename="stretch_gripper.xacro" />`
+1. Edit the [`stretch_description.xacro`](./urdf/stretch_description.xacro) file in the Stretch Description package.
 
-As an example we provide the xacro `stretch_dry_erase_marker.xacro` and its dependent mesh files with stretch_ros2. 
+   Include the tool you want in the `stretch_description.xacro`. By default, it will include `stretch_gripper.xacro`. Simply comment out
+   the old `<xacro:include ...` lines and paste in new ones for your tool. Example code for the other supported tools can be found by
+   looking at the files matching `stretch_description_<tool-name>.xacro`. To add your own custom tool, copy your xacro/mesh files into
+   the urdf/meshes folders in the Stretch Description package.
 
-Some of the tools found in the [Stretch Body Tool Share](https://github.com/hello-robot/stretch_tool_share/) include URDF data. To integrate these tools into the URDF for your Stretch
+1. In a terminal run
 
-```bash
->>$ cd ~/repos
->>$ git clone https://github.com/hello-robot/stretch_tool_share
->>$ cd stretch_tool_share/<tool name>
->>$ cp stretch_description/urdf/* ~/ament_ws/src/stretch_ros2/stretch_description/urdf/
->>$ cp stretch_description/meshes/* ~/ament_ws/src/stretch_ros2/stretch_description/meshes/
-```
+   ```
+   ros2 run stretch_calibration update_urdf_after_xacro_change
+   ```
 
-Next add the xacro for the particular tool to `/stretch_description/urdf/stretch_description.xacro`. Then you can generate and preview the uncalibrated URDF:
+1. Rebuild the workspace
 
-```bash
->>$ cd ~/ament_ws/src/stretch_ros2/stretch_description/urdf
->>$ cp stretch.urdf stretch.urdf.bak
->>$ ros2 run stretch_calibration update_urdf_after_xacro_change.py
-```
+   ```
+   cd ~/ament_ws
+   colcon build
+   ```
 
-Now visualize the new tool
-
-```bash
->>$ ros2 launch stretch_calibration simple_test_head_calibration.launch
-```
+This will create a calibrated URDF called `stretch.urdf` using the most recent calibration parameters. Rviz will now show the new URDF.
 
 ## License and Patents
 

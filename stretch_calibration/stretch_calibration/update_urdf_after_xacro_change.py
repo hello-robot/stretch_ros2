@@ -28,6 +28,7 @@ def main():
     process = run_cmd(bashCommand)
     
     print("Finished with attempt to update the URDF using the most recent xacro and calibration files")
+    print("IMPORTANT: You must run 'colcon build' in the workspace at ~/ament_ws for this URDF to take effect")
 
 
 if __name__ == '__main__':

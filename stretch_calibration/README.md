@@ -118,15 +118,7 @@ In the images below, examples of good and bad fit between the point cloud and th
 
 ## Generate a New URDF After Changing the Tool
 
-If you change Stretch's tool attached to the wrist and want to generate a new URDF for it, you can do so with xacro files in the /stretch_ros2/stretch_description/urdf/ directory. Specifically, you can edit stretch_description.xacro to include a xacro other than the default stretch_gripper.xacro. 
-
-After changing the tool xacro you will need to generate a new URDF and also update this new URDF with the previously optimized calibration parameters. To do so, follow the directions below: 
-
-1. In a terminal run
-
-   `ros2 run stretch_calibration update_urdf_after_xacro_change`
-   
-This will update the uncalibrated URDF with the current xacro files and then create a calibrated URDF using the most recent calibration parameters.
+See the [instructions here](../stretch_description/README.md#changing-the-tool).
 
 ## Revert to a Previous Calibration
 
