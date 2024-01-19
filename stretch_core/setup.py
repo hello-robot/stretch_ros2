@@ -29,6 +29,7 @@ setup(
             'keyboard_teleop = stretch_core.keyboard_teleop:main',
             'avoider = stretch_core.avoider:main',
             'align_to_aruco = stretch_core.align_to_aruco:main',
+            'usb_cam = stretch_core.usb_cam:main',
         ],
     },
 )
