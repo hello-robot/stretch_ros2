@@ -64,8 +64,9 @@ class USBCamNode(Node):
         self.cv_bridge = CvBridge()
         self.image_msg = None
         self.uvc_camera = self.setup_uvc_camera()
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.timer2 = self.create_timer(timer_period, self.timer_callback2)
+        if self.uvc_camera:
+            self.timer = self.create_timer(timer_period, self.timer_callback)
+            self.timer2 = self.create_timer(timer_period, self.timer_callback2)
     
     def is_parameter_initialized(self, param):
         # Ro2 does not have an API to check if an param is uninitalized
@@ -77,6 +78,9 @@ class USBCamNode(Node):
 
     def setup_uvc_camera(self):
         cap = cv2.VideoCapture(self.get_parameter('camera_port').value)
+
+        self.get_logger().info("Starting USB Camera Node...")
+
         if self.is_parameter_initialized('format'):
             fourcc_value = cv2.VideoWriter_fourcc(*self.get_parameter('format').value)
             cap.set(cv2.CAP_PROP_FOURCC, fourcc_value)
@@ -127,14 +131,15 @@ class USBCamNode(Node):
             cap.set(cv2.CAP_PROP_BACKLIGHT,self.get_parameter('backlight').value)
             self.properties['backlight'] = self.get_parameter('backlight').value
         
-        if cap:
-            self.get_logger().info("Starting USB Camera Node...")
+        if cap.isOpened():
             self.get_logger().info(f"Camera Port: {self.get_parameter('camera_port').value}")
             self.get_logger().info(f"Published to topic: {self.get_parameter('publish_topic').value}")
             self.get_logger().info(f"Camera Properties Applied: {self.properties}")
+            return cap
         else:
-            self.get_logger().error("Unable to start USB Camera Node")
-        return cap
+            self.get_logger().error(f"Unable to open USB Camera port: {self.get_parameter('camera_port').value}")
+            return None
+        
 
     def timer_callback(self):
         if self.image_msg is not None:
