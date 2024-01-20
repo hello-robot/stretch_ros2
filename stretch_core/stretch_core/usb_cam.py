@@ -69,7 +69,7 @@ class USBCamNode(Node):
             self.timer2 = self.create_timer(timer_period, self.timer_callback2)
     
     def is_parameter_initialized(self, param):
-        # Ro2 does not have an API to check if an param is uninitalized
+        # Ro2 does not have an API to check if param is uninitialized
         try:
             value = self.get_parameter(param).value
             return True

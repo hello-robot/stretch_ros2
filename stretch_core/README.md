@@ -11,6 +11,7 @@ Nodes:
  - `keyboard_*.py` : nodes that provides a keyboard interface to control the robot's joints
  - `stretch_driver.py`: node that communicates with the low-level Python library (stretch_body) to interface with the Stretch RE1
  - `trajectory_components.py`: node defining classes for each joint to generate trajectory waypoints
+ - `usb_cam.py`: node that uses opencv python to access usb camera feed 
 
 Launch files:
  - `d435i_*.launch.py`: launches the d435i driver node with defined resolution
@@ -18,6 +19,7 @@ Launch files:
  - `rplidar.launch.py`: launches the RPLidar driver node
  - `stretch_aruco.launch.py`: launches the aruco detection node
  - `stretch_driver.launch.py`: launches the stretch driver node with defined configurations
+ - `navigation_camera.launch.py`: launches the usb cam node to access the stretch's overhead/navigation wide-angle camera 
 
 Config:
  - `controller_calibration_head.yaml`: stores the backlash errors in the head servos
