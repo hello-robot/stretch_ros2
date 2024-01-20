@@ -5,10 +5,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import rclpy
 from rclpy.node import Node
-import threading
 from rclpy.executors import MultiThreadedExecutor
-import os
-
 
 # More UVC Video capture properties here:
 # https://docs.opencv.org/3.4/d4/d15/group__videoio__flags__base.html
@@ -19,84 +16,124 @@ import os
 # Setting Video formates using v4l2
 # http://trac.gateworks.com/wiki/linux/v4l2
 
-
 class USBCamNode(Node):
+    """
+    Custom USB Cam node that uses OpenCV library to capture and publish video output from USB cam devices.
 
+    Default camera_port = /dev/hello-navigation-camera
+    Default publish_topic = /usb_cam/image_raw
+
+    Optional Configurable Properties = [format, size, fps, brightness, contrast, saturation, hue, gamma, 
+                           gain, white_balence_temp, sharpness, backlight]
+    """
     def __init__(self):
         super().__init__('usb_cam_node')
 
-        self.declare_parameter('camera_port','/dev/hello-navigation-camera')
-        self.declare_parameter('publish_topic','/usb_cam/image_raw')
+        self.declare_parameter('camera_port','/dev/hello-navigation-camera') # Default
+        self.declare_parameter('publish_topic','/usb_cam/image_raw') # Default
 
-        # Properties
-        self.declare_parameter('format', 'MJPG')
-        self.declare_parameter('size', [1280, 800])
-        self.declare_parameter('fps', 100)
-        self.declare_parameter('brightness', 10)
-        self.declare_parameter('contrast', 30)
-        self.declare_parameter('saturation', 80)
-        self.declare_parameter('hue', 0)
-        self.declare_parameter('gamma', 80)
-        self.declare_parameter('gain', 10)
-        self.declare_parameter('white_balence_temp', 4600)
-        self.declare_parameter('sharpness', 3)
-        self.declare_parameter('backlight', 1)
-        
+        # Uninitialized Optional Camera Properties
+        self.declare_parameter('format', rclpy.Parameter.Type.STRING)
+        self.declare_parameter('size', rclpy.Parameter.Type.INTEGER_ARRAY)
+        self.declare_parameter('fps', rclpy.Parameter.Type.INTEGER)
+        self.declare_parameter('brightness', rclpy.Parameter.Type.INTEGER)
+        self.declare_parameter('contrast', rclpy.Parameter.Type.INTEGER)
+        self.declare_parameter('saturation', rclpy.Parameter.Type.INTEGER)
+        self.declare_parameter('hue', rclpy.Parameter.Type.INTEGER)
+        self.declare_parameter('gamma', rclpy.Parameter.Type.INTEGER)
+        self.declare_parameter('gain', rclpy.Parameter.Type.INTEGER)
+        self.declare_parameter('white_balence_temp', rclpy.Parameter.Type.INTEGER)
+        self.declare_parameter('sharpness', rclpy.Parameter.Type.INTEGER)
+        self.declare_parameter('backlight', rclpy.Parameter.Type.INTEGER)
+
+        self.properties = {'format':None,
+                            'size':None,
+                            'fps':None,
+                            'brightness':None,
+                            'contrast':None,
+                            'saturation':None,
+                            'hue':None,
+                            'gamma':None,
+                            'gain':None,
+                            'white_balence_temp':None,
+                            'sharpness':None,
+                            'backlight':None}
+
         self.publisher = self.create_publisher(Image, self.get_parameter('publish_topic').value, 15)
         timer_period = 0.001  # seconds
         self.cv_bridge = CvBridge()
         self.image_msg = None
-
-        self.usb_cam_properties = {
-            'format' : self.get_parameter('format').value,
-            'size' : self.get_parameter('size').value,
-            'fps' : self.get_parameter('fps').value,
-            'brightness' : self.get_parameter('brightness').value,
-            'contrast' : self.get_parameter('contrast').value,
-            'saturation' : self.get_parameter('saturation').value,
-            'hue' : self.get_parameter('hue').value,
-            'gamma' : self.get_parameter('gamma').value,
-            'gain' : self.get_parameter('gain').value,
-            'white_balence_temp' : self.get_parameter('white_balence_temp').value,
-            'sharpness' : self.get_parameter('sharpness').value,
-            'backlight' : self.get_parameter('backlight').value,
-        }
         self.uvc_camera = self.setup_uvc_camera()
-        
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.timer2 = self.create_timer(timer_period, self.timer_callback2)
-
+    
+    def is_parameter_initialized(self, param):
+        # Ro2 does not have an API to check if an param is uninitalized
+        try:
+            value = self.get_parameter(param).value
+            return True
+        except rclpy.exceptions.ParameterUninitializedException:
+            return False
 
     def setup_uvc_camera(self):
         cap = cv2.VideoCapture(self.get_parameter('camera_port').value)
-
-        if self.usb_cam_properties['format']:
-            fourcc_value = cv2.VideoWriter_fourcc(*self.usb_cam_properties['format'])
+        if self.is_parameter_initialized('format'):
+            fourcc_value = cv2.VideoWriter_fourcc(*self.get_parameter('format').value)
             cap.set(cv2.CAP_PROP_FOURCC, fourcc_value)
-        if self.usb_cam_properties['fps']:
-            cap.set(cv2.CAP_PROP_FPS, self.usb_cam_properties['fps'])
-        if self.usb_cam_properties['size']:
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.usb_cam_properties['size'][0])
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.usb_cam_properties['size'][1])
-        if self.usb_cam_properties['brightness']:
-            cap.set(cv2.CAP_PROP_BRIGHTNESS,self.usb_cam_properties['brightness'])
-        if self.usb_cam_properties['contrast']:
-            cap.set(cv2.CAP_PROP_CONTRAST,self.usb_cam_properties['contrast'])
-        if self.usb_cam_properties['hue']:
-            cap.set(cv2.CAP_PROP_HUE,self.usb_cam_properties['hue'])
-        if self.usb_cam_properties['gamma']:
-            cap.set(cv2.CAP_PROP_GAMMA,self.usb_cam_properties['gamma'])
-        if self.usb_cam_properties['white_balence_temp']:
-            cap.set(cv2.CAP_PROP_WB_TEMPERATURE,self.usb_cam_properties['white_balence_temp'])
-        if self.usb_cam_properties['backlight']:
-            cap.set(cv2.CAP_PROP_BACKLIGHT,self.usb_cam_properties['backlight'])
+            self.properties['format'] = self.get_parameter('format').value
+
+        if self.is_parameter_initialized('fps'):
+            cap.set(cv2.CAP_PROP_FPS, self.get_parameter('fps').value)
+            self.properties['fps'] = self.get_parameter('fps').value
+
+        if self.is_parameter_initialized('size'):
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.get_parameter('size').value[0])
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.get_parameter('size').value[1])
+            self.properties['size'] = self.get_parameter('size').value
+
+        if self.is_parameter_initialized('brightness'):
+            cap.set(cv2.CAP_PROP_BRIGHTNESS,self.get_parameter('brightness').value)
+            self.properties['brightness'] = self.get_parameter('brightness').value
+
+        if self.is_parameter_initialized('contrast'):
+            cap.set(cv2.CAP_PROP_CONTRAST,self.get_parameter('contrast').value)
+            self.properties['contrast'] = self.get_parameter('contrast').value
+
+        if self.is_parameter_initialized('hue'):
+            cap.set(cv2.CAP_PROP_HUE,self.get_parameter('hue').value)
+            self.properties['hue'] = self.get_parameter('hue').value
+
+        if self.is_parameter_initialized('gamma'):
+            cap.set(cv2.CAP_PROP_GAMMA,self.get_parameter('gamma').value)
+            self.properties['gamma'] = self.get_parameter('gamma').value
+
+        if self.is_parameter_initialized('gain'):
+            cap.set(cv2.CAP_PROP_GAIN,self.get_parameter('gain').value)
+            self.properties['gain'] = self.get_parameter('gain').value
+
+        if self.is_parameter_initialized('sharpness'):
+            cap.set(cv2.CAP_PROP_SHARPNESS,self.get_parameter('sharpness').value)
+            self.properties['sharpness'] = self.get_parameter('sharpness').value
+
+        if self.is_parameter_initialized('saturation'):
+            cap.set(cv2.CAP_PROP_SATURATION,self.get_parameter('saturation').value)
+            self.properties['saturation'] = self.get_parameter('saturation').value
+
+        if self.is_parameter_initialized('white_balence_temp'):
+            cap.set(cv2.CAP_PROP_WB_TEMPERATURE,self.get_parameter('white_balence_temp').value)
+            self.properties['white_balence_temp'] = self.get_parameter('white_balence_temp').value
+
+        if self.is_parameter_initialized('backlight'):
+            cap.set(cv2.CAP_PROP_BACKLIGHT,self.get_parameter('backlight').value)
+            self.properties['backlight'] = self.get_parameter('backlight').value
         
         if cap:
             self.get_logger().info("Starting USB Camera Node...")
             self.get_logger().info(f"Camera Port: {self.get_parameter('camera_port').value}")
             self.get_logger().info(f"Published to topic: {self.get_parameter('publish_topic').value}")
-            self.get_logger().info(f"Camera Properties Applied: {self.usb_cam_properties}")
-            
+            self.get_logger().info(f"Camera Properties Applied: {self.properties}")
+        else:
+            self.get_logger().error("Unable to start USB Camera Node")
         return cap
 
     def timer_callback(self):
