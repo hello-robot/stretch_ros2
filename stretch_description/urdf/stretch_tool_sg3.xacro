@@ -209,8 +209,8 @@
     name="joint_aruco_fingertip_right"
     type="fixed">
     <origin
-      xyz="-0.177784508377902 -0.0106721811879468 0"
-      rpy="-1.5707963267949 0 0.261799387799172" />
+      xyz="-0.143934974292929 -0.00436381846064454 0"
+      rpy="-1.5707963267949 0 -0.988" />
     <parent
       link="link_gripper_finger_right" />
     <child
