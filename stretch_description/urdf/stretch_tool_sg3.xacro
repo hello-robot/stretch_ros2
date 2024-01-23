@@ -169,7 +169,7 @@
     name="link_aruco_fingertip_right">
     <inertial>
       <origin
-        xyz="0.0342056670333665 6.03801974164431E-05 -0.00271233349153466"
+        xyz="0 1.11022302462516E-16 -0.000133556861164369"
         rpy="0 0 0" />
       <mass
         value="7.44175884388862E-05" />
@@ -209,8 +209,8 @@
     name="joint_aruco_fingertip_right"
     type="fixed">
     <origin
-      xyz="-0.143934974292929 -0.00436381846064454 0"
-      rpy="-1.5707963267949 0 -0.988" />
+      xyz="-0.143934974292953 -0.00436381846065068 -8.58640479174944E-05"
+      rpy="-1.76278254451426 0 -0.959931088596862" />
     <parent
       link="link_gripper_finger_right" />
     <child
@@ -279,8 +279,8 @@
   <link
     name="link_gripper_fingertip_left">
     <inertial>
-      <origin
-        xyz="0.00812577954079277 5.08145192590348E-11 3.08744215749002E-08"
+    <origin
+        xyz="-3.08483497635237E-08 -1.26956833934599E-09 0.0081257795407928"
         rpy="0 0 0" />
       <mass
         value="0.00382162054362131" />
@@ -321,7 +321,7 @@
     type="fixed">
     <origin
       xyz="0.177784508377884 -0.0106721811879429 0"
-      rpy="1.8123098697462 0 1.30899693899575" />
+      rpy="1.57079632679491 0 2.87979326579064" />
     <parent
       link="link_gripper_finger_left" />
     <child
@@ -337,7 +337,7 @@
     name="link_aruco_fingertip_left">
     <inertial>
       <origin
-        xyz="1.11022302462516E-16 1.66533453693773E-16 -0.000133556861164008"
+        xyz="1.66533453693773E-16 1.66533453693773E-16 -0.000133556861164119"
         rpy="0 0 0" />
       <mass
         value="7.44175884388882E-05" />
@@ -439,6 +439,9 @@
     <axis
       xyz="0 0 0" />
   </joint>
+  <link
+  name = "link_grasp_center">
+  </link>
   <joint
     name="joint_grasp_center"
     type="fixed">
