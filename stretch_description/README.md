@@ -2,11 +2,15 @@
 
 ## Overview
 
-*stretch_description* provides materials for a [URDF](http://wiki.ros.org/urdf) kinematic model of the Stretch mobile manipulator.
+*stretch_description* provides assets to create a [URDF](http://wiki.ros.org/urdf) kinematic model of the Stretch mobile manipulator.
 
 ## Quick View
 
-    ros2 launch stretch_description display.launch.py
+To compile the XACROs into a URDF and view it in Rviz, run:
+
+```
+ros2 launch stretch_description display.launch.py
+```
 
 ## Details
 
@@ -14,17 +18,34 @@ The *meshes directory* contains [STL mesh files](https://en.wikipedia.org/wiki/S
 
 The *urdf directory* contains [xacro files](http://wiki.ros.org/xacro) representing various parts of the robot that are used to generate the robot's URDF. 
 
-stretch_ros2 expects a URDF with the name stretch.urdf to reside within the urdf directory. The file stretch.urdf serves as the URDF for the robot and must be generated. Typically, it is a calibrated urdf file for the particular Stretch robot being used. To generate this file, please read the documentation within stretch_ros2/stretch_calibration. 
-
-The xacro_to_urdf.py will usually only be indirectly run as part of various scripts and launch files within stretch_ros2/stretch_calibration. 
-
-Sometimes a stretch_uncalibrated.urdf file will reside with the urdf directory. This file is typically generated directly from the xacro files without any alterations. 
+Stretch's ROS2 packages expects a URDF with the name "stretch.urdf" to reside within the urdf directory. The file "stretch.urdf" serves as the URDF for the robot and must be generated. Typically, it is a calibrated urdf file, unique to the particular Stretch robot being used. This file should already exist on your robot. To regenerate this file, please read the documentation within the stretch_calibration package.
 
 ## Exporting a URDF
 
-Sometimes a URDF is useful outside of ROS, such as for simulations and analysis. Running the *export_urdf.py* script in the urdf directory will export a full URDF model of the robot based on stretch.urdf. 
+Sometimes a URDF is useful outside of ROS, such as for simulations and analysis. To export the URDF, run:
 
-The exported URDF will be found within an exported_urdf directory. It is also copied to a directory for your specific robot found under ~/stretch_user. The exported URDF includes meshes and controller calibration YAML files. The exported URDF can be visualized using stretch_urdf_show.py, which is part of the stretch_body Python code. 
+```
+cd ~/ament_ws/src/stretch_ros2/stretch_description/urdf
+./export_urdf.py
+```
+
+Normal output will look like:
+
+```
+$ ./export_urdf.sh
+Moving previous exported_urdf to exported_urdf_previous...
+Creating new exported URDF directories...
+Copying the meshes/URDF files to the exported URDF...
+Replacing the mesh ROS prefix with relative prefixes...
+Copying D435i mesh to the exported URDF...
+Copying controller params to the exported URDF...
+Copying license to exported URDF...
+Copying the exported URDF to the fleet directory...
+
+DONE!
+```
+
+The exported URDF will be copied to your robot's calibration data directory (at "~/stretch_user/stretch-yyy-xxxx/exported_urdf/"). It will include the calibrated URDF, meshes, and calibrated controller parameters. Once the URDF has been exported, it can be visualized using a command line tool called `stretch_urdf_viz`.
 
 ## Changing the Tool
 
