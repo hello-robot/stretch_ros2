@@ -688,7 +688,7 @@ class StretchDriver(Node):
         if mode not in self.control_modes:
             self.get_logger().warn(f'{self.node_name} given invalid mode={mode}, using position instead')
             mode = 'position'
-        self.get_logger().info('mode = ' + str(mode))
+        self.get_logger().debug('mode = ' + str(mode))
         if mode == "position":
             self.turn_on_position_mode()
         elif mode == "navigation":
@@ -706,7 +706,7 @@ class StretchDriver(Node):
 
         self.declare_parameter('controller_calibration_file', 'NOT SET')
         filename = self.get_parameter('controller_calibration_file').value
-        self.get_logger().info('Loading controller calibration parameters for the head from YAML file named {0}'.format(filename))
+        self.get_logger().debug('Loading controller calibration parameters for the head from YAML file named {0}'.format(filename))
         with open(filename, 'r') as fid:
             self.controller_parameters = yaml.safe_load(fid)
 
