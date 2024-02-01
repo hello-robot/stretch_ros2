@@ -19,7 +19,7 @@ def generate_launch_description():
 
     declare_fail_out_of_range_goal_arg = DeclareLaunchArgument(
         'fail_out_of_range_goal',
-        default_value='True', choices=['True', 'False'],
+        default_value='False', choices=['True', 'False'],
         description='Whether the motion action servers fail on out-of-range commands'
     )
 

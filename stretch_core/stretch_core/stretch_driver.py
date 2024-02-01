@@ -793,7 +793,7 @@ class StretchDriver(Node):
         self.last_twist_time = self.get_clock().now()
 
         # start action server for joint trajectories
-        self.declare_parameter('fail_out_of_range_goal', True)
+        self.declare_parameter('fail_out_of_range_goal', False)
         self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
         
         self.declare_parameter('action_server_rate', 30.0)
