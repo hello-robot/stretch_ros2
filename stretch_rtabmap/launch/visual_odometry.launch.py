@@ -26,9 +26,9 @@ def generate_launch_description():
         package='rtabmap_odom',
         executable='rgbd_odometry',
         remappings=[
-            ('rgb/image', '/camera/camera/color/image_raw'),
-            ('depth/image', '/camera/camera/aligned_depth_to_color/image_raw'),
-            ('rgb/camera_info', '/camera/camera/color/camera_info'),
+            ('rgb/image', '/camera/color/image_raw'),
+            ('depth/image', '/camera/aligned_depth_to_color/image_raw'),
+            ('rgb/camera_info', '/camera/color/camera_info'),
             ('grid_map', 'map')
         ],
         output='screen',
