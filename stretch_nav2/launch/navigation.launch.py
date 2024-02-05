@@ -24,7 +24,7 @@ def generate_launch_description():
 
     autostart_param = DeclareLaunchArgument(
         'autostart',
-        default_value='false',
+        default_value='true',
         description='Whether to autostart lifecycle nodes on launch')
 
     map_path_param = DeclareLaunchArgument(
