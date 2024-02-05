@@ -15,7 +15,9 @@ def generate_launch_description():
     rviz_param = DeclareLaunchArgument('use_rviz', default_value='true', choices=['true', 'false'])
     rviz_config = DeclareLaunchArgument('rviz_config',
                                         default_value=stretch_rtabmap_path + '/' + 'rviz/rtabmap.rviz')
-     
+    teleop_type_param = DeclareLaunchArgument(
+        'teleop_type', default_value="joystick", description="how to teleop ('keyboard', 'joystick' or 'none')")
+
     stretch_driver_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_core_path, '/launch/stretch_driver.launch.py']),
         launch_arguments={'mode': 'navigation', 'broadcast_odom_tf': 'True'}.items())
@@ -50,6 +52,7 @@ def generate_launch_description():
     return LaunchDescription([
         rviz_param,
         rviz_config,
+        teleop_type_param,
         stretch_driver_launch,
         d435i_launch,
         rtabmap_mapping_node,
