@@ -5,7 +5,6 @@ from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration, Command
 from launch_ros.actions import Node
 
-
 uncalibrated_urdf_path = os.path.join(get_package_share_directory('stretch_description'), 'urdf', 'stretch_uncalibrated.urdf')
 uncalibrated_controller_yaml_path = os.path.join(get_package_share_directory('stretch_core'), 'config', 'controller_calibration_head_factory_default.yaml')
 calibration_directory_path = "{0}/{1}/calibration_ros/".format(os.getenv('HELLO_FLEET_PATH'), os.getenv('HELLO_FLEET_ID'))

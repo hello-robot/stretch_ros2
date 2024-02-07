@@ -7,7 +7,8 @@ from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch.substitutions import Command
-
+import launch_ros.descriptions
+from ament_index_python.packages import get_package_share_path
 
 uncalibrated_urdf_path = os.path.join(get_package_share_directory('stretch_description'), 'urdf', 'stretch_uncalibrated.urdf')
 uncalibrated_controller_yaml_path = os.path.join(get_package_share_directory('stretch_core'), 'config', 'controller_calibration_head_factory_default.yaml')
@@ -48,6 +49,7 @@ def generate_launch_description():
     robot_description_content = Command(
         ['xacro ', os.path.join(stretch_description_path, 'urdf', 'stretch_uncalibrated.urdf')]
     )
+    robot_description_content = launch_ros.parameter_descriptions.ParameterValue( Command(['xacro ', str(get_package_share_path('stretch_description') / 'urdf' / 'stretch_uncalibrated.urdf')]), value_type=str)
 
     robot_state_publisher = Node(package='robot_state_publisher',
                                  executable='robot_state_publisher',
