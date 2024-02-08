@@ -46,10 +46,16 @@ def generate_launch_description():
         'params_file',
         default_value=os.path.join(stretch_navigation_path, 'config', 'nav2_params.yaml'),
         description='Full path to the ROS2 parameters file to use for all launched nodes')
-    
+
+    map_path_param = DeclareLaunchArgument(
+        'map',
+        default_value=os.path.join(stretch_navigation_path,
+                                   'map', 'home2.yaml'),
+        description='Full path to the map.yaml file to use for navigation')
+
     nav2_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(stretch_navigation_path, 'launch', 'navigation_launch.py')),
-            launch_arguments={'params_file': LaunchConfiguration('params_file')}.items())
+            launch_arguments={'params_file': LaunchConfiguration('params_file'), 'map': LaunchConfiguration('map')}.items())
     
     base_teleop_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_navigation_path, '/launch/teleop_twist.launch.py']),
@@ -71,6 +77,7 @@ def generate_launch_description():
         rplidar_launch,
         rtabmap_navigation_node,
         params_file_param,
+        map_path_param,
         nav2_launch,
         base_teleop_launch,
         rviz_launch,
