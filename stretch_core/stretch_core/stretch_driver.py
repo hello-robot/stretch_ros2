@@ -45,6 +45,8 @@ class StretchDriver(Node):
 
         self.default_goal_timeout_s = 10.0
         self.default_goal_timeout_duration = Duration(seconds=self.default_goal_timeout_s)
+        self.twist_timeout_s = 0.1
+        self.twist_timeout_duration = Duration(seconds=self.twist_timeout_s)
 
         # Initialize calibration offsets
         self.head_tilt_calibrated_offset_rad = 0.0
@@ -91,6 +93,7 @@ class StretchDriver(Node):
         self.linear_velocity_mps = twist.linear.x
         self.angular_velocity_radps = twist.angular.z
         self.last_twist_time = self.get_clock().now()
+        self.get_logger().info('yo')
         self.robot_mode_rwlock.release_read()
 
     def command_mobile_base_velocity_and_publish_state(self):
@@ -103,14 +106,11 @@ class StretchDriver(Node):
         # set new mobile base velocities, if appropriate
         # check on thread safety for this with callback that sets velocity command values
         if self.robot_mode == 'navigation':
-            time_since_last_twist = self.get_clock().now() - self.last_twist_time
-            if time_since_last_twist < self.timeout:
+            if (self.get_clock().now() - self.last_twist_time) < self.twist_timeout_duration:
                 self.robot.base.set_velocity(self.linear_velocity_mps, self.angular_velocity_radps)
-                # self.robot.push_command() #Moved to main
             else:
-                # Too much information in general, although it could be blocked, since it's just INFO.
+                self.get_logger().info('um')
                 self.robot.base.set_velocity(0.0, 0.0)
-                # self.robot.push_command() #Moved to main
 
         # get copy of the current robot status (uses lock held by the robot)
         robot_status = self.robot.get_status()
@@ -777,11 +777,7 @@ class StretchDriver(Node):
 
         self.declare_parameter('rate', 30.0)
         self.joint_state_rate = self.get_parameter('rate').value
-        self.declare_parameter('timeout', 0.5)
-        self.timeout_s = self.get_parameter('timeout').value
-        self.timeout = Duration(seconds=self.timeout_s)
         self.get_logger().info(f"rate = {self.joint_state_rate} Hz")
-        self.get_logger().info(f"twist timeout = {self.timeout_s} s")
 
         self.base_frame_id = 'base_link'
         self.get_logger().info(f"base_frame_id = {self.base_frame_id}")
