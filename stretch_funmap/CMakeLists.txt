@@ -11,14 +11,6 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
 )
 
-set(cython_code_dir ${CMAKE_CURRENT_SOURCE_DIR}/src/stretch_funmap)
-
-message("Compile cython code within cmake build")
-execute_process(
-  WORKING_DIRECTORY ${cython_code_dir}
-  COMMAND bash ${cython_code_dir}/compile_cython_code.sh
-)
-
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
