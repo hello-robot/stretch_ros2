@@ -10,7 +10,7 @@ setup(
     version='0.0.0',
     packages=find_packages(),
     # package_data={'stretch_demos': ['*.pyx']},
-    ext_modules = cythonize(cython_files, compiler_directives={'language_level': "3"}, force=True, quiet=True),
+    ext_modules = cythonize(cython_files),
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
