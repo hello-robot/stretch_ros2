@@ -14,6 +14,8 @@ stretch.urdf
 stretch_uncalibrated.urdf
 controller_calibration_head.yaml
 controller_calibration_tool.yaml
+stretch_description/meshes/*
+stretch_description/urdf/*
 stretch_description/urdf/exported_urdf
 stretch_description/urdf/exported_urdf/*
 stretch_description/urdf/exported_urdf_previous
