@@ -6,6 +6,7 @@ from cv_bridge import CvBridge
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
+import time
 
 # More UVC Video capture properties here:
 # https://docs.opencv.org/3.4/d4/d15/group__videoio__flags__base.html
@@ -28,9 +29,9 @@ class USBCamNode(Node):
     """
     def __init__(self):
         super().__init__('usb_cam_node')
-
         self.declare_parameter('camera_port','/dev/hello-navigation-camera') # Default
         self.declare_parameter('publish_topic','/usb_cam/image_raw') # Default
+        self.declare_parameter('print_debug',False) # Default
 
         # Uninitialized Optional Camera Properties
         self.declare_parameter('format', rclpy.Parameter.Type.STRING)
@@ -67,6 +68,7 @@ class USBCamNode(Node):
         if self.uvc_camera:
             self.timer = self.create_timer(timer_period, self.timer_callback)
             self.timer2 = self.create_timer(timer_period, self.timer_callback2)
+        self.latency = Latency(print_debug=self.get_parameter('print_debug').value,logger=self.get_logger())
     
     def is_parameter_initialized(self, param):
         # Ro2 does not have an API to check if param is uninitialized
@@ -150,10 +152,34 @@ class USBCamNode(Node):
             ret, image_uvc = self.uvc_camera.read()
             # Convert the OpenCV image to a ROS Image message
             self.image_msg = self.cv_bridge.cv2_to_imgmsg(image_uvc, encoding='bgr8')
+            self.latency.update()
         except Exception as e:
             print(f"Error UVC Cam: {e}")
 
+class Latency:
+    def __init__(self, print_debug=False, logger=Node):
+        self.total_duration = 0
+        self.average_period = 0
+        self.start_time = 0
+        self.iterations = 0
+        self.average_latency_ms = 0
+        self.print_debug = print_debug
+        self.logger = logger
+    
+    def start(self):
+        self.start_time = time.time()
 
+    def update(self):
+        self.iterations = self.iterations + 1
+        self.current_time = time.time()
+        self.total_duration = self.current_time - self.start_time
+        self.average_period = self.total_duration / self.iterations
+        self.average_frequency = 1.0/self.average_period
+        self.average_latency_ms =  self.average_period*1000.0
+
+        if self.print_debug:
+            self.logger.info(f"frame={self.iterations}     Average latency = {round(self.average_latency_ms,2)} ms | Average Freaquency = {round(self.average_frequency,2)} Hz")
+            # print(f"frame={self.iterations}     Average latency = {round(self.average_latency_ms,2)} ms | Average Freaquency = {round(self.average_frequency,2)} Hz")
 
 def main():
     try:
@@ -161,6 +187,7 @@ def main():
         executor = MultiThreadedExecutor()
         image_publisher_node = USBCamNode()
         executor.add_node(image_publisher_node)
+        image_publisher_node.latency.start()
         try:
             executor.spin()
         finally:
