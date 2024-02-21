@@ -13,18 +13,18 @@ def generate_launch_description():
             'print_debug': LaunchConfiguration('print_debug'),
 
             # Properties
-            # 'format': 'MJPG',
-            # 'size': [1280, 800],
-            # 'fps': 100,
-            # 'brightness': 10,
-            # 'contrast': 30,
-            # 'saturation': 80,
-            # 'hue': 0,
-            # 'gamma': 80,
-            # 'gain': 10,
-            # 'white_balence_temp': 4600,
-            # 'sharpness': 3,
-            # 'backlight': 1
+            'format': 'MJPG',
+            'size': [1024, 768],
+            'fps': 100,
+            'brightness': -40,
+            'contrast': 40,
+            'saturation': 60,
+            'hue': 0,
+            'gamma': 80,
+            'gain': 50,
+            'white_balence_temp': 4250,
+            'sharpness': 100,
+            'backlight': 1
         }
     ]
     usb_cam = Node(package='stretch_core',
