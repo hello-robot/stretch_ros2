@@ -157,7 +157,7 @@ class USBCamNode(Node):
             print(f"Error UVC Cam: {e}")
 
 class Latency:
-    def __init__(self, print_debug=False, logger=Node):
+    def __init__(self, print_debug=False, logger=None):
         self.total_duration = 0
         self.average_period = 0
         self.start_time = 0
@@ -178,7 +178,7 @@ class Latency:
         self.average_latency_ms =  self.average_period*1000.0
 
         if self.print_debug:
-            self.logger.info(f"frame={self.iterations}     Average latency = {round(self.average_latency_ms,2)} ms | Average Freaquency = {round(self.average_frequency,2)} Hz")
+            self.logger.info(f"frame={self.iterations} avg_latency = {round(self.average_latency_ms,2)} ms | avg_freaquency = {round(self.average_frequency,2)} Hz")
             # print(f"frame={self.iterations}     Average latency = {round(self.average_latency_ms,2)} ms | Average Freaquency = {round(self.average_frequency,2)} Hz")
 
 def main():

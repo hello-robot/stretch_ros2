@@ -1,12 +1,15 @@
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
-
 def generate_launch_description():
+    print_debug_arg = DeclareLaunchArgument('print_debug', default_value='False', description='Print debug info')
     camera_params = [
         {
             'camera_port': '/dev/hello-gripper-camera',
             'publish_topic':'/gripper_camera/image_raw',
+            'print_debug': LaunchConfiguration('print_debug'),
 
             # Properties
             # 'format': 'MJPG',
@@ -29,4 +32,4 @@ def generate_launch_description():
                    output='screen',
                    parameters=camera_params,
                    name='gripper_camera')
-    return LaunchDescription([usb_cam])
+    return LaunchDescription([print_debug_arg, usb_cam])
