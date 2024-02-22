@@ -61,13 +61,14 @@ class USBCamNode(Node):
                             'backlight':None}
 
         self.publisher = self.create_publisher(Image, self.get_parameter('publish_topic').value, 1)
-        timer_period = 0.05  # seconds
+        read_timer_period = 0.01  # seconds
+        publish_timer_period = 0.05  # seconds
         self.cv_bridge = CvBridge()
         self.image_msg = None
         self.uvc_camera = self.setup_uvc_camera()
         if self.uvc_camera:
-            self.timer = self.create_timer(timer_period, self.timer_callback)
-            self.timer2 = self.create_timer(timer_period, self.timer_callback2)
+            self.timer = self.create_timer(publish_timer_period, self.timer_callback)
+            self.timer2 = self.create_timer(read_timer_period, self.timer_callback2)
         self.latency = Latency(print_debug=self.get_parameter('print_debug').value,logger=self.get_logger())
     
     def is_parameter_initialized(self, param):
