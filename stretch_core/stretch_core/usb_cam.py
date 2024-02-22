@@ -60,8 +60,8 @@ class USBCamNode(Node):
                             'sharpness':None,
                             'backlight':None}
 
-        self.publisher = self.create_publisher(Image, self.get_parameter('publish_topic').value, 15)
-        timer_period = 0.001  # seconds
+        self.publisher = self.create_publisher(Image, self.get_parameter('publish_topic').value, 1)
+        timer_period = 0.05  # seconds
         self.cv_bridge = CvBridge()
         self.image_msg = None
         self.uvc_camera = self.setup_uvc_camera()
