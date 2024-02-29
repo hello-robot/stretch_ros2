@@ -2,11 +2,11 @@
 
 ## Overview
 
-*stretch_description* provides assets to create a [URDF](http://wiki.ros.org/urdf) kinematic model of the Stretch mobile manipulator.
+*stretch_description* is the ROS interface to the [URDF](http://wiki.ros.org/urdf) kinematic model of the Stretch mobile manipulator. The assets that build up a URDF (e.g. mesh files and XACROs) are compiled and copied into this package. These assets can be found in the [Stretch URDF](https://github.com/hello-robot/stretch_urdf) repository.
 
 ## Quick View
 
-To compile the XACROs into a URDF and view it in Rviz, run:
+To view the URDF in Rviz, run:
 
 ```
 ros2 launch stretch_description display.launch.py
