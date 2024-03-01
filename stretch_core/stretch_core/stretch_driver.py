@@ -596,7 +596,37 @@ class StretchDriver(Node):
         response.success = True
         response.message = 'is_runstopped: {0}'.format(request.data)
         return response
-    
+
+    def get_joint_states_callback(self, request, response):
+        joint_limits = JointState()
+        joint_limits.header.stamp = self.get_clock().now().to_msg()
+        cgs = list(set(self.joint_trajectory_action.command_groups) - set([self.joint_trajectory_action.mobile_base_cg, self.joint_trajectory_action.gripper_cg]))
+        for cg in cgs:
+            lower_limit, upper_limit = cg.range
+            joint_limits.name.append(cg.name)
+            joint_limits.position.append(lower_limit) # Misuse position array to mean lower limits
+            joint_limits.velocity.append(upper_limit) # Misuse velocity array to mean upper limits
+
+        gripper_cg = self.joint_trajectory_action.gripper_cg
+        if gripper_cg is not None:
+            lower_aperture_limit, upper_aperture_limit = gripper_cg.range_aperture_m
+            joint_limits.name.append('gripper_aperture')
+            joint_limits.position.append(lower_aperture_limit)
+            joint_limits.velocity.append(upper_aperture_limit)
+
+            lower_finger_limit, upper_finger_limit = gripper_cg.range_finger_rad
+            joint_limits.name.append('joint_gripper_finger_left')
+            joint_limits.position.append(lower_finger_limit)
+            joint_limits.velocity.append(upper_finger_limit)
+            joint_limits.name.append('joint_gripper_finger_right')
+            joint_limits.position.append(lower_finger_limit)
+            joint_limits.velocity.append(upper_finger_limit)
+
+        self.joint_limits_pub.publish(joint_limits)
+        response.success = True
+        response.message = ''
+        return response
+
     def home_the_robot(self):
         self.robot_mode_rwlock.acquire_read()
         can_home = self.robot_mode in self.control_modes
@@ -789,6 +819,7 @@ class StretchDriver(Node):
         self.get_logger().info(f"odom_frame_id = {self.odom_frame_id}")
 
         self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 1)
+        self.joint_limits_pub = self.create_publisher(JointState, 'joint_limits', 1)
 
         self.last_twist_time = self.get_clock().now()
 
@@ -828,7 +859,11 @@ class StretchDriver(Node):
         self.runstop_service = self.create_service(SetBool,
                                                    '/runstop',
                                                    self.runstop_service_callback)
-        
+
+        self.get_joint_states = self.create_service(Trigger,
+                                                    '/get_joint_states',
+                                                    self.get_joint_states_callback)
+
         # start loop to command the mobile base velocity, publish
         # odometry, and publish joint states
         timer_period = 1.0 / self.joint_state_rate
@@ -840,14 +875,14 @@ def main():
         rclpy.init()
         executor = MultiThreadedExecutor(num_threads=2)
         node = StretchDriver()
-        joint_trajectory_action = JointTrajectoryAction(node, node.action_server_rate)
+        node.joint_trajectory_action = JointTrajectoryAction(node, node.action_server_rate)
         executor.add_node(node)
-        executor.add_node(joint_trajectory_action)
+        executor.add_node(node.joint_trajectory_action)
         try:
             executor.spin()
         finally:
             executor.shutdown()
-            joint_trajectory_action.destroy_node()
+            node.joint_trajectory_action.destroy_node()
             node.destroy_node()
     except (KeyboardInterrupt, ThreadServiceExit):
         node.robot.stop()

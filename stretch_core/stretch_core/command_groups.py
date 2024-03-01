@@ -185,8 +185,8 @@ class WristRollCommandGroup(SimpleCommandGroup):
         if node is None:
             return # cannot calculate range without Stretch Body handle
         range_ticks = node.robot.end_of_arm.motors['wrist_roll'].params['range_t']
-        range_rad = (node.robot.end_of_arm.motors['wrist_roll'].ticks_to_world_rad(range_ticks[1]),
-                     node.robot.end_of_arm.motors['wrist_roll'].ticks_to_world_rad(range_ticks[0]))
+        range_rad = (node.robot.end_of_arm.motors['wrist_roll'].ticks_to_world_rad(range_ticks[0]),
+                     node.robot.end_of_arm.motors['wrist_roll'].ticks_to_world_rad(range_ticks[1]))
         self.range = range_rad
 
     def init_execution(self, robot, robot_status, **kwargs):
