@@ -594,7 +594,7 @@ class StretchDriver(Node):
         self.runstop_the_robot(request.data)
 
         response.success = True
-        response.message = 'is_runstopped: {0}'.format(request.data)
+        response.message = f'is_runstopped: {request.data}'
         return response
 
     def get_joint_states_callback(self, request, response):
@@ -625,6 +625,17 @@ class StretchDriver(Node):
         self.joint_limits_pub.publish(joint_limits)
         response.success = True
         response.message = ''
+        return response
+
+    def self_collision_avoidance_callback(self, request, response):
+        enable_self_collision_avoidance = request.data
+        if enable_self_collision_avoidance:
+            self.robot.enable_collision_mgmt()
+        else:
+            self.robot.disable_collision_mgmt()
+
+        response.success = True
+        response.message = f'is self collision avoidance enabled: {enable_self_collision_avoidance}'
         return response
 
     def home_the_robot(self):
@@ -863,6 +874,10 @@ class StretchDriver(Node):
         self.get_joint_states = self.create_service(Trigger,
                                                     '/get_joint_states',
                                                     self.get_joint_states_callback)
+
+        self.self_collision_avoidance = self.create_service(SetBool,
+                                                            '/self_collision_avoidance',
+                                                            self.self_collision_avoidance_callback)
 
         # start loop to command the mobile base velocity, publish
         # odometry, and publish joint states
