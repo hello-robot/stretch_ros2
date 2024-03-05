@@ -174,19 +174,20 @@ class StretchDriver(Node):
                 wrist_roll_rad = wrist_roll_status['pos']
                 wrist_roll_vel = wrist_roll_status['vel']
                 wrist_roll_effort = wrist_roll_status['effort']
-
+            
+            if 'stretch_gripper' in self.robot.end_of_arm.joints:
             # assign relevant gripper status to variables
-            gripper_status = robot_status['end_of_arm']['stretch_gripper']
-            if GRIPPER_DEBUG:
-                print('-----------------------')
-                print('gripper_status[\'pos\'] =', gripper_status['pos'])
-                print('gripper_status[\'pos_pct\'] =', gripper_status['pos_pct'])
-            gripper_aperture_m, gripper_finger_rad, gripper_finger_effort, gripper_finger_vel = \
-                self.gripper_conversion.status_to_all(gripper_status)
-            if GRIPPER_DEBUG:
-                print('gripper_aperture_m =', gripper_aperture_m)
-                print('gripper_finger_rad =', gripper_finger_rad)
-                print('-----------------------')
+                gripper_status = robot_status['end_of_arm']['stretch_gripper']
+                if GRIPPER_DEBUG:
+                    print('-----------------------')
+                    print('gripper_status[\'pos\'] =', gripper_status['pos'])
+                    print('gripper_status[\'pos_pct\'] =', gripper_status['pos_pct'])
+                gripper_aperture_m, gripper_finger_rad, gripper_finger_effort, gripper_finger_vel = \
+                    self.gripper_conversion.status_to_all(gripper_status)
+                if GRIPPER_DEBUG:
+                    print('gripper_aperture_m =', gripper_aperture_m)
+                    print('gripper_finger_rad =', gripper_finger_rad)
+                    print('-----------------------')
 
         if self.use_robotis_head:
             # assign relevant head pan status to variables
@@ -382,9 +383,12 @@ class StretchDriver(Node):
 
         if self.use_robotis_end_of_arm:
             if dex_wrist_attached:
-                end_of_arm_joint_names = ['joint_wrist_yaw', 'joint_wrist_pitch', 'joint_wrist_roll', 'joint_gripper_finger_left', 'joint_gripper_finger_right']
+                end_of_arm_joint_names = ['joint_wrist_yaw', 'joint_wrist_pitch', 'joint_wrist_roll']
+                if 'stretch_gripper' in self.robot.end_of_arm.joints:
+                    end_of_arm_joint_names = end_of_arm_joint_names + ['joint_gripper_finger_left', 'joint_gripper_finger_right']
             else:
-                end_of_arm_joint_names = ['joint_wrist_yaw', 'joint_gripper_finger_left', 'joint_gripper_finger_right']
+                if 'stretch_gripper' in self.robot.end_of_arm.joints:
+                    end_of_arm_joint_names = ['joint_wrist_yaw', 'joint_gripper_finger_left', 'joint_gripper_finger_right']
             
             joint_state.name.extend(end_of_arm_joint_names)
 
@@ -401,13 +405,14 @@ class StretchDriver(Node):
                 velocities.append(wrist_roll_vel)
                 efforts.append(wrist_roll_effort)
 
-            positions.append(gripper_finger_rad)
-            velocities.append(gripper_finger_vel)
-            efforts.append(gripper_finger_effort)
+                if 'stretch_gripper' in self.robot.end_of_arm.joints:
+                    positions.append(gripper_finger_rad)
+                    velocities.append(gripper_finger_vel)
+                    efforts.append(gripper_finger_effort)
 
-            positions.append(gripper_finger_rad)
-            velocities.append(gripper_finger_vel)
-            efforts.append(gripper_finger_effort)
+                    positions.append(gripper_finger_rad)
+                    velocities.append(gripper_finger_vel)
+                    efforts.append(gripper_finger_effort)
 
         # set joint_state
         joint_state.position = positions
@@ -548,7 +553,8 @@ class StretchDriver(Node):
             self.robot.head.move_by('head_pan', 0.0)
             self.robot.head.move_by('head_tilt', 0.0)
             self.robot.end_of_arm.move_by('wrist_yaw', 0.0)
-            self.robot.end_of_arm.move_by('stretch_gripper', 0.0)
+            if 'stretch_gripper' in self.robot.end_of_arm.joints:
+                self.robot.end_of_arm.move_by('stretch_gripper', 0.0)
             # self.robot.push_command() #Moved to main
 
         self.get_logger().info('Received stop_the_robot service call, so commanded all actuators to stop.')
