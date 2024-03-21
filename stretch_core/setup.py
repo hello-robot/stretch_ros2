@@ -24,6 +24,7 @@ setup(
     entry_points={
         'console_scripts': [
             'stretch_driver = stretch_core.stretch_driver:main',
+            'grasp = stretch_core.grasp:main',
             'detect_aruco_markers = stretch_core.detect_aruco_markers:main',
             'd435i_accel_correction = stretch_core.d435i_accel_correction:main',
             'keyboard_teleop = stretch_core.keyboard_teleop:main',
