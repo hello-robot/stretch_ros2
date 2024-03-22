@@ -513,7 +513,7 @@ class MobileBaseCommandGroup(SimpleCommandGroup):
         self.active_rotate_mobile_base = False
         self.acceptable_mobile_base_error_m = 0.005
         self.excellent_mobile_base_error_m = 0.005
-        self.acceptable_mobile_base_error_rad = (np.pi/180.0) * 6.0
+        self.acceptable_mobile_base_error_rad = (np.pi/180.0) * 1.0
         self.excellent_mobile_base_error_rad = (np.pi/180.0) * 0.6
         self.min_m_per_s = 0.002
         self.min_rad_per_s = np.radians(1.0)
