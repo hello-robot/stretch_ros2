@@ -225,7 +225,7 @@ class JointTrajectoryAction(Node):
                     if any(ret == True for ret in named_errors):
                         self.node.robot_mode_rwlock.release_read()
                         # TODO: Check when this condtion is met
-                        return self.error_callback(goal_handle, 100, "--")
+                        return self.error_callback(goal_handle, 100, f"Joint Maximum effort exceeded, check {__file__}")
 
                     self.feedback_callback(goal_handle, desired_point=point, named_errors=named_errors)
                     goals_reached = [c.goal_reached() for c in self.command_groups]
