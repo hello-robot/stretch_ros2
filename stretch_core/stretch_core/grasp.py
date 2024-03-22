@@ -3,18 +3,21 @@
 import math
 import time
 from typing import Optional
-from pprint import pprint
-
+from pprint import pformat
 
 import rclpy
 import rclpy.time
-from rclpy.duration import Duration
+from action_msgs.msg import GoalStatus
+from geometry_msgs.msg import Transform
 from hello_helpers.hello_misc import HelloNode
-from geometry_msgs.msg import Twist, PoseStamped, Transform
-from trajectory_msgs.msg import JointTrajectoryPoint
-from control_msgs.action import FollowJointTrajectory
-from tf2_ros import Buffer, TransformListener
+from control_msgs.action._follow_joint_trajectory import (
+    FollowJointTrajectory_GetResult_Response,
+    FollowJointTrajectory_Result,
+)
+from rclpy.duration import Duration
 from tf2_ros import LookupException, ConnectivityException, ExtrapolationException
+
+from loguru import logger
 
 
 class GraspCommand(HelloNode):
@@ -22,7 +25,10 @@ class GraspCommand(HelloNode):
         super().__init__()
         super().main("grasp_command", "grasp_command", wait_for_first_pointcloud=False)
 
+        # Constants
         self.CUSTOM_JOINT_EFFORT: float = 60.0
+        self.HACKY_GRASP_CENTER_ALIGN_Y_OFFSET = -0.05
+
         self.ARM_MAX_LENGTH = 0.513
         self.LIFT_MAX_HEIGHT = 1.098
         self.GRASP_X_OFFSET = 0.225  # gripper center wrt base
@@ -53,16 +59,65 @@ class GraspCommand(HelloNode):
         except (LookupException, ConnectivityException, ExtrapolationException) as e:
             # TODO: hardcode something if the motion capture is not running
 
-            self.get_logger().error(
+            logger.error(
                 f"Failed to get transform from {source_frame} to {target_frame}: {str(e)}"
             )
             return None
 
+    def status_dict_reverse_lookup(self, status_dict: dict[str, int], val: int) -> str:
+        # It would be more efficient to cache the reversed dictionary, but ignore for now
+        for k, v in status_dict.items():
+            if v == val:
+                return k
+        return "Unknown"
+
+    def check_follow_joint_trajectory_response(
+        self,
+        response: FollowJointTrajectory_GetResult_Response,
+    ) -> bool:
+        if (
+            response.status == GoalStatus.STATUS_SUCCEEDED
+            and response.result.error_code == FollowJointTrajectory_Result.SUCCESSFUL
+        ):
+            return True
+
+        status_str = self.status_dict_reverse_lookup(
+            GoalStatus.__prepare__(None, None),
+            response.status,
+        )
+        logger.error(f"GoalStatus: error id {response.status} ('{status_str}')")
+
+        status_str = self.status_dict_reverse_lookup(
+            FollowJointTrajectory_Result.__prepare__(None, None),
+            response.result.error_code,
+        )
+        logger.error(
+            f"JointTrajectory: error id {response.result.error_code} ('{status_str}'; {response.result.error_string})"
+        )
+
+        return False
+
+    def stow(self) -> bool:
+        logger.info("Stowing the arm...")
+
+        joint_positions_dict: dict[str, tuple[float, float]] = {
+            "joint_lift": (0.25, self.CUSTOM_JOINT_EFFORT),
+            "wrist_extension": (0.025, self.CUSTOM_JOINT_EFFORT),
+            "joint_wrist_yaw": (self.joint_wrist_yaw_in, self.CUSTOM_JOINT_EFFORT),
+            "joint_wrist_pitch": (0.0, self.CUSTOM_JOINT_EFFORT),
+            "joint_wrist_roll": (0.0, self.CUSTOM_JOINT_EFFORT),
+        }
+        action_response = self.move_to_pose(
+            joint_positions_dict, custom_contact_thresholds=True
+        )
+        returncode = self.check_follow_joint_trajectory_response(action_response)
+        if returncode:
+            logger.success("Stowed the arm")
+        return returncode
+
     # Move arm to the desired height without stretching arm
     def lift_arm(self) -> bool:
-        if not self.joint_state:
-            self.get_logger().info("Waiting for joint states message to arrive")
-            return False
+        logger.info("Moving the lift...")
 
         T_base_link__object = self.get_latest_tf("base_link", "Pringles")
         if T_base_link__object is None:
@@ -74,7 +129,6 @@ class GraspCommand(HelloNode):
             + self.GRIPPER_Z_OFFSET * 0
         )
 
-        self.get_logger().info("Moving the lift ...")
         joint_positions_dict: dict[str, tuple[float, float]] = {
             "joint_lift": (target_lift_height, self.CUSTOM_JOINT_EFFORT),
             "wrist_extension": (0.1, self.CUSTOM_JOINT_EFFORT),
@@ -83,27 +137,28 @@ class GraspCommand(HelloNode):
             "joint_wrist_roll": (0.0, self.CUSTOM_JOINT_EFFORT),
             "gripper_aperture": (self.gripper_open, self.CUSTOM_JOINT_EFFORT),
         }
+        logger.info("\n" + pformat(joint_positions_dict))
+        action_response = self.move_to_pose(
+            joint_positions_dict, custom_contact_thresholds=True
+        )
 
-        pprint(joint_positions_dict)
-        self.move_to_pose(joint_positions_dict, custom_contact_thresholds=True)
-
-        self.get_logger().info("Lift is ready!")
-        return True
+        returncode = self.check_follow_joint_trajectory_response(action_response)
+        if returncode:
+            logger.success("Moved the lift")
+        return returncode
 
     # Move arm to the pre-grasping position
     def align_end_effector(self) -> bool:
-        HACKY_GRASP_CENTER_Y_OFFSET = -0.05
-
-        if not self.joint_state:
-            self.get_logger().info("Waiting for joint states message to arrive")
-            return False
+        logger.info("Aligning the end effector...")
 
         T_link_grasp_center__object = self.get_latest_tf(
             "link_grasp_center", "Pringles"
         )
         if T_link_grasp_center__object is None:
             return False
-        T_link_grasp_center__object.translation.y += HACKY_GRASP_CENTER_Y_OFFSET
+        T_link_grasp_center__object.translation.y += (
+            self.HACKY_GRASP_CENTER_ALIGN_Y_OFFSET
+        )
 
         T_base_link__link_grasp_center = self.get_latest_tf(
             "base_link", "link_grasp_center"
@@ -123,123 +178,153 @@ class GraspCommand(HelloNode):
             -T_base_link__link_grasp_center.translation.y,
             T_base_link__link_grasp_center.translation.x,
         )
-
         joint_positions_dict: dict[str, float] = {
             "rotate_mobile_base": theta_offset,  # relative
         }
-        # pprint(T_link_grasp_center__object.translation)
-        # pprint(joint_positions_dict)
+        logger.info("\n" + pformat(joint_positions_dict))
+        action_response = self.move_to_pose(
+            joint_positions_dict, custom_contact_thresholds=False
+        )
 
-        self.move_to_pose(joint_positions_dict, custom_contact_thresholds=False)
-
+        # Check how well the gripper is aligned
         T_link_grasp_center__object = self.get_latest_tf(
             "link_grasp_center", "Pringles"
         )
-        if T_link_grasp_center__object is None:
-            return False
-        T_link_grasp_center__object.translation.y += HACKY_GRASP_CENTER_Y_OFFSET
+        if T_link_grasp_center__object is not None:
+            T_link_grasp_center__object.translation.y += (
+                self.HACKY_GRASP_CENTER_ALIGN_Y_OFFSET
+            )
+            logger.debug(
+                "New relative pose\n" + pformat(T_link_grasp_center__object.translation)
+            )
 
-        pprint(T_link_grasp_center__object.translation)
-
-        return True
+        returncode = self.check_follow_joint_trajectory_response(action_response)
+        if returncode:
+            logger.success("Aligned the end effector")
+        return returncode
 
     def move_base_forward(self, distance: float) -> bool:
-        if not self.joint_state:
-            self.get_logger().info("Waiting for joint states message to arrive")
+        logger.info(f"Driving the base {distance:.2f} m")
+
+        joint_positions_dict: dict[str, float] = {"translate_mobile_base": distance}
+        action_response = self.move_to_pose(joint_positions_dict)
+
+        returncode = self.check_follow_joint_trajectory_response(action_response)
+        if returncode:
+            logger.success("Drove the base")
+        return returncode
+
+    def drive_base_link_to_frame(
+        self, target_frame: str, stopping_distance: float
+    ) -> bool:
+        logger.info(f"Driving base_link to {target_frame}")
+
+        T_base_link__target = self.get_latest_tf("base_link", target_frame)
+        if T_base_link__target is None:
             return False
 
-        self.get_logger().info(f"move_base_forward: d: {distance}")
-
+        # Align yaw
+        theta_offset = math.atan2(
+            T_base_link__target.translation.y, T_base_link__target.translation.x
+        )
         joint_positions_dict: dict[str, float] = {
-            "translate_mobile_base": distance
+            "rotate_mobile_base": theta_offset,  # relative
         }
-        self.move_to_pose(joint_positions_dict)
+        logger.info("\n" + pformat(joint_positions_dict))
+        action_response = self.move_to_pose(joint_positions_dict)
+        if not self.check_follow_joint_trajectory_response(action_response):
+            logger.error("Failed to rotate base")
 
-        return True
+        T_base_link__target = self.get_latest_tf("base_link", target_frame)
+        if T_base_link__target is None:
+            return False
+        logger.debug("New relative pose\n" + pformat(T_base_link__target.translation))
+
+        # Drive forward
+        distance_offset = max(
+            0.0, T_base_link__target.translation.x - stopping_distance
+        )
+
+        returncode = (distance_offset == 0.0) or self.move_base_forward(distance_offset)
+        if returncode:
+            logger.success(f"Drove base_link to {target_frame}")
+        return returncode
 
     # close the gripper and lift the object
     def issue_grasp_command(self) -> bool:
-        if not self.joint_state:
-            self.get_logger().info("Waiting for joint states message to arrive")
+        logger.info("Closing the gripper...")
+
+        action_response = self.move_to_pose({"gripper_aperture": self.gripper_close})
+        if not self.check_follow_joint_trajectory_response(action_response):
+            logger.error("Failed to close the gripper")
             return False
 
-        self.get_logger().info("Grasping ...")
-        self.move_to_pose({"gripper_aperture": self.gripper_close})
-
-        current_lift_pos = self.joint_state.position[self.joint_state.name.index("joint_lift")]
+        current_lift_pos = self.joint_state.position[
+            self.joint_state.name.index("joint_lift")
+        ]
 
         # lift and retract the arm
         joint_positions_dict: dict[str, tuple[float, float]] = {
             "joint_lift": (current_lift_pos + 0.05, self.CUSTOM_JOINT_EFFORT),
             "wrist_extension": (0.0, self.CUSTOM_JOINT_EFFORT),
+            "joint_wrist_yaw": (2.7, self.CUSTOM_JOINT_EFFORT),
         }
-
-        self.move_to_pose(joint_positions_dict, custom_contact_thresholds=True)
-
-        return True
-
-    def drive_to_human(self) -> bool:
-        T_base_link__human = self.get_latest_tf(
-            "base_link", "human"
+        action_response = self.move_to_pose(
+            joint_positions_dict, custom_contact_thresholds=True
         )
-        if T_base_link__human is None:
-            return False
-
-        theta_offset = math.atan2(
-            T_base_link__human.translation.y, T_base_link__human.translation.x
-        )
-        joint_positions_dict: dict[str, float] = {
-            "rotate_mobile_base": theta_offset,  # relative
-        }
-        self.move_to_pose(joint_positions_dict)
-
-        T_base_link__human = self.get_latest_tf(
-            "base_link", "human"
-        )
-        if T_base_link__human is None:
-            return False
-
-        distance = max(0.0, T_base_link__human.translation.x - 1.0)
-        self.move_base_forward(distance)
-
-        return True
+        returncode = self.check_follow_joint_trajectory_response(action_response)
+        if returncode:
+            logger.success("Finished grasp command")
+        return returncode
 
     # lift the arm and open the gripper
     def handover(self) -> bool:
-        if not self.joint_state:
-            self.get_logger().info("Waiting for joint states message to arrive")
-            return False
-
-        self.get_logger().info("Lifting and stretching ...")
+        logger.info("Executing handover...")
 
         joint_positions_dict: dict[str, float] = {
-            "joint_wrist_yaw": self.joint_wrist_yaw_out,
             "rotate_mobile_base": 3.1415 / 2,  # relative
         }
         self.move_to_pose(joint_positions_dict)
 
         joint_positions_dict: dict[str, tuple[float, float]] = {
-            "joint_lift": (0.8, self.CUSTOM_JOINT_EFFORT),
-            "wrist_extension": (0.3, self.CUSTOM_JOINT_EFFORT),
+            "joint_lift": (0.9, self.CUSTOM_JOINT_EFFORT),
         }
         self.move_to_pose(joint_positions_dict, custom_contact_thresholds=True)
 
-        # TODO: open gripper
+        joint_positions_dict: dict[str, float] = {
+            "joint_wrist_yaw": self.joint_wrist_yaw_out,
+        }
+        self.move_to_pose(joint_positions_dict)
 
-        self.get_logger().info("Opening the gripper ...")
-        time.sleep(2)
+        joint_positions_dict: dict[str, tuple[float, float]] = {
+            "wrist_extension": (0.2, self.CUSTOM_JOINT_EFFORT),
+        }
+        self.move_to_pose(joint_positions_dict, custom_contact_thresholds=True)
+
+        # Open the gripper
+        logger.info("Opening the gripper...")
+        time.sleep(1)
         self.move_to_pose({"gripper_aperture": self.gripper_open})
 
+        logger.success("Completed handover.")
         return True
 
-    def main(self):
+    def main(self) -> None:
+        # Ensure that the joint states are initialized
+        while not self.joint_state:
+            logger.info("Waiting for joint state initialization.")
+            time.sleep(0.5)
+
+        self.stow()
+
+        while not self.drive_base_link_to_frame("Pringles", 0.5):
+            continue
+
         while True:
             if not self.lift_arm():
-                self.get_logger().warn("lift_arm failed")
                 continue
 
             if not self.align_end_effector():
-                self.get_logger().warn("align_end_effector failed")
                 continue
 
             T_link_grasp_center__object = self.get_latest_tf(
@@ -247,11 +332,11 @@ class GraspCommand(HelloNode):
             )
             if T_link_grasp_center__object is None:
                 continue
-            distance = max(0.0, T_link_grasp_center__object.translation.x - 1)
 
-            if distance > 0.02:
-                self.move_base_forward(distance)
-                continue
+            # distance = max(0.0, T_link_grasp_center__object.translation.x - 1)
+            # if distance > 0.02:
+            #     self.move_base_forward(distance)
+            #     continue
 
             distance = max(0.0, T_link_grasp_center__object.translation.x - 0.12)
             if distance > 0.02:
@@ -259,7 +344,7 @@ class GraspCommand(HelloNode):
                 self.align_end_effector()
                 continue
 
-            distance = max(0.0, T_link_grasp_center__object.translation.x - 0.02)
+            distance = max(0.0, T_link_grasp_center__object.translation.x - 0.012)
             if distance > 0.2:
                 self.get_logger().error(
                     f"WTF: {distance} // {T_link_grasp_center__object.translation}"
@@ -272,18 +357,13 @@ class GraspCommand(HelloNode):
             time.sleep(1)
             self.move_base_forward(-0.3)
 
-            while not self.drive_to_human():
+            while not self.drive_base_link_to_frame("human", 1.5):
                 time.sleep(1)
 
-            self.drive_to_human()
-
             self.handover()
-
+            time.sleep(1)
+            self.stow()
             break
-
-        # self.move_base_forward()
-        # self.issue_grasp_command()
-        # self.handover()
 
         rclpy.shutdown()
 
