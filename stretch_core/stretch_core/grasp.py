@@ -8,7 +8,7 @@ from pprint import pformat
 import rclpy
 import rclpy.time
 from action_msgs.msg import GoalStatus
-from geometry_msgs.msg import Transform
+from geometry_msgs.msg import Transform, Vector3
 from hello_helpers.hello_misc import HelloNode
 from control_msgs.action._follow_joint_trajectory import (
     FollowJointTrajectory_GetResult_Response,
@@ -27,7 +27,6 @@ class GraspCommand(HelloNode):
 
         # Constants
         self.CUSTOM_JOINT_EFFORT: float = 60.0
-        self.HACKY_GRASP_CENTER_ALIGN_Y_OFFSET = -0.05
 
         self.ARM_MAX_LENGTH = 0.513
         self.LIFT_MAX_HEIGHT = 1.098
@@ -151,32 +150,31 @@ class GraspCommand(HelloNode):
     def align_end_effector(self) -> bool:
         logger.info("Aligning the end effector...")
 
-        T_link_grasp_center__object = self.get_latest_tf(
-            "link_grasp_center", "Pringles"
-        )
-        if T_link_grasp_center__object is None:
-            return False
-        T_link_grasp_center__object.translation.y += (
-            self.HACKY_GRASP_CENTER_ALIGN_Y_OFFSET
-        )
-
         T_base_link__link_grasp_center = self.get_latest_tf(
             "base_link", "link_grasp_center"
         )
         if T_base_link__link_grasp_center is None:
             return False
 
-        def magic_function(dx, dy, L, X):
-            return 2 * math.atan2(
-                X + dx - math.sqrt(-2 * L * dy + X**2 + 2 * X * dx + dx**2 + dy**2),
-                2 * L - dy,
+        T_base_link__object = self.get_latest_tf("base_link", "Pringles")
+        if T_base_link__object is None:
+            return False
+
+        def calculate_base_rotation_angle(
+            p_base_link__object: Vector3, p_base_link__link_grasp_center: Vector3
+        ) -> float:
+            # alias variables to make things more readable
+            p_R_obj = p_base_link__object
+            p_R_EE = p_base_link__link_grasp_center
+
+            return -2.0 * math.atan2(
+                p_R_obj.x - math.sqrt(p_R_obj.x**2 + p_R_obj.y**2 - p_R_EE.y**2),
+                3 * p_R_EE.y - p_R_obj.y
             )
 
-        theta_offset = magic_function(
-            T_link_grasp_center__object.translation.x,
-            T_link_grasp_center__object.translation.y,
-            -T_base_link__link_grasp_center.translation.y,
-            T_base_link__link_grasp_center.translation.x,
+        theta_offset = calculate_base_rotation_angle(
+            T_base_link__object.translation,
+            T_base_link__link_grasp_center.translation
         )
         joint_positions_dict: dict[str, float] = {
             "rotate_mobile_base": theta_offset,  # relative
@@ -185,18 +183,6 @@ class GraspCommand(HelloNode):
         action_response = self.move_to_pose(
             joint_positions_dict, custom_contact_thresholds=False
         )
-
-        # Check how well the gripper is aligned
-        T_link_grasp_center__object = self.get_latest_tf(
-            "link_grasp_center", "Pringles"
-        )
-        if T_link_grasp_center__object is not None:
-            T_link_grasp_center__object.translation.y += (
-                self.HACKY_GRASP_CENTER_ALIGN_Y_OFFSET
-            )
-            logger.debug(
-                "New relative pose\n" + pformat(T_link_grasp_center__object.translation)
-            )
 
         returncode = self.check_follow_joint_trajectory_response(action_response)
         if returncode:
@@ -253,6 +239,10 @@ class GraspCommand(HelloNode):
     # close the gripper and lift the object
     def issue_grasp_command(self) -> bool:
         logger.info("Closing the gripper...")
+
+        T_gripper__object = self.get_latest_tf("link_grasp_center", "Pringles")
+        if T_gripper__object is not None:
+            logger.debug(f"Object pose pre-grasp:\n{T_gripper__object.translation}")
 
         action_response = self.move_to_pose({"gripper_aperture": self.gripper_close})
         if not self.check_follow_joint_trajectory_response(action_response):
@@ -344,7 +334,9 @@ class GraspCommand(HelloNode):
                 self.align_end_effector()
                 continue
 
-            distance = max(0.0, T_link_grasp_center__object.translation.x - 0.012)
+            # The gripper shortens in length as it closes, so we need to add a
+            # couple of centimeters to the drive distance to compensate.
+            distance = max(0.0, T_link_grasp_center__object.translation.x + 0.02)
             if distance > 0.2:
                 self.get_logger().error(
                     f"WTF: {distance} // {T_link_grasp_center__object.translation}"
