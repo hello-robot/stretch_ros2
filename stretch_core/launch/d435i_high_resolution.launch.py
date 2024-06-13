@@ -4,8 +4,8 @@ from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, LogInfo
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
-configurable_parameters = [{'name': 'depth_module.profile',         'default': '1280x720x15', 'description': 'depth module profile'},                           
-                           {'name': 'rgb_camera.profile',           'default': '1280x720x15', 'description': 'color image width'},
+configurable_parameters = [{'name': 'depth_module.profile',         'default': '1280x720x30', 'description': 'depth module profile'},                           
+                           {'name': 'rgb_camera.profile',           'default': '1280x720x30', 'description': 'color image width'},
                            {'name': 'align_depth.enable',           'default': 'true',        'description': 'whether to publish aligned_depth_to_color feed'},
                            ]
                            

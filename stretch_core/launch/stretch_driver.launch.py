@@ -23,9 +23,15 @@ def generate_launch_description():
         description='Whether the motion action servers fail on out-of-range commands'
     )
 
+    # declare_mode_arg = DeclareLaunchArgument(
+    #     'mode',
+    #     default_value='position', choices=['position', 'navigation', 'trajectory'],
+    #     description='The mode in which the ROS driver commands the robot'
+    # )
+    
     declare_mode_arg = DeclareLaunchArgument(
         'mode',
-        default_value='position', choices=['position', 'navigation', 'trajectory'],
+        default_value='navigation', choices=['position', 'navigation', 'trajectory'],
         description='The mode in which the ROS driver commands the robot'
     )
 
@@ -51,22 +57,39 @@ def generate_launch_description():
                                              {'publish_frequency': 30.0}],
                                  arguments=['--ros-args', '--log-level', 'error'],)
 
-    stretch_driver_params = [
+    # stretch_driver_params = [
+    #     {'rate': 30.0,
+    #      'timeout': 0.5,
+    #      'controller_calibration_file': LaunchConfiguration('calibrated_controller_yaml_file'),
+    #      'broadcast_odom_tf': LaunchConfiguration('broadcast_odom_tf'),
+    #      'fail_out_of_range_goal': LaunchConfiguration('fail_out_of_range_goal'),
+    #      'mode': LaunchConfiguration('mode')}
+    # ]
+    
+    stretch_wbc_driver_params = [
         {'rate': 30.0,
          'timeout': 0.5,
          'controller_calibration_file': LaunchConfiguration('calibrated_controller_yaml_file'),
          'broadcast_odom_tf': LaunchConfiguration('broadcast_odom_tf'),
          'fail_out_of_range_goal': LaunchConfiguration('fail_out_of_range_goal'),
          'mode': LaunchConfiguration('mode')}
-    ]
+    ]  # whole body control stretch driver parameters
 
-    stretch_driver = Node(package='stretch_core',
-                          executable='stretch_driver',
+    # stretch_driver = Node(package='stretch_core',             # Original stretch_driver_node
+    #                       executable='stretch_driver',
+    #                       emulate_tty=True,
+    #                       output='screen',
+    #                       remappings=[('cmd_vel', '/stretch/cmd_vel'),
+    #                                   ('joint_states', '/stretch/joint_states')],
+    #                       parameters=stretch_driver_params) 
+    
+    stretch_wbc_driver = Node(package='stretch_core',                # whole body control stretch_driver_node
+                          executable='stretch_wbc_driver',
                           emulate_tty=True,
                           output='screen',
-                          remappings=[('cmd_vel', '/stretch/cmd_vel'),
+                          remappings=[('base_cmd_vel', '/base_cmd_vel'),
                                       ('joint_states', '/stretch/joint_states')],
-                          parameters=stretch_driver_params)
+                          parameters=stretch_wbc_driver_params)
 
     return LaunchDescription([declare_broadcast_odom_tf_arg,
                               declare_fail_out_of_range_goal_arg,
@@ -74,4 +97,4 @@ def generate_launch_description():
                               declare_controller_arg,
                               joint_state_publisher,
                               robot_state_publisher,
-                              stretch_driver])
+                              stretch_wbc_driver])
