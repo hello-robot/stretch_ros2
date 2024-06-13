@@ -1,0 +1,25 @@
+base:
+  pub: True
+  save: False
+  freq: 0.1
+  limits:
+    linear: [-3.0, 3.0]  # m/s
+    angular: [-1.0, 1.0]  # rad/s
+lift:
+  pub: False
+  save: False
+  freq: 0.1
+  limits:
+    linear: [-0.2, 0.2]
+arm:
+  pub: True
+  save: False
+  freq: 0.1
+  limits:
+    linear: [-0.07, 0.07]
+wrist:
+  pub: True
+  save: False
+  freq: 0.1
+  limits:
+    angular: [-1.2, 1.2]

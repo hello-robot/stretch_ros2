@@ -8,10 +8,24 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import threading
 import csv
+import os
+import yaml
+from ament_index_python.packages import get_package_share_directory
 
 class SineVelPublisher(Node):
     def __init__(self):
         super().__init__('sine_vel_publisher')
+        
+        # Load the configuration from the YAML file
+        package_share_directory = get_package_share_directory('stretch_wbc_pkg')
+        config_file = os.path.join(package_share_directory, 'config', 'joint_vel_pub_config.yaml')
+        
+        with open(config_file, 'r') as file:
+            self.config = yaml.safe_load(file)
+            
+        #Sanity check the config file
+        # self.print_joint_limits_from_config()
+        
         # command velcoity publisher
         self.base_publisher_ = self.create_publisher(TwistStamped, '/base_cmd_vel', 10)
         self.arm_publisher_ = self.create_publisher(TwistStamped, '/arm_cmd_vel', 10)
@@ -23,41 +37,7 @@ class SineVelPublisher(Node):
         
         self.plot = False
         self.save = True
-        self.config = {
-                        "base": {
-                            "pub": True,
-                            "save": False, # save to a csv file
-                            "freq": 0.2,
-                            "limits": {
-                                "linear": [-2.0, 2.0], # m/s
-                                "angular": [-2.0, 2.0] # rad/s
-                            }
-                        },
-                        "lift": {
-                            "pub": True,
-                            "save": False,
-                            "freq": 0.2,
-                            "limits": {
-                                "linear": [-0.2, 0.2]
-                            }
-                        },
-                        "arm": {
-                            "pub": True,
-                            "save": False,
-                            "freq": 0.2,
-                            "limits": {
-                                "linear": [-0.05, 0.05]
-                            }
-                        },
-                        "wrist": {
-                            "pub": True,
-                            "save": False,
-                            "freq": 0.2,
-                            "limits": {
-                                "angular": [-1.2, 1.2]
-                            }
-                        }
-                    }
+
         
         if self.config["base"]["save"]:
             self.base_csv_file = open('/home/hello-robot/ament_ws/src/stretch_ros2/stretch_wbc_pkg/plots/cmd_vel/base_cmd_vel_data.csv', 'w', newline='')
@@ -102,7 +82,16 @@ class SineVelPublisher(Node):
         a_vel = amp * raw_vel + offset
         # may need to do clamping or somehting here
         return a_vel
-
+    
+    def print_joint_limits_from_config(self,):
+        print("Joint Limits:")
+        for joint, params in self.config.items():
+            if 'limits' in params:
+                print(f"{joint.capitalize()} Limits:")
+                for limit_type, values in params['limits'].items():
+                    print(f"  {limit_type.capitalize()}: {values}")
+            else:
+                print(f"{joint.capitalize()} has no limits defined.")
     
     def timer_callback(self,):
         
