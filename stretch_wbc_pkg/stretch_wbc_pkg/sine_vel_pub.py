@@ -110,6 +110,11 @@ class SineVelPublisher(Node):
             linear_vel = self.l_vel_profile(time_elapsed, base_freq, l_limits)
             angular_vel = self.ang_vel_profile(time_elapsed, base_freq, a_limits)
             
+            if self.config["base"]["limits"]["linear"][0] == 0.0 and self.config["base"]["limits"]["linear"][1] == 0.0:
+                linear_vel = 0.0
+            if self.config["base"]["limits"]["angular"][0] == 0.0 and self.config["base"]["limits"]["angular"][1] == 0.0:
+                angular_vel = 0.0
+            
             base_msg.header.stamp = current_time.to_msg()
             base_msg.header.frame_id = 'base_link'
             base_msg.twist.linear.x = linear_vel
