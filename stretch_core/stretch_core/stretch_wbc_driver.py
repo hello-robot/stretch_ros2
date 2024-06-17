@@ -487,11 +487,11 @@ class StretchWBCDriver(Node):
             velocities.append(gripper_finger_vel)
             efforts.append(gripper_finger_effort)
             
-        # Add base velocities to the JointState message
-        joint_state.name.extend(['base_x', 'base_y', 'base_theta'])
-        positions.extend([x, y, theta])  # Positions are not applicable for velocities
-        velocities.extend([x_vel, y_vel, theta_vel])
-        efforts.extend([0.0, 0.0, 0.0])  # Effort is not applicable for velocities
+        # # Add base velocities to the JointState message
+        # joint_state.name.extend(['base_x', 'base_y', 'base_theta'])
+        # positions.extend([x, y, theta])  # Positions are not applicable for velocities
+        # velocities.extend([x_vel, y_vel, theta_vel])
+        # efforts.extend([0.0, 0.0, 0.0])  # Effort is not applicable for velocities
 
         # set joint_state
         joint_state.position = positions
