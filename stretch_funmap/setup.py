@@ -1,6 +1,7 @@
 from setuptools import setup, find_packages
 from Cython.Build import cythonize
 from glob import glob
+import numpy
 
 package_name = 'stretch_funmap'
 cython_files = [package_name+"/cython_min_cost_path.pyx",]
@@ -11,6 +12,7 @@ setup(
     packages=find_packages(),
     # package_data={'stretch_demos': ['*.pyx']},
     ext_modules = cythonize(cython_files, compiler_directives={'language_level': "3"}, force=True, quiet=True),
+    include_dirs = [numpy.get_include()],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
