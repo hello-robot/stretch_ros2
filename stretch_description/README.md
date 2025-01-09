@@ -58,7 +58,7 @@ Sometimes a URDF is useful outside of ROS, such as for simulations and analysis.
 
 ```
 cd ~/ament_ws/src/stretch_ros2/stretch_description/urdf
-./export_urdf.py
+./export_urdf.sh
 ```
 
 Normal output will look like:
