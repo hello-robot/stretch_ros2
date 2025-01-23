@@ -13,4 +13,5 @@ dependencies = [
     "pyyaml>=6.0.2",
     "scikit-image>=0.24.0",
     "scipy>=1.13.1",
+    "transforms3d>=0.4.2",
 ]
