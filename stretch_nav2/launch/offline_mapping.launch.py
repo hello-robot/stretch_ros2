@@ -25,10 +25,10 @@ def generate_launch_description():
 
     stretch_driver_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_core_path, '/launch/stretch_driver.launch.py']),
-        launch_arguments={'mode': 'navigation', 'broadcast_odom_tf': 'True'}.items())
+        launch_arguments={'mode': 'navigation', 'broadcast_odom_tf': 'True', 'mode': 'gamepad'}.items())
 
     rplidar_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([stretch_core_path, '/launch/rplidar.launch.py']))
+        PythonLaunchDescriptionSource([stretch_core_path, '/launch/stl27l.launch.py']))
 
     base_teleop_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_navigation_path, '/launch/teleop_twist.launch.py']),
@@ -40,13 +40,21 @@ def generate_launch_description():
 
     ld = LaunchDescription([
         rviz_param,
-        teleop_type,
+        # teleop_type,
         declare_use_sim_time_argument,
         stretch_driver_launch,
         rplidar_launch,
-        base_teleop_launch,
+        # base_teleop_launch,
         rviz_launch,
     ])
+
+    ld.add_action(
+        Node(
+            package='stretch_core',
+            executable='remote_gamepad',
+            name='remote_gamepad',
+        )
+    )
 
     ld.add_action(
         Node(
