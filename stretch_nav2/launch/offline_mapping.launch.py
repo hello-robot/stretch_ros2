@@ -30,9 +30,6 @@ def generate_launch_description():
     rplidar_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([stretch_core_path, '/launch/rplidar.launch.py']))
 
-    offline_mapping_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([get_package_share_directory('slam_toolbox'), '/launch/offline_launch.py']))
-
     rviz_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([get_package_share_directory('nav2_bringup'), '/launch/rviz_launch.py']),
         condition=IfCondition(LaunchConfiguration('use_rviz')))    
@@ -43,7 +40,6 @@ def generate_launch_description():
         declare_use_sim_time_argument,
         stretch_driver_launch,
         rplidar_launch,
-        offline_mapping_launch,
         rviz_launch,
     ])
 
