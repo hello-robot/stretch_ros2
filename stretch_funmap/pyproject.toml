@@ -1,3 +1,6 @@
+[tool.setuptools]
+py-modules = []
+
 [project]
 name = "stretch-funmap"
 version = "0.1.0"
