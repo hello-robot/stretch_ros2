@@ -74,4 +74,5 @@ def generate_launch_description():
                               declare_controller_arg,
                               joint_state_publisher,
                               robot_state_publisher,
-                              stretch_driver])
+                              stretch_driver,
+                              ])

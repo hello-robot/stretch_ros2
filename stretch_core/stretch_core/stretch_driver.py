@@ -38,6 +38,8 @@ from hello_helpers.gamepad_conversion import unpack_joy_to_gamepad_state, unpack
 from .joint_trajectory_server import JointTrajectoryAction
 from .stretch_diagnostics import StretchDiagnostics
 
+from ament_index_python.packages import get_package_share_path
+
 GRIPPER_DEBUG = False
 BACKLASH_DEBUG = False
 STREAMING_POSITION_DEBUG = False
@@ -899,7 +901,8 @@ class StretchDriver(Node):
 
         large_ang = np.radians(45.0)
 
-        self.declare_parameter('controller_calibration_file', 'NOT SET')
+        stretch_core_path = get_package_share_path('stretch_core')
+        self.declare_parameter('controller_calibration_file', str(stretch_core_path / 'config' / 'controller_calibration_head.yaml'))
         filename = self.get_parameter('controller_calibration_file').value
         self.get_logger().debug('Loading controller calibration parameters for the head from YAML file named {0}'.format(filename))
         with open(filename, 'r') as fid:
