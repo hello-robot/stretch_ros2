@@ -46,7 +46,6 @@ def generate_launch_description():
     return LaunchDescription([
         rviz_param,
         rviz_config,
-        teleop_type_param,
         stretch_driver_launch,
         d435i_launch,
         rtabmap_mapping_node,
