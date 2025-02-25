@@ -40,11 +40,14 @@ from ament_index_python.packages import get_package_share_path
 
 
 # stretch_mujoco
-from stretch_mujoco import StretchMujocoSimulator
+# from stretch_mujoco import StretchMujocoSimulator
+from .stretch_mujoco_wrapper import StretchMujocoSimulator
 import stretch_mujoco.config as config
 import stretch_mujoco.utils as utils
 
 
+# local
+# from .utils import get_actuator_names
 
 class StretchSimDriver(Node):
     def __init__(self, scene_xml_path: str = './scene.xml'):
@@ -56,6 +59,8 @@ class StretchSimDriver(Node):
         # hardcoding robo model stretch_urdf/SE3/stretch_description_SE3_eoa_wrist_dw3_tool_sg3.urdf
         self.robot_sim = StretchMujocoSimulator(scene_xml_path)
         self.robot_sim.start()
+        
+        self.actuator_names = self.get_actuator_names(self.robot_sim.mjmodel)
         
         self.robot_mode_rwlock = RWLock()
         
@@ -81,7 +86,7 @@ class StretchSimDriver(Node):
         y = base_status['y']
         theta = base_status['theta']
         x_vel = base_status['x_vel']
-        y_vel = base_status['y_vel']
+        y_vel = base_status['y_vel']    # 0.0
         theta_vel = base_status['theta_vel']
         
         # assign relevant arm status to variables
@@ -89,25 +94,21 @@ class StretchSimDriver(Node):
         pos_out = arm_status['pos'] # + arm_backlash_correction
         vel_out = arm_status['vel']
         # eff_out = arm_status['motor']['effort_pct']
+        eff_out = arm_status['effort']
         
         lift_status = robot_status['lift']
         pos_up = lift_status['pos']
         vel_up = lift_status['vel']
         # eff_up = lift_status['motor']['effort_pct']
+        eff_up = lift_status['effort']
+        
         
         if self.use_robotis_end_of_arm:
-            # end_of_arm collection
-            robot_status['end_of_arm'] = dict(
-                wrist_yaw = robot_status["wrist_yaw"],
-                wrist_pitch = robot_status["wrist_pitch"],
-                wrist_roll = robot_status["wrist_roll"],
-                stretch_gripper = robot_status["gripper"],
-            )
             # assign relevant wrist status to variables
             wrist_yaw_status = robot_status['end_of_arm']['wrist_yaw']
             wrist_yaw_rad = wrist_yaw_status['pos']
             wrist_yaw_vel = wrist_yaw_status['vel']
-            # wrist_yaw_effort = wrist_yaw_status['effort']
+            wrist_yaw_effort = wrist_yaw_status['effort']
 
             dex_wrist_attached = False
             if 'wrist_pitch' in robot_status['end_of_arm']:
@@ -117,29 +118,23 @@ class StretchSimDriver(Node):
                 wrist_pitch_status = robot_status['end_of_arm']['wrist_pitch']
                 wrist_pitch_rad = wrist_pitch_status['pos']
                 wrist_pitch_vel = wrist_pitch_status['vel']
-                # wrist_pitch_effort = wrist_pitch_status['effort']
+                wrist_pitch_effort = wrist_pitch_status['effort']
                 
                 wrist_roll_status = robot_status['end_of_arm']['wrist_roll']
                 wrist_roll_rad = wrist_roll_status['pos']
                 wrist_roll_vel = wrist_roll_status['vel']
-                # wrist_roll_effort = wrist_roll_status['effort']
+                wrist_roll_effort = wrist_roll_status['effort']
             
-            gripper_status = robot_status['end_of_arm']['stretch_gripper']  # NOTE: gripper only has pos and vel
-            gripper_status['effort'] = 0    # we assume gripper effort is 0
+            gripper_status = robot_status['end_of_arm']['stretch_gripper']
             gripper_aperture_m, gripper_finger_rad, gripper_finger_effort, gripper_finger_vel = \
                         self.gripper_conversion.status_to_all(gripper_status)     # no gripper effort data
     
         if self.use_robotis_head:
-            # head collection
-            robot_status['head'] = dict(
-                head_pan = robot_status["head_pan"],
-                head_tilt = robot_status["head_tilt"],
-            )
             # assign relevant head pan status to variables
             head_pan_status = robot_status['head']['head_pan']
             head_pan_rad = head_pan_status['pos'] # + self.head_pan_calibrated_offset_rad + pan_backlash_correction
             head_pan_vel = head_pan_status['vel']
-            # head_pan_effort = head_pan_status['effort']
+            head_pan_effort = head_pan_status['effort']
             
             # assign relevant head tilt status to variables
             head_tilt_status = robot_status['head']['head_tilt']
@@ -213,7 +208,7 @@ class StretchSimDriver(Node):
         # set wrist_extension velocity
         velocities.insert(0, vel_out)
 
-        # set efforts of the telescoping joints
+        # set efforts of the telescoping joints     # No effort in simulator
         efforts = [eff_out for i in range(4)]
         # set lift effort
         efforts.insert(0, eff_up)

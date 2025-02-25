@@ -271,7 +271,7 @@ def main(task: str, layout: int, style: int, write_to_file: str):
         task=task,
         layout=layout,
         style=style,
-        write_to_file=write_to_file,
+        write_to_file='./scene.xml',
     )
     # robot_sim = StretchMujocoSimulator(model=model)
     # robot_sim.start()
