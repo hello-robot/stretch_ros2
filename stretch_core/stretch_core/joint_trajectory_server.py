@@ -71,9 +71,8 @@ class JointTrajectoryAction:
         # Trajectory mode init
         self.joints = get_trajectory_components(self.node.robot)
 
-        #TODO: SA: _update_trajectory_dynamixel is not defined in robot.py. 
-        # Can this line be removed, safely? Should it be doing something else instead?
-        self.node.robot._update_trajectory_dynamixel = lambda : None
+        self.node.robot._update_trajectory_head_dynamixel = lambda : None
+        self.node.robot._update_trajectory_end_of_arm_dynamixel = lambda : None
         self.node.robot._update_trajectory_non_dynamixel = lambda : None
 
         self.timeout = 0.2 # seconds

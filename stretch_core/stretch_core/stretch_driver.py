@@ -1085,7 +1085,7 @@ class StretchDriver(Node):
                                                             self.self_collision_avoidance_callback,
                                                             callback_group=self.main_group)
 
-        #NOTE: SA: JointTrajectoryAction's init() mutates StretchDriver
+        #NOTE: SA: JointTrajectoryAction's init() mutates StretchDriver.Robot
         # by settings _update_trajectory_non_dynamixel = lambda: none
         self.joint_trajectory_action = JointTrajectoryAction(self, self.action_server_rate)
 

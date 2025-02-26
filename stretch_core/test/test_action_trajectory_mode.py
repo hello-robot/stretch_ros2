@@ -213,12 +213,8 @@ class TestActionTrajectoryMode(unittest.TestCase):
 
         trajectory.points = [
             JointTrajectoryPoint(
-                positions=[0.0],
-                time_from_start = Duration(seconds=0.0).to_msg()
-            ),
-            JointTrajectoryPoint(
                 positions=[0.2],
-                time_from_start = Duration(seconds=4.0).to_msg()
+                time_from_start = Duration(seconds=0.0).to_msg()
             ),
             JointTrajectoryPoint(
                 positions=[0.5],
