@@ -89,19 +89,6 @@ class StretchDriver(Node):
         self.streaming_position_activated = False
         self.ros_setup()
 
-    _joint_trajectory_action:JointTrajectoryAction|None
-
-    @property
-    def joint_trajectory_action(self) -> JointTrajectoryAction:
-        if self._joint_trajectory_action is None:
-            raise ValueError("JointTrajectoryAction is not set. Did you remember to assign `stretchDriver._joint_trajectory_action = JointTrajectoryAction()` ?")
-        
-        return self._joint_trajectory_action
-
-    @joint_trajectory_action.setter
-    def joint_trajectory_action(self, new_value:JointTrajectoryAction):
-        self._joint_trajectory_action = new_value
-
     def set_gamepad_motion_callback(self, joy):
         self.robot_mode_rwlock.acquire_read()
         if self.robot_mode != 'gamepad':
@@ -908,15 +895,6 @@ class StretchDriver(Node):
         if mode not in self.control_modes:
             self.get_logger().warn(f'{self.node_name} given invalid mode={mode}, using position instead')
             mode = 'position'
-        self.get_logger().debug('mode = ' + str(mode))
-        if mode == "position":
-            self.turn_on_position_mode()
-        elif mode == "navigation":
-            self.turn_on_navigation_mode()
-        elif mode == "trajectory":
-            self.turn_on_trajectory_mode()
-        elif mode ==  "gamepad":
-            self.turn_on_gamepad_mode()
 
         self.declare_parameter('broadcast_odom_tf', False)
         self.broadcast_odom_tf = self.get_parameter('broadcast_odom_tf').value
@@ -1107,6 +1085,21 @@ class StretchDriver(Node):
                                                             self.self_collision_avoidance_callback,
                                                             callback_group=self.main_group)
 
+        #NOTE: SA: JointTrajectoryAction's init() mutates StretchDriver
+        # by settings _update_trajectory_non_dynamixel = lambda: none
+        self.joint_trajectory_action = JointTrajectoryAction(self, self.action_server_rate)
+
+        # Switch to mode:
+        self.get_logger().debug('mode = ' + str(mode))
+        if mode == "position":
+            self.turn_on_position_mode()
+        elif mode == "navigation":
+            self.turn_on_navigation_mode()
+        elif mode == "trajectory":
+            self.turn_on_trajectory_mode()
+        elif mode ==  "gamepad":
+            self.turn_on_gamepad_mode()
+
         # start loop to command the mobile base velocity, publish
         # odometry, and publish joint states
         timer_period = 1.0 / self.joint_state_rate
@@ -1118,7 +1111,6 @@ def main():
         rclpy.init()
         executor = MultiThreadedExecutor(num_threads=5)
         node = StretchDriver()
-        node.joint_trajectory_action = JointTrajectoryAction(node, node.action_server_rate)
         executor.add_node(node)
         try:
             executor.spin()
