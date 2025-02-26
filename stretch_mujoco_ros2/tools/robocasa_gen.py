@@ -20,6 +20,8 @@ from stretch_mujoco.utils import (
     xml_remove_tag_by_name,
 )
 
+from ament_index_python.packages import get_package_share_path
+import os
 
 def get_styles() -> OrderedDict:
     raw_styles = dict(
@@ -265,13 +267,15 @@ def add_stretch_to_kitchen(xml: str, robot_pose_attrib: dict) -> str:
 @click.option("--task", type=str, default="PnPCounterToCab", help="task")
 @click.option("--layout", type=int, default=None, help="kitchen layout (choose number 0-9)")
 @click.option("--style", type=int, default=None, help="kitchen style (choose number 0-11)")
-@click.option("--write-to-file", type=str, default='./scene.xml', help="write to file")
+@click.option("--write-to-file", type=str, default=None, help="write to file")
 def main(task: str, layout: int, style: int, write_to_file: str):
     model, xml, objects_info = model_generation_wizard(
         task=task,
         layout=layout,
         style=style,
-        write_to_file='./scene.xml',
+        # write_to_file=str(get_package_share_path('stretch_mujoco_ros2') / 'scene' / 'scene.xml'),
+        write_to_file= os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/scene/scene.xml',    # save to package_dir/scene/scene.xml
+        
     )
     # robot_sim = StretchMujocoSimulator(model=model)
     # robot_sim.start()

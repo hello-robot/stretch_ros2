@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>stretch_mujoco_ros2</name>
+  <version>0.0.0</version>
+  <description>TODO: Package description</description>
+  <maintainer email="xmo@cs.wisc.edu">root</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- <depend>actionlib_msgs</depend> -->
+  <!-- <depend>control_msgs</depend> -->
+  <!-- <depend>diagnostic_msgs</depend> -->
+  <!-- <depend>diagnostic_updater</depend> -->
+  <depend>geometry_msgs</depend>
+  <!-- <depend>hello_helpers</depend> -->
+  <depend>nav_msgs</depend>
+  <!-- <depend>python-transforms3d-pip</depend> -->
+  <!-- <depend>trajectory_msgs</depend> -->
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <!-- <depend>sensor_msgs_py</depend> -->
+  <depend>std_srvs</depend>
+  <depend>tf_transformations</depend>
+  <depend>tf2_ros</depend>
+  <!-- <depend>laser_filters</depend> -->
+  <!-- <depend>rplidar_ros</depend> -->
+  <!-- <depend>xterm</depend> -->
+
+  <exec_depend>realsense2_camera</exec_depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

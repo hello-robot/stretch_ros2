@@ -93,21 +93,21 @@ class StretchMujocoSimulator(StretchSim):
         
         return self.status
     
-    def get_actuator_names(self):
-        """
-        Get the names of all actuators in the model.
+    # def get_actuator_names(self):
+    #     """
+    #     Get the names of all actuators in the model.
         
-        Returns:
-            list: The names of all actuators in the model. list[id] = actuator_name
-        """
-        num_actuators = self.mjmodel.nu  # Number of actuators
-        actuator_names = []
+    #     Returns:
+    #         list: The names of all actuators in the model. list[id] = actuator_name
+    #     """
+    #     num_actuators = self.mjmodel.nu  # Number of actuators
+    #     actuator_names = []
 
-        for i in range(num_actuators):
-            name = mujoco.mj_id2name(self.mjmodel, mujoco.mjtObj.mjOBJ_ACTUATOR, i)
-            actuator_names.append(name)
-            # print(f"Actuator {i}: {name}")
-        return actuator_names
+    #     for i in range(num_actuators):
+    #         name = mujoco.mj_id2name(self.mjmodel, mujoco.mjtObj.mjOBJ_ACTUATOR, i)
+    #         actuator_names.append(name)
+    #         # print(f"Actuator {i}: {name}")
+    #     return actuator_names
 
     def update_urdf(self):
         raise NotImplementedError

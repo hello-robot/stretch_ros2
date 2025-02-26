@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
 
 # stretch_ros2
 import copy
@@ -32,11 +32,12 @@ from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField, Joy
 from std_msgs.msg import Bool, String, Float64MultiArray
 
 from hello_helpers.gripper_conversion import GripperConversion
-from hello_helpers.joint_qpos_conversion import get_Idx, UnsupportedToolError
-from hello_helpers.hello_misc import LoopTimer
-from hello_helpers.gamepad_conversion import unpack_joy_to_gamepad_state, unpack_gamepad_state_to_joy, get_default_joy_msg
+# from hello_helpers.joint_qpos_conversion import get_Idx, UnsupportedToolError
+# from hello_helpers.hello_misc import LoopTimer
+# from hello_helpers.gamepad_conversion import unpack_joy_to_gamepad_state, unpack_gamepad_state_to_joy, get_default_joy_msg
 
 from ament_index_python.packages import get_package_share_path
+# from ament_index_python.packages import get_package_share_directory
 
 
 # stretch_mujoco
@@ -47,10 +48,12 @@ import stretch_mujoco.utils as utils
 
 
 # local
-# from .utils import get_actuator_names
+package_name = 'stretch_mujoco_ros2'
+package_path = get_package_share_path(package_name)
+default_scene_xml_path = str(package_path / 'scene' / 'scene.xml')
 
 class StretchSimDriver(Node):
-    def __init__(self, scene_xml_path: str = './scene.xml'):
+    def __init__(self, scene_xml_path: str = default_scene_xml_path):
         super().__init__('stretch_sim_driver')
         self.use_robotis_head = True
         self.use_robotis_end_of_arm = True
@@ -59,13 +62,40 @@ class StretchSimDriver(Node):
         # hardcoding robo model stretch_urdf/SE3/stretch_description_SE3_eoa_wrist_dw3_tool_sg3.urdf
         self.robot_sim = StretchMujocoSimulator(scene_xml_path)
         self.robot_sim.start()
+        self.get_logger().info('Started the robot simulator.')
+        # self.actuator_names = self.get_actuator_names(self.robot_sim.mjmodel)
         
-        self.actuator_names = self.get_actuator_names(self.robot_sim.mjmodel)
+        self.robot_stop_lock = threading.Lock()
         
         self.robot_mode_rwlock = RWLock()
+        # self.control_modes = ['position', 'navigation', 'trajectory', 'gamepad']
         
-        self.ros_setup()
+        self.ros_setup()    
     
+    # MOBILE BASE VELOCITY METHODS ############
+    
+    def set_mobile_base_velocity_callback(self, twist):
+        self.robot_mode_rwlock.acquire_read()
+        
+        self.linear_velocity_mps = twist.linear.x       # vel_x
+        self.angular_velocity_radps = twist.angular.z   # vel_theta
+        self.last_twist_time = self.get_clock().now()
+        self.robot_mode_rwlock.release_read()
+        
+    def set_robot_streaming_position_callback(self, msg):
+        self.robot_mode_rwlock.acquire_read()
+        
+        qpos = msg.data
+        self.move_to_position(qpos)
+        self.robot_mode_rwlock.release_read()
+        
+    def move_to_position(self, qpos: list):
+        allowed_actuators = config.allowed_position_actuators
+        for i, actuator_name in enumerate(allowed_actuators):
+            pos = qpos[i]
+            if actuator_name not in ['base_translate', 'base_rotate']:
+                self.robot_sim.move_to(actuator_name=actuator_name, pos=pos)
+
     
     def command_mobile_base_velocity_and_publish_state(self):
         self.robot_mode_rwlock.acquire_read()
@@ -74,7 +104,17 @@ class StretchSimDriver(Node):
         current_clock = self.get_clock().now()  # ros time
         current_time = current_clock.to_msg()
 
-        
+        time_since_last_twist = self.get_clock().now() - self.last_twist_time
+        if time_since_last_twist < self.timeout:
+            self.robot_sim.set_base_velocity(self.linear_velocity_mps, self.angular_velocity_radps)
+            # self.robot.push_command() #Moved to main
+        elif time_since_last_twist < Duration(seconds=self.timeout_s+1.0):
+            self.robot_sim.move_by(actuator_name="base_translate", pos=0.0)
+            # self.robot.push_command() #Moved to main
+        else:
+            self.robot_sim.set_base_velocity(0.0, 0.0)
+            # self.robot.push_command() #Moved to main
+                
         # TODO: pull robot status and publish joint_state
         robot_status = self.robot_sim._pull_status().copy()     # update with ros status (rw lock?)
         # robot_status = self.robot_sim.status.copy()           # update with mujoco status
@@ -264,10 +304,39 @@ class StretchSimDriver(Node):
         joint_state.effort = efforts
         self.joint_state_pub.publish(joint_state)
         
-        
+        self.robot_mode_rwlock.release_read()
+    
+    def stop_the_robot_callback(self, request, response):
+        with self.robot_stop_lock:
+            for allowed_position_actuator in config.allowed_position_actuators:
+                self.robot_sim.move_to(allowed_position_actuator, 0.0)
+
+        self.get_logger().info('Received stop_the_robot service call, so commanded all actuators to stop.')
+        response.success = True
+        response.message = 'Stopped the robot.'
+        return response
+    
+    def home_the_robot_callback(self, request, response):
+        self.get_logger().info('Received home_the_robot service call.')
+        self.robot_sim.home()
+        response.success = True
+        response.message = 'Homed the robot.'
+        return response
+    
+    def stow_the_robot_callback(self, request, response):
+        self.get_logger().info('Received stow_the_robot service call.')
+        success, message = self.robot_sim.stow()
+        response.success = True
+        response.message = 'Stowed the robot.'
+        return response
+    
+    def runstop_the_robot(self, runstopped, just_change_mode=False):
+        if runstopped:
+            self.robot_sim.stop()
+    
     def ros_setup(self):
         self.node_name = self.get_name()
-        
+
         self.declare_parameter('broadcast_odom_tf', False)
         self.broadcast_odom_tf = self.get_parameter('broadcast_odom_tf').value
         self.get_logger().info('broadcast_odom_tf = ' + str(self.broadcast_odom_tf))
@@ -279,10 +348,11 @@ class StretchSimDriver(Node):
 
         self.max_arm_height = 1.1
 
+        self.main_group = ReentrantCallbackGroup()
         self.mutex_group = MutuallyExclusiveCallbackGroup() # only one callback can be executing
         self.create_subscription(Twist, "cmd_vel", self.set_mobile_base_velocity_callback, 1, callback_group=self.main_group)
         
-        self.create_subscription(Float64MultiArray, "joint_pose_cmd", self.set_robot_streaming_position_callback, 1, callback_group=self.main_group)
+        # self.create_subscription(Float64MultiArray, "joint_pose_cmd", self.set_robot_streaming_position_callback, 1, callback_group=self.main_group)
         
         self.declare_parameter('rate', 30.0)
         self.joint_state_rate = self.get_parameter('rate').value
@@ -292,12 +362,12 @@ class StretchSimDriver(Node):
         ))
         self.timeout_s = self.get_parameter('timeout').value
         self.timeout = Duration(seconds=self.timeout_s)
-        self.declare_parameter('default_goal_timeout_s', 10.0, ParameterDescriptor(
-            type=ParameterType.PARAMETER_DOUBLE,
-            description='Default timeout (sec) for goal execution',
-        ))
-        self.default_goal_timeout_s = self.get_parameter('default_goal_timeout_s').value
-        self.default_goal_timeout_duration = Duration(seconds=self.default_goal_timeout_s)
+        # self.declare_parameter('default_goal_timeout_s', 10.0, ParameterDescriptor(
+        #     type=ParameterType.PARAMETER_DOUBLE,
+        #     description='Default timeout (sec) for goal execution',
+        # ))
+        # self.default_goal_timeout_s = self.get_parameter('default_goal_timeout_s').value
+        # self.default_goal_timeout_duration = Duration(seconds=self.default_goal_timeout_s)
         self.get_logger().info(f"rate = {self.joint_state_rate} Hz")
         self.get_logger().info(f"twist timeout = {self.timeout_s} s")
         
@@ -306,17 +376,18 @@ class StretchSimDriver(Node):
         self.odom_frame_id = 'odom'
         self.get_logger().info(f"odom_frame_id = {self.odom_frame_id}")
         
+        
         self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 1)
-        self.joint_limits_pub = self.create_publisher(JointState, 'joint_limits', 1)
+        # self.joint_limits_pub = self.create_publisher(JointState, 'joint_limits', 1)
         
         self.last_twist_time = self.get_clock().now()
         
         # start action server for joint trajectories
-        self.declare_parameter('fail_out_of_range_goal', False)
-        self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
+        # self.declare_parameter('fail_out_of_range_goal', False)
+        # self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
         
-        self.declare_parameter('action_server_rate', 30.0)
-        self.action_server_rate = self.get_parameter('action_server_rate').value
+        # self.declare_parameter('action_server_rate', 30.0)
+        # self.action_server_rate = self.get_parameter('action_server_rate').value
         
         
         self.stop_the_robot_service = self.create_service(Trigger,
@@ -334,20 +405,15 @@ class StretchSimDriver(Node):
                                                            self.stow_the_robot_callback,
                                                            callback_group=self.main_group)
 
-        self.runstop_service = self.create_service(SetBool,
-                                                   '/runstop',
-                                                   self.runstop_service_callback,
-                                                   callback_group=self.main_group)
+        # self.runstop_service = self.create_service(SetBool,
+        #                                            '/runstop',
+        #                                            self.runstop_service_callback,
+        #                                            callback_group=self.main_group)
 
-        self.get_joint_states = self.create_service(Trigger,
-                                                    '/get_joint_states',
-                                                    self.get_joint_states_callback,
-                                                    callback_group=self.main_group)
-
-        self.self_collision_avoidance = self.create_service(SetBool,
-                                                            '/self_collision_avoidance',
-                                                            self.self_collision_avoidance_callback,
-                                                            callback_group=self.main_group)
+        # self.get_joint_states = self.create_service(Trigger,
+        #                                             '/get_joint_states',
+        #                                             self.get_joint_states_callback,
+        #                                             callback_group=self.main_group)
         
         # start loop to command the mobile base velocity, publish
         # odometry, and publish joint states
@@ -356,20 +422,24 @@ class StretchSimDriver(Node):
         
 
 def main():
-    try:
-        rclpy.init()
-        executor = MultiThreadedExecutor(num_threads=8)
-        node = StretchSimDriver()
+    # try:
+    #     rclpy.init()
+    #     executor = MultiThreadedExecutor(num_threads=8)
+    #     node = StretchSimDriver()
         
-        executor.add_node(node)
-        try:
-            executor.spin()
-        finally:
-            executor.shutdown()
-            node.robot_sim.stop()
-            node.destroy_node()
-    except (KeyboardInterrupt):
-        rclpy.shutdown()
+    #     executor.add_node(node)
+    #     try:
+    #         executor.spin()
+    #     finally:
+    #         executor.shutdown()
+    #         node.robot_sim.stop()
+    #         node.destroy_node()
+    # except (KeyboardInterrupt):
+    #     rclpy.shutdown()
+    
+    rclpy.init()
+    node = StretchSimDriver()
+    rclpy.spin(node)
         
         
 if __name__ == '__main__':
