@@ -1,38 +1,22 @@
 import unittest
-import pytest
-
-from ament_index_python.packages import get_package_share_path
-from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch_testing.actions import ReadyToTest
-import launch_testing.markers
 
 import time
 import rclpy
 from rclpy.duration import Duration
 from rclpy.action import ActionClient
 from control_msgs.action import FollowJointTrajectory
-from trajectory_msgs.msg import JointTrajectoryPoint
+from trajectory_msgs.msg import JointTrajectoryPoint, JointTrajectory, MultiDOFJointTrajectoryPoint
 from action_msgs.msg import GoalStatus
 from sensor_msgs.msg import JointState
+from geometry_msgs.msg import Transform, Vector3, Quaternion           
 
 
-@pytest.mark.launch_test
-@launch_testing.markers.keep_alive
-def generate_test_description():
-    stretch_core_path = get_package_share_path('stretch_core')
 
-    stretch_driver_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([str(stretch_core_path), '/launch/stretch_driver.launch.py']),
-        launch_arguments={'mode': 'trajectory'}.items()
-    )
-
-    return LaunchDescription([stretch_driver_launch,
-                              ReadyToTest()])
-
-
-class TestAction(unittest.TestCase):
+class TestActionTrajectoryMode(unittest.TestCase):
+    """
+    To run this against a real robot, you should start Stretch Driver in "trajectory" mode first - manually.
+    Then run these tests.
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -45,19 +29,19 @@ class TestAction(unittest.TestCase):
         self.action_client.wait_for_server(timeout_sec=1.0)
 
         self.joint_states_sub = self.node.create_subscription(JointState, '/stretch/joint_states', self.joint_states_callback, 1)
-        self.joint_states_sub
-        
+
         self.joint_state = None
     
     def tearDown(self):
         self.node.destroy_node()
+        self.joint_states_sub.destroy()
         time.sleep(1.0)
     
     @classmethod
     def tearDownClass(cls):
         rclpy.shutdown()
 
-    def joint_states_callback(self, msg):
+    def joint_states_callback(self, msg: JointState):
         self.joint_state = msg
 
     def test_action_server_exists(self, proc_output):
@@ -84,7 +68,7 @@ class TestAction(unittest.TestCase):
         result = result_promise.result().result
         self.assertEqual(result.error_code, FollowJointTrajectory.Result.INVALID_JOINTS) # Check result error code
 
-    def test_arm_trajectory_goal_replaced(self, proc_output):
+    def test_arm_trajectory_goal_replaced(self):
         # Test if a new goal replaces the current goal
         # x --------- x --------- x ....................... current trajectory
         # ....................... o --------- o --------- o new trajectory
@@ -122,7 +106,7 @@ class TestAction(unittest.TestCase):
         rclpy.spin_until_future_complete(self.node, send_goal, timeout_sec=1.0)
         time.sleep(2.0)
 
-    def test_trajectory_goal_queued(self, proc_output):
+    def test_trajectory_goal_queued(self):
         # Test if a new goal in the future gets queued up for execution after the current goal
         # x --------- x --------- x ............................ current trajectory
         # .............................. o --------- o --------- o new trajectory
@@ -155,7 +139,7 @@ class TestAction(unittest.TestCase):
         rclpy.spin_until_future_complete(self.node, send_goal, timeout_sec=1.0)
         time.sleep(6.0)
 
-    def test_trajectory_goal_merged(self, proc_output):
+    def test_trajectory_goal_merged(self):
         # Test if a new goal with some waypoints in the past replaces the current goal
         # by discarding the old waypoints while preserving the waypoints in the future
         # x --------- x --------- x ................. current trajectory
@@ -197,3 +181,117 @@ class TestAction(unittest.TestCase):
         rclpy.spin_until_future_complete(self.node, send_goal, timeout_sec=1.0)
         time.sleep(10.0)
 
+    def _sleep_until_joint_states_available(self):
+        """
+        When we subscribe, we don't immediately get access to joint states, this waits.
+        """
+        while self.joint_state is None:
+            rclpy.spin_once(self.node)
+
+    def _sleep_not_blocking_ros(self, sleep_amount:Duration):
+        """
+        Using time.sleep does bad things.
+        """
+        start_time = self.node.get_clock().now()
+
+        while (self.node.get_clock().now() - start_time) <= sleep_amount:
+            rclpy.spin_once(self.node)
+
+
+    def _test_linear_motion(self, joint_names:list[str]):
+        """
+        Tests a linear trajectory.
+
+        False-positive note: if the robot is runstopped or the joint does not move at all, 
+        but it's already at the goal, this test will pass.
+        """
+
+        goal = FollowJointTrajectory.Goal()
+
+        trajectory = JointTrajectory()
+        trajectory.joint_names = joint_names
+
+        trajectory.points = [
+            JointTrajectoryPoint(
+                positions=[0.0],
+                time_from_start = Duration(seconds=0.0).to_msg()
+            ),
+            JointTrajectoryPoint(
+                positions=[0.2],
+                time_from_start = Duration(seconds=4.0).to_msg()
+            ),
+            JointTrajectoryPoint(
+                positions=[0.5],
+                time_from_start = Duration(seconds=10.0).to_msg()
+            )
+        ]
+
+        goal.trajectory = trajectory
+
+        self.action_client.wait_for_server()
+
+        send_goal = self.action_client.send_goal_async(goal)
+
+        rclpy.spin_until_future_complete(self.node, send_goal, timeout_sec=10.0)
+
+        self._sleep_not_blocking_ros(Duration.from_msg(trajectory.points[-1].time_from_start))
+
+        self._sleep_not_blocking_ros(Duration(seconds=2)) # sleep an extra 2 seconds for fun
+
+        self.action_client.wait_for_server()
+
+        goal_handle = send_goal.result()
+
+        assert goal_handle.accepted, 'Goal rejected'
+
+        for joint_name in trajectory.joint_names:
+
+            index = self.joint_state.name.index(joint_name)
+            position = self.joint_state.position[index]
+
+            goal = trajectory.points[-1].positions[0]
+
+            distance_from_goal =  abs(position - goal)
+
+            distance_from_goal_tolerance = 0.01 # in meters
+
+            print(f"{joint_name} position is: {position}, goal is {goal}. Distance from goal is {distance_from_goal}")
+
+            assert distance_from_goal < distance_from_goal_tolerance, f"Goal tolerance not met. {joint_name} position is: {position}, goal is {goal}. Distance from goal is {distance_from_goal}"
+
+
+    def test_lift(self):
+        self._test_linear_motion(['joint_lift'])
+
+    def test_base(self):
+        goal = FollowJointTrajectory.Goal()
+
+        # joint_name should be 'position' and not one generated by command i.e. 'translate/rotate_mobile_base'
+        joint_name = 'position'
+        goal.multi_dof_trajectory.joint_names = [joint_name]
+
+        goal.multi_dof_trajectory.points = [
+            MultiDOFJointTrajectoryPoint(
+                time_from_start = Duration(seconds=0.0).to_msg(),
+                transforms = [
+                    Transform(
+                        translation=Vector3(x=0.0),
+                        rotation = Quaternion(w=1.0)
+                    )
+                ]
+            ),
+            MultiDOFJointTrajectoryPoint(
+                time_from_start = Duration(seconds=1.0).to_msg(),
+                transforms = [
+                    Transform(
+                        translation=Vector3(x=0.5),
+                        rotation = Quaternion(w=1.0)
+                    )
+                ]
+            ),
+        ]
+
+        self.action_client.send_goal_async(goal)
+
+    def test_wrist_extension(self):
+        self._test_linear_motion(['wrist_extension'])
