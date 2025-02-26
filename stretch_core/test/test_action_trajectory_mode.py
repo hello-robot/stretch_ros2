@@ -1,6 +1,7 @@
 import unittest
 
 import time
+
 import rclpy
 from rclpy.duration import Duration
 from rclpy.action import ActionClient
@@ -10,11 +11,32 @@ from action_msgs.msg import GoalStatus
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Transform, Vector3, Quaternion           
 
+import pytest
+from ament_index_python.packages import get_package_share_path
+from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch_testing.actions import ReadyToTest
+import launch_testing.markers
 
+
+
+@pytest.mark.launch_test
+@launch_testing.markers.keep_alive
+def generate_test_description():
+    stretch_core_path = get_package_share_path('stretch_core')
+
+    stretch_driver_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([str(stretch_core_path), '/launch/stretch_driver.launch.py']),
+        launch_arguments={'mode': 'trajectory'}.items()
+    )
+
+    return LaunchDescription([stretch_driver_launch,
+                              ReadyToTest()])
 
 class TestActionTrajectoryMode(unittest.TestCase):
     """
-    To run this against a real robot, you should start Stretch Driver in "trajectory" mode first - manually.
+    If you're running this without `colcon test`, and want to run this against a real robot, you should start Stretch Driver in "trajectory" mode first - manually.
     Then run these tests.
     """
 
