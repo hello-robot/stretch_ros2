@@ -238,6 +238,8 @@ class TestActionTrajectoryMode(unittest.TestCase):
 
         self._sleep_not_blocking_ros(Duration(seconds=2)) # sleep an extra 2 seconds for fun
 
+        self._sleep_until_joint_states_available()
+
         self.action_client.wait_for_server()
 
         goal_handle = send_goal.result()
