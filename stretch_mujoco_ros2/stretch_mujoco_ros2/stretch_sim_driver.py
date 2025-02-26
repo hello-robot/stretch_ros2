@@ -65,6 +65,8 @@ class StretchSimDriver(Node):
         self.get_logger().info('Started the robot simulator.')
         # self.actuator_names = self.get_actuator_names(self.robot_sim.mjmodel)
         
+        self.gripper_conversion = GripperConversion()
+        
         self.robot_stop_lock = threading.Lock()
         
         self.robot_mode_rwlock = RWLock()
@@ -166,6 +168,7 @@ class StretchSimDriver(Node):
                 wrist_roll_effort = wrist_roll_status['effort']
             
             gripper_status = robot_status['end_of_arm']['stretch_gripper']
+            gripper_status['pos_pct'] = gripper_status['effort']
             gripper_aperture_m, gripper_finger_rad, gripper_finger_effort, gripper_finger_vel = \
                         self.gripper_conversion.status_to_all(gripper_status)     # no gripper effort data
     
@@ -270,10 +273,10 @@ class StretchSimDriver(Node):
         if self.use_robotis_end_of_arm:
             if dex_wrist_attached:
                 end_of_arm_joint_names = ['joint_wrist_yaw', 'joint_wrist_pitch', 'joint_wrist_roll']
-                if 'stretch_gripper' in self.robot.end_of_arm.joints:
+                if 'gripper' in config.actuator_names:
                     end_of_arm_joint_names = end_of_arm_joint_names + ['joint_gripper_finger_left', 'joint_gripper_finger_right']
             else:
-                if 'stretch_gripper' in self.robot.end_of_arm.joints:
+                if 'gripper' in config.actuator_names:
                     end_of_arm_joint_names = ['joint_wrist_yaw', 'joint_gripper_finger_left', 'joint_gripper_finger_right']
             
             joint_state.name.extend(end_of_arm_joint_names)
@@ -290,7 +293,7 @@ class StretchSimDriver(Node):
                 positions.append(wrist_roll_rad)
                 velocities.append(wrist_roll_vel)
                 efforts.append(wrist_roll_effort)
-            if 'stretch_gripper' in self.robot.end_of_arm.joints:
+            if 'gripper' in config.actuator_names:
                 positions.append(gripper_finger_rad)
                 velocities.append(gripper_finger_vel)
                 efforts.append(gripper_finger_effort)
@@ -347,6 +350,8 @@ class StretchSimDriver(Node):
         self.angular_velocity_radps = 0.0  # rad/s ROS SI standard for cmd_vel (REP 103)
 
         self.max_arm_height = 1.1
+        
+        self.odom_pub = self.create_publisher(Odometry, 'odom', 1)
 
         self.main_group = ReentrantCallbackGroup()
         self.mutex_group = MutuallyExclusiveCallbackGroup() # only one callback can be executing
@@ -422,24 +427,30 @@ class StretchSimDriver(Node):
         
 
 def main():
+    try:
+        rclpy.init()
+        executor = MultiThreadedExecutor(num_threads=8)
+        node = StretchSimDriver()
+        
+        executor.add_node(node)
+        try:
+            executor.spin()
+        finally:
+            executor.shutdown()
+            # node.robot_sim.stop()
+            node.destroy_node()
+    except (KeyboardInterrupt):
+        rclpy.shutdown()
     # try:
     #     rclpy.init()
-    #     executor = MultiThreadedExecutor(num_threads=8)
     #     node = StretchSimDriver()
-        
-    #     executor.add_node(node)
     #     try:
-    #         executor.spin()
+    #         rclpy.spin(node)
     #     finally:
-    #         executor.shutdown()
-    #         node.robot_sim.stop()
+    #         # node.robot_sim.stop()
     #         node.destroy_node()
     # except (KeyboardInterrupt):
     #     rclpy.shutdown()
-    
-    rclpy.init()
-    node = StretchSimDriver()
-    rclpy.spin(node)
         
         
 if __name__ == '__main__':
