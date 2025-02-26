@@ -9,6 +9,7 @@ from pathlib import Path
 from serial import SerialException
 import stretch_body.hello_utils as hu
 from hello_helpers.hello_misc import *
+from stretch_core.stretch_driver import StretchDriver
 from .trajectory_components import get_trajectory_components
 
 import threading
@@ -29,7 +30,7 @@ import hello_helpers.hello_misc as hm
 
 class JointTrajectoryAction:
 
-    def __init__(self, node, action_server_rate_hz):
+    def __init__(self, node: StretchDriver, action_server_rate_hz:int):
         self.node = node
         self._goal_handle = None
         self._goal_lock = threading.Lock()
@@ -66,6 +67,9 @@ class JointTrajectoryAction:
 
         # Trajectory mode init
         self.joints = get_trajectory_components(self.node.robot)
+
+        #TODO: SA: _update_trajectory_dynamixel is not defined in robot.py. 
+        # Can this line be removed, safely? Should it be doing something else instead?
         self.node.robot._update_trajectory_dynamixel = lambda : None
         self.node.robot._update_trajectory_non_dynamixel = lambda : None
 
@@ -443,3 +447,28 @@ class JointTrajectoryAction:
         self.node.robot.base.left_wheel.pull_status()
         self.node.robot.base.right_wheel.pull_status()
         self.node.robot.base.update_trajectory()
+
+    def _toggle_stepper_sync_for_trajectory_mode(self, is_enable: bool):
+        """
+        This method enables or disables stepper sync for the motors that are used in Trajectory Mode.
+        """
+        if is_enable:
+            self.node.robot.lift.motor.enable_sync_mode()
+            self.node.robot.arm.motor.enable_sync_mode()
+            self.node.robot.base.left_wheel.enable_sync_mode()
+            self.node.robot.base.right_wheel.enable_sync_mode()
+        else:
+            self.node.robot.lift.motor.disable_sync_mode()
+            self.node.robot.arm.motor.disable_sync_mode()
+            self.node.robot.base.left_wheel.disable_sync_mode()
+            self.node.robot.base.right_wheel.disable_sync_mode()
+
+        self.node.robot.lift.push_command()
+        self.node.robot.arm.push_command()
+        self.node.robot.base.push_command()
+    
+    def enable_stepper_sync_for_trajectory_mode(self):
+        self._toggle_stepper_sync_for_trajectory_mode(True)
+        
+    def disable_stepper_sync_for_trajectory_mode(self):
+        self._toggle_stepper_sync_for_trajectory_mode(False)
