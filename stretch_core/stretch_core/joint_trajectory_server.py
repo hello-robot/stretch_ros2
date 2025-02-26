@@ -1,6 +1,5 @@
 #! /usr/bin/env python3
 
-import importlib
 import time
 import copy
 import pickle
@@ -9,7 +8,6 @@ from pathlib import Path
 from serial import SerialException
 import stretch_body.hello_utils as hu
 from hello_helpers.hello_misc import *
-from stretch_core.stretch_driver import StretchDriver
 from .trajectory_components import get_trajectory_components
 
 import threading
@@ -28,9 +26,14 @@ from .command_groups import HeadPanCommandGroup, HeadTiltCommandGroup, \
 
 import hello_helpers.hello_misc as hm
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from stretch_core.stretch_driver import StretchDriver
+
 class JointTrajectoryAction:
 
-    def __init__(self, node: StretchDriver, action_server_rate_hz:int):
+    def __init__(self, node: "StretchDriver", action_server_rate_hz:int):
         self.node = node
         self._goal_handle = None
         self._goal_lock = threading.Lock()
