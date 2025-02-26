@@ -468,7 +468,7 @@ class JointTrajectoryAction:
         self.node.robot.base.push_command()
     
     def enable_stepper_sync_for_trajectory_mode(self):
-        self._toggle_stepper_sync_for_trajectory_mode(True)
+        self._toggle_stepper_sync_for_trajectory_mode(is_enable=True)
         
     def disable_stepper_sync_for_trajectory_mode(self):
-        self._toggle_stepper_sync_for_trajectory_mode(False)
+        self._toggle_stepper_sync_for_trajectory_mode(is_enable=False)

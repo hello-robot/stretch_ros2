@@ -89,6 +89,19 @@ class StretchDriver(Node):
         self.streaming_position_activated = False
         self.ros_setup()
 
+    _joint_trajectory_action:JointTrajectoryAction|None
+
+    @property
+    def joint_trajectory_action(self) -> JointTrajectoryAction:
+        if self._joint_trajectory_action is None:
+            raise ValueError("JointTrajectoryAction is not set. Did you remember to assign `stretchDriver._joint_trajectory_action = JointTrajectoryAction()` ?")
+        
+        return self._joint_trajectory_action
+
+    @joint_trajectory_action.setter
+    def joint_trajectory_action(self, new_value:JointTrajectoryAction):
+        self._joint_trajectory_action = new_value
+
     def set_gamepad_motion_callback(self, joy):
         self.robot_mode_rwlock.acquire_read()
         if self.robot_mode != 'gamepad':
@@ -587,8 +600,18 @@ class StretchDriver(Node):
 
     # CHANGE MODES ################
 
+    def _cleanup_before_changing_mode(self):
+        """
+        Before we change modes, we want to revert parameters set by the being in the current mode.
+        """
+        if self.robot_mode == 'trajectory':
+            self.joint_trajectory_action.enable_stepper_sync_for_trajectory_mode()
+
     def change_mode(self, new_mode, code_to_run = None):
         self.robot_mode_rwlock.acquire_write()
+        
+        self._cleanup_before_changing_mode()
+
         self.robot_mode = new_mode
         
         if code_to_run:
@@ -637,6 +660,8 @@ class StretchDriver(Node):
                 return False, str(e)
             self.robot.base.first_step = True
             self.robot.base.pull_status()
+
+            self.joint_trajectory_action.disable_stepper_sync_for_trajectory_mode()
 
         self.change_mode('trajectory', code_to_run)
         return True, 'Now in trajectory mode.'
