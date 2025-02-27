@@ -25,10 +25,7 @@ from std_srvs.srv import SetBool
 
 from nav_msgs.msg import Odometry
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType, SetParametersResult
-from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField, Joy
-from std_msgs.msg import Bool, String, Float64MultiArray
-
-from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField, Joy
+from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField, Joy, Image
 from std_msgs.msg import Bool, String, Float64MultiArray
 
 from hello_helpers.gripper_conversion import GripperConversion
@@ -39,6 +36,8 @@ from hello_helpers.gripper_conversion import GripperConversion
 from ament_index_python.packages import get_package_share_path
 # from ament_index_python.packages import get_package_share_directory
 
+import cv2
+from cv_bridge import CvBridge
 
 # stretch_mujoco
 # from stretch_mujoco import StretchMujocoSimulator
@@ -71,6 +70,9 @@ class StretchSimDriver(Node):
         
         self.robot_mode_rwlock = RWLock()
         # self.control_modes = ['position', 'navigation', 'trajectory', 'gamepad']
+        
+        # camera_data = self.robot_sim.pull_camera_data()
+        # self.get_logger().info(f"Pulled camera_data: {camera_data.keys()}")
         
         self.ros_setup()    
     
@@ -307,7 +309,30 @@ class StretchSimDriver(Node):
         joint_state.effort = efforts
         self.joint_state_pub.publish(joint_state)
         
+        current_clock2 = self.get_clock().now()  # ros time
+        self.get_logger().info(f"Time taken for command_mobile_base_velocity_and_publish_state: {current_clock2 - current_clock}")
+        
+        # # TODO: pull camera data and publish
+        # camera_data = self.robot_sim.pull_camera_data()
+        # # camera_data has cam_d405_rgb, cam_d405_depth, cam_d435i_rgb, cam_d435i_depth, cam_nav_rgb
+
+        # for cam_name, cam_publisher in self.camera_pub.items():
+        #     if cam_name in camera_data.keys():
+        #         img = camera_data[cam_name]
+
+        #         # Convert depth images (assumed to be grayscale)
+        #         if "depth" in cam_name:
+        #             img_msg = self.bridge.cv2_to_imgmsg(img, encoding="32FC1")  # Float32 depth
+        #         else:
+        #             img_msg = self.bridge.cv2_to_imgmsg(cv2.cvtColor(img, cv2.COLOR_RGB2BGR), encoding="bgr8")
+
+        #         cam_publisher.publish(img_msg)
+        #         # self.get_logger().info(f"Published {cam_name}")
+        
         self.robot_mode_rwlock.release_read()
+        
+        current_clock2 = self.get_clock().now()  # ros time
+        self.get_logger().info(f"Time taken for pulling image and publish: {current_clock2 - current_clock}")
     
     def stop_the_robot_callback(self, request, response):
         with self.robot_stop_lock:
@@ -339,6 +364,7 @@ class StretchSimDriver(Node):
     
     def ros_setup(self):
         self.node_name = self.get_name()
+        self.bridge = CvBridge()
 
         self.declare_parameter('broadcast_odom_tf', False)
         self.broadcast_odom_tf = self.get_parameter('broadcast_odom_tf').value
@@ -422,8 +448,18 @@ class StretchSimDriver(Node):
         
         # start loop to command the mobile base velocity, publish
         # odometry, and publish joint states
+        
+        self.camera_pub = {
+            "cam_d405_rgb": self.create_publisher(Image, "/camera/d405/color", 10),
+            "cam_d405_depth": self.create_publisher(Image, "/camera/d405/depth", 10),
+            "cam_d435i_rgb": self.create_publisher(Image, "/camera/d435i/color", 10),
+            "cam_d435i_depth": self.create_publisher(Image, "/camera/d435i/depth", 10),
+            "cam_nav_rgb": self.create_publisher(Image, "/camera/nav/color", 10),
+        }
+        
         timer_period = 1.0 / self.joint_state_rate
         self.timer = self.create_timer(timer_period, self.command_mobile_base_velocity_and_publish_state, callback_group=self.mutex_group)
+        
         
 
 def main():
@@ -437,7 +473,7 @@ def main():
             executor.spin()
         finally:
             executor.shutdown()
-            # node.robot_sim.stop()
+            node.robot_sim.stop()
             node.destroy_node()
     except (KeyboardInterrupt):
         rclpy.shutdown()

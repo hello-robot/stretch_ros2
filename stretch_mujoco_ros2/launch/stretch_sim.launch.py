@@ -7,15 +7,15 @@ import launch_ros.descriptions
 from launch_ros.actions import Node
 import launch_ros
 
-import importlib.resources as importlib_resources
-pkg_path = str(importlib_resources.files("stretch_urdf"))
-model_name = "SE3"  # RE1V0, RE2V0, SE3
-tool_name = "eoa_wrist_dw3_tool_sg3"  # eoa_wrist_dw3_tool_sg3, tool_stretch_gripper, etc
-urdf_file_path = pkg_path + f"/{model_name}/stretch_description_{model_name}_{tool_name}.urdf"
-mesh_files_directory_path = pkg_path + f"/{model_name}/meshes"
+# import importlib.resources as importlib_resources
+# pkg_path = str(importlib_resources.files("stretch_urdf"))
+# model_name = "SE3"  # RE1V0, RE2V0, SE3
+# tool_name = "eoa_wrist_dw3_tool_sg3"  # eoa_wrist_dw3_tool_sg3, tool_stretch_gripper, etc
+# urdf_file_path = pkg_path + f"/{model_name}/stretch_description_{model_name}_{tool_name}.urdf"
+# mesh_files_directory_path = pkg_path + f"/{model_name}/meshes"
 
 def generate_launch_description():
-    stretch_core_path = get_package_share_path('stretch_mujoco_ros2')
+    package_share_path = get_package_share_path('stretch_mujoco_ros2')
 
     declare_broadcast_odom_tf_arg = DeclareLaunchArgument(
         'broadcast_odom_tf',
@@ -41,7 +41,7 @@ def generate_launch_description():
     #     description='Path to the calibrated controller args file'
     # )
 
-    robot_description_content = launch_ros.parameter_descriptions.ParameterValue( Command(['xacro ', str(urdf_file_path)]), value_type=str)
+    robot_description_content = launch_ros.parameter_descriptions.ParameterValue( Command(['xacro ', str(package_share_path / 'urdf' / 'stretch_sim.urdf')]), value_type=str)
 
     joint_state_publisher = Node(package='joint_state_publisher',
                                  executable='joint_state_publisher',
@@ -76,6 +76,13 @@ def generate_launch_description():
                                       ('joint_states', '/stretch/joint_states'),
                                       ],
                           parameters=stretch_driver_params)
+    
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        output='screen',
+        arguments=['-d', str(package_share_path / 'rviz' / 'stretch_sim.rviz')]
+    )
 
     return LaunchDescription([declare_broadcast_odom_tf_arg,
                             #   declare_fail_out_of_range_goal_arg,
@@ -84,4 +91,5 @@ def generate_launch_description():
                               joint_state_publisher,
                               robot_state_publisher,
                               stretch_driver,
+                              rviz_node,
                               ])
