@@ -140,7 +140,7 @@ class WristYawCommandGroup(SimpleCommandGroup):
 
 class WristPitchCommandGroup(SimpleCommandGroup):
     def __init__(self, range_rad=None, node=None):
-        SimpleCommandGroup.__init__(self, 'joint_wrist_pitch', range_rad, node=node)
+        SimpleCommandGroup.__init__(self, 'joint_wrist_pitch', range_rad, acceptable_joint_error=0.03, node=node)
 
     def update_joint_range(self, joint_range, node=None):
         if joint_range is not None:
