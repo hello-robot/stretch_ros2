@@ -15,9 +15,7 @@ from trajectory_msgs.msg import (
 from action_msgs.msg import GoalStatus
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Transform, Vector3, Quaternion
-from control_msgs.action._follow_joint_trajectory import (
-    FollowJointTrajectory_SendGoal_Response as SendGoal_Response,
-)
+from rclpy.action.client import ClientGoalHandle
 
 import pytest
 from ament_index_python.packages import get_package_share_path
@@ -159,9 +157,9 @@ def _test_linear_motion(
 
     fixture_data.action_client.wait_for_server()
 
-    goal_handle: SendGoal_Response = send_goal.result()
+    goal_handle: ClientGoalHandle = send_goal.result()
 
-    assert goal_handle.accepted, "Goal rejected"
+    assert goal_handle.status == GoalStatus.STATUS_SUCCEEDED, "The goal status is not SUCCEEDED."
 
     for joint_name in trajectory.joint_names:
 

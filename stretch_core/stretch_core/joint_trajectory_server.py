@@ -306,7 +306,9 @@ class JointTrajectoryAction:
                         self.joints[joint_name].add_waypoints(trajectory.points, joint_index)
                     except KeyError as e:
                         return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, str(e))
-            if not self.node.robot.follow_trajectory():
+            if not self.node.robot.follow_trajectory(
+                move_to_start_point=not self.node.fail_if_motor_initial_point_is_not_trajectory_first_point
+                ):
                 self.node.robot.stop_trajectory()
                 return self.error_callback(goal_handle, -100, 'hardware failed to start trajectory')
 

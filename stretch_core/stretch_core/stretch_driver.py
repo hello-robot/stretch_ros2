@@ -1013,13 +1013,6 @@ class StretchDriver(Node):
         self.last_twist_time = self.get_clock().now()
         self.last_gamepad_joy_time = self.get_clock().now()
 
-        # start action server for joint trajectories
-        self.declare_parameter('fail_out_of_range_goal', False)
-        self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
-        
-        self.declare_parameter('action_server_rate', 30.0)
-        self.action_server_rate = self.get_parameter('action_server_rate').value
-
         # Add a callback for updating parameters
         self.add_on_set_parameters_callback(self.parameter_callback)
 
@@ -1084,6 +1077,16 @@ class StretchDriver(Node):
                                                             '/self_collision_avoidance',
                                                             self.self_collision_avoidance_callback,
                                                             callback_group=self.main_group)
+
+        # start action server for joint trajectories
+        self.declare_parameter('fail_out_of_range_goal', False)
+        self.fail_out_of_range_goal:bool = self.get_parameter('fail_out_of_range_goal').value
+
+        self.declare_parameter('fail_if_motor_initial_point_is_not_trajectory_first_point', True)
+        self.fail_if_motor_initial_point_is_not_trajectory_first_point:bool = self.get_parameter('fail_if_motor_initial_point_is_not_trajectory_first_point').value
+        
+        self.declare_parameter('action_server_rate', 30.0)
+        self.action_server_rate:float = self.get_parameter('action_server_rate').value
 
         #NOTE: SA: JointTrajectoryAction's init() mutates StretchDriver.Robot
         # by settings _update_trajectory_non_dynamixel = lambda: none
