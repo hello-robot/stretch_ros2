@@ -30,7 +30,7 @@ You can debug ROS nodes using the [ROS extension](https://marketplace.visualstud
             "name": "Driver",
             "type": "ros",
             "request": "launch",
-            "target": "${workspaceFolder}/launch/stretch_driver.launch.py",
+            "target": "${workspaceFolder}/stretch_core/launch/stretch_driver.launch.py",
             "arguments": ["mode:=${input:driverMode}",]
         }
     ]
