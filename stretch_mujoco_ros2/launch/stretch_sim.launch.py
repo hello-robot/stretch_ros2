@@ -84,12 +84,14 @@ def generate_launch_description():
         arguments=['-d', str(package_share_path / 'rviz' / 'stretch_sim.rviz')]
     )
 
-    return LaunchDescription([declare_broadcast_odom_tf_arg,
-                            #   declare_fail_out_of_range_goal_arg,
-                            #   declare_mode_arg,
-                            #   declare_controller_arg,
-                              joint_state_publisher,
-                              robot_state_publisher,
-                              stretch_driver,
-                              rviz_node,
-                              ])
+    return LaunchDescription([
+        declare_broadcast_odom_tf_arg,
+        # joint_state_publisher,
+        # robot_state_publisher,
+        stretch_driver,
+        # rviz_node,
+
+        #   declare_fail_out_of_range_goal_arg,
+        #   declare_mode_arg,
+        #   declare_controller_arg,
+    ])

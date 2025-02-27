@@ -47,20 +47,24 @@ import stretch_mujoco.utils as utils
 
 
 # local
+import time
+import os
 package_name = 'stretch_mujoco_ros2'
 package_path = get_package_share_path(package_name)
 default_scene_xml_path = str(package_path / 'scene' / 'scene.xml')
 
 class StretchSimDriver(Node):
-    def __init__(self, scene_xml_path: str = default_scene_xml_path):
+    def __init__(self, robot_sim: StretchMujocoSimulator, scene_xml_path: str = default_scene_xml_path):
         super().__init__('stretch_sim_driver')
         self.use_robotis_head = True
         self.use_robotis_end_of_arm = True
         
         # TODO: initialization
         # hardcoding robo model stretch_urdf/SE3/stretch_description_SE3_eoa_wrist_dw3_tool_sg3.urdf
-        self.robot_sim = StretchMujocoSimulator(scene_xml_path)
-        self.robot_sim.start()
+
+        self.robot_sim = robot_sim  # pass in the simulator
+        # self.robot_sim = StretchMujocoSimulator(scene_xml_path)
+        # self.robot_sim.start()
         self.get_logger().info('Started the robot simulator.')
         # self.actuator_names = self.get_actuator_names(self.robot_sim.mjmodel)
         
@@ -330,9 +334,7 @@ class StretchSimDriver(Node):
         #         # self.get_logger().info(f"Published {cam_name}")
         
         self.robot_mode_rwlock.release_read()
-        
-        current_clock2 = self.get_clock().now()  # ros time
-        self.get_logger().info(f"Time taken for pulling image and publish: {current_clock2 - current_clock}")
+
     
     def stop_the_robot_callback(self, request, response):
         with self.robot_stop_lock:
@@ -463,20 +465,82 @@ class StretchSimDriver(Node):
         
 
 def main():
+    # multi thread version but fail due to opengl thread safety
+    # try:
+    #     rclpy.init()
+    #     executor = MultiThreadedExecutor(num_threads=8)
+    #     node = StretchSimDriver()
+        
+    #     executor.add_node(node)
+    #     try:
+    #         executor.spin()
+    #     finally:
+    #         executor.shutdown()
+    #         node.robot_sim.stop()
+    #         node.destroy_node()
+    # except (KeyboardInterrupt):
+    #     rclpy.shutdown()
+    
+    # multi thread but spin_once in while loop
+
+    # os.environ["MUJOCO_GL"] = "GLFW"
+
+    robot_sim = StretchMujocoSimulator(default_scene_xml_path)
+    robot_sim.start()
     try:
         rclpy.init()
         executor = MultiThreadedExecutor(num_threads=8)
-        node = StretchSimDriver()
-        
+        node = StretchSimDriver(
+            robot_sim=robot_sim,
+            )
         executor.add_node(node)
+        
         try:
-            executor.spin()
-        finally:
+            # rate = node.create_rate(1000)
+            node.get_logger().info('Started ros manual spin loop at given rate')
+            
+            while rclpy.ok():
+                t1 = time.time()
+                
+                camera_data = robot_sim.pull_camera_data()
+                t2 = time.time()
+                node.get_logger().info(f"Time taken for camera rendering: {t2 - t1}")
+                # camera_data has cam_d405_rgb, cam_d405_depth, cam_d435i_rgb, cam_d435i_depth, cam_nav_rgb
+        
+                for cam_name, cam_publisher in node.camera_pub.items():
+                    if cam_name in camera_data.keys():
+                        img = camera_data[cam_name]
+                        # Convert depth images (assumed to be grayscale)
+                        if "depth" in cam_name:
+                            img_msg = node.bridge.cv2_to_imgmsg(img, encoding="32FC1")  # Float32 depth
+                        else:
+                            img_msg = node.bridge.cv2_to_imgmsg(cv2.cvtColor(img, cv2.COLOR_RGB2BGR), encoding="bgr8")
+                        cam_publisher.publish(img_msg)
+                        node.get_logger().info(f"Published {cam_name}")
+                        
+                # t2 = time.time()
+                # node.get_logger().info(f"Time taken for camera publishing: {t2 - t1}")
+                
+                executor.spin_once()
+                t3 = time.time()
+                node.get_logger().info(f"Time taken for executor spin_once: {t3 - t1}")
+                node.get_logger().info(f"Joint State publishing period: {1.0 / node.joint_state_rate}")
+                node.get_logger().info(f"####################################")
+                time.sleep(1/1000)
+    
+        except KeyboardInterrupt:
+            print("####################################")
+            print("\nShutting down gracefully...")
             executor.shutdown()
-            node.robot_sim.stop()
             node.destroy_node()
-    except (KeyboardInterrupt):
+            rclpy.shutdown()
+
+    except KeyboardInterrupt:
+        print("####################################")
+        print("\nShutting down...")    
         rclpy.shutdown()
+        
+    # single thread version
     # try:
     #     rclpy.init()
     #     node = StretchSimDriver()
