@@ -53,11 +53,16 @@ package_name = 'stretch_mujoco_ros2'
 package_path = get_package_share_path(package_name)
 default_scene_xml_path = str(package_path / 'scene' / 'scene.xml')
 
+headless = False
+show_viewer_ui = False
+
 class StretchSimDriver(Node):
     def __init__(self, robot_sim: StretchMujocoSimulator, scene_xml_path: str = default_scene_xml_path):
         super().__init__('stretch_sim_driver')
         self.use_robotis_head = True
         self.use_robotis_end_of_arm = True
+        
+        self.move_mode = 'velocity'
         
         # TODO: initialization
         # hardcoding robo model stretch_urdf/SE3/stretch_description_SE3_eoa_wrist_dw3_tool_sg3.urdf
@@ -84,7 +89,7 @@ class StretchSimDriver(Node):
     
     def set_mobile_base_velocity_callback(self, twist):
         self.robot_mode_rwlock.acquire_read()
-        
+        self.move_mode = 'velocity'
         self.linear_velocity_mps = twist.linear.x       # vel_x
         self.angular_velocity_radps = twist.angular.z   # vel_theta
         self.last_twist_time = self.get_clock().now()
@@ -92,19 +97,39 @@ class StretchSimDriver(Node):
         
     def set_robot_streaming_position_callback(self, msg):
         self.robot_mode_rwlock.acquire_read()
-        
+        self.move_mode = 'move_to'
         qpos = msg.data
         self.move_to_position(qpos)
         self.robot_mode_rwlock.release_read()
         
     def move_to_position(self, qpos: list):
         allowed_actuators = config.allowed_position_actuators
-        for i, actuator_name in enumerate(allowed_actuators):
-            pos = qpos[i]
-            if actuator_name not in ['base_translate', 'base_rotate']:
-                self.robot_sim.move_to(actuator_name=actuator_name, pos=pos)
+        if self.move_mode == 'move_to':
+            for i, actuator_name in enumerate(allowed_actuators):
+                pos = qpos[i]
+                if actuator_name not in ['base_translate', 'base_rotate']:
+                    self.robot_sim.move_to(actuator_name=actuator_name, pos=pos)
+                
+    def move_by_position_callback(self, msg):
+        self.robot_mode_rwlock.acquire_read()
+        self.move_mode = 'move_by'
+        dpos = msg.data
+        self.move_by_delta_position(dpos)
+        self.robot_mode_rwlock.release_read()
 
-    
+    def move_by_delta_position(self, dpos: list):
+        allowed_actuators = config.allowed_position_actuators
+        assert len(dpos) == len(allowed_actuators), f"Length of dpos {len(dpos)} does not match allowed_actuators {len(allowed_actuators)}"
+        if self.move_mode == 'move_by':
+            for i, actuator_name in enumerate(allowed_actuators):
+                pos = dpos[i]
+                if abs(pos) > 1e-6:
+                    self.get_logger().info(f"Moving {actuator_name} by {pos}, only move the first non-zero in the order of allowed_position_actuators")
+                    self.robot_sim.move_by(actuator_name=actuator_name, pos=pos)
+                    break
+                
+
+        
     def command_mobile_base_velocity_and_publish_state(self):
         self.robot_mode_rwlock.acquire_read()
         
@@ -112,16 +137,17 @@ class StretchSimDriver(Node):
         current_clock = self.get_clock().now()  # ros time
         current_time = current_clock.to_msg()
 
-        time_since_last_twist = self.get_clock().now() - self.last_twist_time
-        if time_since_last_twist < self.timeout:
-            self.robot_sim.set_base_velocity(self.linear_velocity_mps, self.angular_velocity_radps)
-            # self.robot.push_command() #Moved to main
-        elif time_since_last_twist < Duration(seconds=self.timeout_s+1.0):
-            self.robot_sim.move_by(actuator_name="base_translate", pos=0.0)
-            # self.robot.push_command() #Moved to main
-        else:
-            self.robot_sim.set_base_velocity(0.0, 0.0)
-            # self.robot.push_command() #Moved to main
+        if self.move_mode == 'velocity':
+            time_since_last_twist = self.get_clock().now() - self.last_twist_time
+            if time_since_last_twist < self.timeout:
+                self.robot_sim.set_base_velocity(self.linear_velocity_mps, self.angular_velocity_radps)
+                # self.robot.push_command() #Moved to main
+            elif time_since_last_twist < Duration(seconds=self.timeout_s+1.0):
+                self.robot_sim.move_by(actuator_name="base_translate", pos=0.0)
+                # self.robot.push_command() #Moved to main
+            else:
+                self.robot_sim.set_base_velocity(0.0, 0.0)
+                # self.robot.push_command() #Moved to main
                 
         # TODO: pull robot status and publish joint_state
         robot_status = self.robot_sim._pull_status().copy()     # update with ros status (rw lock?)
@@ -314,28 +340,11 @@ class StretchSimDriver(Node):
         self.joint_state_pub.publish(joint_state)
         
         current_clock2 = self.get_clock().now()  # ros time
-        self.get_logger().info(f"Time taken for command_mobile_base_velocity_and_publish_state: {current_clock2 - current_clock}")
-        
-        # # TODO: pull camera data and publish
-        # camera_data = self.robot_sim.pull_camera_data()
-        # # camera_data has cam_d405_rgb, cam_d405_depth, cam_d435i_rgb, cam_d435i_depth, cam_nav_rgb
-
-        # for cam_name, cam_publisher in self.camera_pub.items():
-        #     if cam_name in camera_data.keys():
-        #         img = camera_data[cam_name]
-
-        #         # Convert depth images (assumed to be grayscale)
-        #         if "depth" in cam_name:
-        #             img_msg = self.bridge.cv2_to_imgmsg(img, encoding="32FC1")  # Float32 depth
-        #         else:
-        #             img_msg = self.bridge.cv2_to_imgmsg(cv2.cvtColor(img, cv2.COLOR_RGB2BGR), encoding="bgr8")
-
-        #         cam_publisher.publish(img_msg)
-        #         # self.get_logger().info(f"Published {cam_name}")
+        # self.get_logger().info(f"Time taken for command_mobile_base_velocity_and_publish_state: {current_clock2 - current_clock}")
         
         self.robot_mode_rwlock.release_read()
 
-    
+        
     def stop_the_robot_callback(self, request, response):
         with self.robot_stop_lock:
             for allowed_position_actuator in config.allowed_position_actuators:
@@ -355,7 +364,7 @@ class StretchSimDriver(Node):
     
     def stow_the_robot_callback(self, request, response):
         self.get_logger().info('Received stow_the_robot service call.')
-        success, message = self.robot_sim.stow()
+        self.robot_sim.stow()
         response.success = True
         response.message = 'Stowed the robot.'
         return response
@@ -367,6 +376,10 @@ class StretchSimDriver(Node):
     def ros_setup(self):
         self.node_name = self.get_name()
         self.bridge = CvBridge()
+
+        self.declare_parameter('rendering_camera', True)
+        self.rendering_camera = self.get_parameter('rendering_camera').value
+        self.get_logger().info('rendering_camera = ' + str(self.rendering_camera))
 
         self.declare_parameter('broadcast_odom_tf', False)
         self.broadcast_odom_tf = self.get_parameter('broadcast_odom_tf').value
@@ -383,9 +396,30 @@ class StretchSimDriver(Node):
 
         self.main_group = ReentrantCallbackGroup()
         self.mutex_group = MutuallyExclusiveCallbackGroup() # only one callback can be executing
-        self.create_subscription(Twist, "cmd_vel", self.set_mobile_base_velocity_callback, 1, callback_group=self.main_group)
         
-        # self.create_subscription(Float64MultiArray, "joint_pose_cmd", self.set_robot_streaming_position_callback, 1, callback_group=self.main_group)
+        self.base_vel_sub = self.create_subscription(
+            Twist, 
+            "cmd_vel", 
+            self.set_mobile_base_velocity_callback, 
+            1, 
+            callback_group=self.main_group)
+        
+        self.joint_pose_sub = self.create_subscription(
+            Float64MultiArray, 
+            "joint_pose_cmd", 
+            self.set_robot_streaming_position_callback, 
+            1, 
+            callback_group=self.main_group)
+        
+        self.move_by_pos_sub = self.create_subscription(
+            Float64MultiArray,
+            "move_by_pos_cmd",
+            self.move_by_position_callback,
+            1,
+            callback_group=self.main_group)
+
+        self.get_logger().info(f'Move_to and move_by msg.data in sequence of allowed position actuators:')
+        self.get_logger().info(f'{config.allowed_position_actuators}')
         
         self.declare_parameter('rate', 30.0)
         self.joint_state_rate = self.get_parameter('rate').value
@@ -421,20 +455,21 @@ class StretchSimDriver(Node):
         
         # self.declare_parameter('action_server_rate', 30.0)
         # self.action_server_rate = self.get_parameter('action_server_rate').value
+            
         
         
         self.stop_the_robot_service = self.create_service(Trigger,
-                                                          '/stop_the_robot',
+                                                          'stop_the_robot',
                                                           self.stop_the_robot_callback,
                                                           callback_group=self.main_group)
 
         self.home_the_robot_service = self.create_service(Trigger,
-                                                          '/home_the_robot',
+                                                          'home_the_robot',
                                                           self.home_the_robot_callback,
                                                           callback_group=self.main_group)
 
         self.stow_the_robot_service = self.create_service(Trigger,
-                                                           '/stow_the_robot',
+                                                           'stow_the_robot',
                                                            self.stow_the_robot_callback,
                                                            callback_group=self.main_group)
 
@@ -461,8 +496,25 @@ class StretchSimDriver(Node):
         
         timer_period = 1.0 / self.joint_state_rate
         self.timer = self.create_timer(timer_period, self.command_mobile_base_velocity_and_publish_state, callback_group=self.mutex_group)
-        
-        
+
+
+def pull_camera_and_publish_images(node: Node, robot_sim: StretchMujocoSimulator):
+    t1 = time.time()
+    camera_data = robot_sim.pull_camera_data()
+    t2 = time.time()
+    # node.get_logger().info(f"Time taken for camera rendering: {t2 - t1}")
+    
+    # camera_data has cam_d405_rgb, cam_d405_depth, cam_d435i_rgb, cam_d435i_depth, cam_nav_rgb
+    for cam_name, cam_publisher in node.camera_pub.items():
+        if cam_name in camera_data.keys():
+            img = camera_data[cam_name]
+            # Convert depth images (assumed to be grayscale)
+            if "depth" in cam_name:
+                img_msg = node.bridge.cv2_to_imgmsg(img, encoding="32FC1")  # Float32 depth
+            else:
+                img_msg = node.bridge.cv2_to_imgmsg(cv2.cvtColor(img, cv2.COLOR_RGB2BGR), encoding="bgr8")
+            cam_publisher.publish(img_msg)
+            # node.get_logger().info(f"Published {cam_name}")
 
 def main():
     # multi thread version but fail due to opengl thread safety
@@ -484,9 +536,11 @@ def main():
     # multi thread but spin_once in while loop
 
     # os.environ["MUJOCO_GL"] = "GLFW"
+    # if headless:
+    #     os.environ["MUJOCO_GL"] = "egl"
 
     robot_sim = StretchMujocoSimulator(default_scene_xml_path)
-    robot_sim.start()
+    robot_sim.start(show_viewer_ui=show_viewer_ui, headless=headless)
     try:
         rclpy.init()
         executor = MultiThreadedExecutor(num_threads=8)
@@ -496,41 +550,25 @@ def main():
         executor.add_node(node)
         
         try:
-            # rate = node.create_rate(1000)
             node.get_logger().info('Started ros manual spin loop at given rate')
             
             while rclpy.ok():
-                t1 = time.time()
                 
-                camera_data = robot_sim.pull_camera_data()
-                t2 = time.time()
-                node.get_logger().info(f"Time taken for camera rendering: {t2 - t1}")
-                # camera_data has cam_d405_rgb, cam_d405_depth, cam_d435i_rgb, cam_d435i_depth, cam_nav_rgb
-        
-                for cam_name, cam_publisher in node.camera_pub.items():
-                    if cam_name in camera_data.keys():
-                        img = camera_data[cam_name]
-                        # Convert depth images (assumed to be grayscale)
-                        if "depth" in cam_name:
-                            img_msg = node.bridge.cv2_to_imgmsg(img, encoding="32FC1")  # Float32 depth
-                        else:
-                            img_msg = node.bridge.cv2_to_imgmsg(cv2.cvtColor(img, cv2.COLOR_RGB2BGR), encoding="bgr8")
-                        cam_publisher.publish(img_msg)
-                        node.get_logger().info(f"Published {cam_name}")
-                        
-                # t2 = time.time()
-                # node.get_logger().info(f"Time taken for camera publishing: {t2 - t1}")
+                if node.rendering_camera:
+                    pull_camera_and_publish_images(node=node, robot_sim=robot_sim)  # takes about 0.04s for each rgb+depth rendering
                 
-                executor.spin_once()
-                t3 = time.time()
-                node.get_logger().info(f"Time taken for executor spin_once: {t3 - t1}")
-                node.get_logger().info(f"Joint State publishing period: {1.0 / node.joint_state_rate}")
-                node.get_logger().info(f"####################################")
+                executor.spin_once()    # takes about 0.004s
+
+                # node.get_logger().info(f"Joint State publishing period: {1.0 / node.joint_state_rate}")
+                # node.get_logger().info(f"####################################")
                 time.sleep(1/1000)
     
+            
         except KeyboardInterrupt:
             print("####################################")
-            print("\nShutting down gracefully...")
+            print("Detecting KeyboardInterrupt")
+        finally:
+            robot_sim.stop()
             executor.shutdown()
             node.destroy_node()
             rclpy.shutdown()
@@ -539,18 +577,6 @@ def main():
         print("####################################")
         print("\nShutting down...")    
         rclpy.shutdown()
-        
-    # single thread version
-    # try:
-    #     rclpy.init()
-    #     node = StretchSimDriver()
-    #     try:
-    #         rclpy.spin(node)
-    #     finally:
-    #         # node.robot_sim.stop()
-    #         node.destroy_node()
-    # except (KeyboardInterrupt):
-    #     rclpy.shutdown()
         
         
 if __name__ == '__main__':

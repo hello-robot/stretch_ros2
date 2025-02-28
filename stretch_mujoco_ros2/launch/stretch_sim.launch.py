@@ -14,6 +14,8 @@ import launch_ros
 # urdf_file_path = pkg_path + f"/{model_name}/stretch_description_{model_name}_{tool_name}.urdf"
 # mesh_files_directory_path = pkg_path + f"/{model_name}/meshes"
 
+rate = 10.0
+
 def generate_launch_description():
     package_share_path = get_package_share_path('stretch_mujoco_ros2')
 
@@ -21,6 +23,12 @@ def generate_launch_description():
         'broadcast_odom_tf',
         default_value='False', choices=['True', 'False'],
         description='Whether to broadcast the odom TF'
+    )
+    
+    declare_rendering_camera_arg = DeclareLaunchArgument(
+        'rendering_camera',
+        default_value='True', choices=['True', 'False'],
+        description='Whether to render camera rgbd images'
     )
 
     # declare_fail_out_of_range_goal_arg = DeclareLaunchArgument(
@@ -47,24 +55,26 @@ def generate_launch_description():
                                  executable='joint_state_publisher',
                                  output='log',
                                  parameters=[{'source_list': ['/stretch/joint_states']},
-                                             {'rate': 30.0}],
+                                             {'rate': rate}],
                                  arguments=['--ros-args', '--log-level', 'error'],)
 
     robot_state_publisher = Node(package='robot_state_publisher',
                                  executable='robot_state_publisher',
                                  output='both',
                                  parameters=[{'robot_description': robot_description_content},
-                                             {'publish_frequency': 30.0}],
+                                             {'publish_frequency': rate}],
                                  arguments=['--ros-args', '--log-level', 'error'],)
 
     stretch_driver_params = [
         {
-        'rate': 30.0,
-         'timeout': 0.5,
+        'rate': rate,
+        'timeout': 0.5,
         #  'controller_calibration_file': LaunchConfiguration('calibrated_controller_yaml_file'),
-         'broadcast_odom_tf': LaunchConfiguration('broadcast_odom_tf'),
+        'broadcast_odom_tf': LaunchConfiguration('broadcast_odom_tf'),
         #  'fail_out_of_range_goal': LaunchConfiguration('fail_out_of_range_goal'),
         #  'mode': LaunchConfiguration('mode')
+        'rendering_camera': LaunchConfiguration('rendering_camera'),
+
         }
     ]
 
@@ -86,10 +96,11 @@ def generate_launch_description():
 
     return LaunchDescription([
         declare_broadcast_odom_tf_arg,
-        # joint_state_publisher,
-        # robot_state_publisher,
+        declare_rendering_camera_arg,
+        joint_state_publisher,
+        robot_state_publisher,
         stretch_driver,
-        # rviz_node,
+        rviz_node,
 
         #   declare_fail_out_of_range_goal_arg,
         #   declare_mode_arg,
