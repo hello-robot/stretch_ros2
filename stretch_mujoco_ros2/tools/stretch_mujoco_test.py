@@ -505,9 +505,6 @@ class StretchMujocoSimulator:
 
 
 @click.command()
-# @click.option(
-#     "--scene-xml-path", default=utils.default_scene_xml_path, help="Path to the scene xml file"
-# )
 @click.option(
     "--scene-xml-path", default=utils.default_scene_xml_path, help="Path to the scene xml file"
 )
