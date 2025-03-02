@@ -126,21 +126,42 @@ class StretchMujocoSimulator(StretchSim):
         
         return data
     
-    # def get_actuator_names(self):
-    #     """
-    #     Get the names of all actuators in the model.
-        
-    #     Returns:
-    #         list: The names of all actuators in the model. list[id] = actuator_name
-    #     """
-    #     num_actuators = self.mjmodel.nu  # Number of actuators
-    #     actuator_names = []
+    def move_manipulator_to(self, target_pos: np.ndarray) -> None:
+        """
+        Control all the manipulator joints
+        """
+        gripper_id = self.actuator_name2id("gripper")
 
-    #     for i in range(num_actuators):
-    #         name = mujoco.mj_id2name(self.mjmodel, mujoco.mjtObj.mjOBJ_ACTUATOR, i)
-    #         actuator_names.append(name)
-    #         # print(f"Actuator {i}: {name}")
-    #     return actuator_names
+        target_pos[gripper_id] = self._to_sim_gripper_range(target_pos[gripper_id])
+        
+        # self.mjdata.ctrl = self.mjmodel.keyframe("home").ctrl
+        
+        self.mjdata.ctrl = target_pos
+    
+    def get_actuator_names(self):
+        """
+        Get the names of all actuators in the model.
+        
+        Returns:
+            list: The names of all actuators in the model. list[id] = actuator_name
+        """
+        num_actuators = self.mjmodel.nu  # Number of actuators
+        actuator_names = []
+
+        for i in range(num_actuators):
+            name = mujoco.mj_id2name(self.mjmodel, mujoco.mjtObj.mjOBJ_ACTUATOR, i)
+            actuator_names.append(name)
+        return actuator_names
+    
+    def actuator_name2id(self, actuator_name: str) -> int:
+        """
+        Get actuator id from actuator name
+        """
+        if actuator_name not in ["base_translate", "base_rotate"] and actuator_name in self.get_actuator_names():
+            actuator_id = mujoco.mj_name2id(self.mjmodel, mujoco.mjtObj.mjOBJ_ACTUATOR, actuator_name)
+            return actuator_id
+        else:
+            raise "Invalid actuator name"
 
     def update_urdf(self):
         raise NotImplementedError

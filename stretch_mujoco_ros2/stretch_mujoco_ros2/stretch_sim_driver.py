@@ -53,6 +53,9 @@ package_name = 'stretch_mujoco_ros2'
 package_path = get_package_share_path(package_name)
 default_scene_xml_path = str(package_path / 'scene' / 'scene.xml')
 
+# from xml actuator
+mujoco_actuators = ["left_wheel_vel", "right_wheel_vel", "lift", "arm", "wrist_yaw", "wrist_pitch", "wrist_roll",  "gripper", "head_pan", "head_tilt",]
+
 headless = False
 show_viewer_ui = False
 
@@ -71,7 +74,6 @@ class StretchSimDriver(Node):
         # self.robot_sim = StretchMujocoSimulator(scene_xml_path)
         # self.robot_sim.start()
         self.get_logger().info('Started the robot simulator.')
-        # self.actuator_names = self.get_actuator_names(self.robot_sim.mjmodel)
         
         self.gripper_conversion = GripperConversion()
         
@@ -83,7 +85,8 @@ class StretchSimDriver(Node):
         # camera_data = self.robot_sim.pull_camera_data()
         # self.get_logger().info(f"Pulled camera_data: {camera_data.keys()}")
         
-        self.ros_setup()    
+        self.ros_setup()
+        self.get_logger().info('ROS setup complete.')    
     
     # MOBILE BASE VELOCITY METHODS ############
     
@@ -109,6 +112,25 @@ class StretchSimDriver(Node):
                 pos = qpos[i]
                 if actuator_name not in ['base_translate', 'base_rotate']:
                     self.robot_sim.move_to(actuator_name=actuator_name, pos=pos)
+                    
+    def move_manipulator_callback(self, msg):
+        print("called 1")
+        self.robot_mode_rwlock.acquire_read()
+        self.move_mode = 'move_manipulator'
+        qpos = msg.data
+        self.move_mainupulator_joint_to(qpos)
+        self.robot_mode_rwlock.release_read()
+        
+    def move_mainupulator_joint_to(self, qpos: list):
+        print("called 2")
+        if self.move_mode == 'move_manipulator':
+            print("called 3:", qpos)
+            
+            mujoco_ctrl = ros2mujoco_actuator_ctrl(qpos, self.mapping_to_mujoco)
+            print("called 4")
+            
+            self.get_logger().info(f"Moving manipulator joints to {mujoco_ctrl}, only move the first actuator with non-zero ctrl.")
+            self.robot_sim.move_manipulator_to(mujoco_ctrl)
                 
     def move_by_position_callback(self, msg):
         self.robot_mode_rwlock.acquire_read()
@@ -124,11 +146,9 @@ class StretchSimDriver(Node):
             for i, actuator_name in enumerate(allowed_actuators):
                 pos = dpos[i]
                 if abs(pos) > 1e-6:
-                    self.get_logger().info(f"Moving {actuator_name} by {pos}, only move the first non-zero in the order of allowed_position_actuators")
+                    self.get_logger().info(f"Moving {actuator_name} by {pos}, only move the first actuator with non-zero ctrl.")
                     self.robot_sim.move_by(actuator_name=actuator_name, pos=pos)
                     break
-                
-
         
     def command_mobile_base_velocity_and_publish_state(self):
         self.robot_mode_rwlock.acquire_read()
@@ -347,8 +367,9 @@ class StretchSimDriver(Node):
         
     def stop_the_robot_callback(self, request, response):
         with self.robot_stop_lock:
-            for allowed_position_actuator in config.allowed_position_actuators:
-                self.robot_sim.move_to(allowed_position_actuator, 0.0)
+            for actuator_name in config.allowed_position_actuators:
+                if actuator_name not in ['base_translate', 'base_rotate']:
+                    self.robot_sim.move_to(actuator_name, 0.0)
 
         self.get_logger().info('Received stop_the_robot service call, so commanded all actuators to stop.')
         response.success = True
@@ -417,9 +438,17 @@ class StretchSimDriver(Node):
             self.move_by_position_callback,
             1,
             callback_group=self.main_group)
+        
+        self.move_manipulator_sub = self.create_subscription(
+            Float64MultiArray, 
+            "move_manipulator_cmd", 
+            self.move_manipulator_callback, 
+            1, 
+            callback_group=self.main_group)
 
-        self.get_logger().info(f'Move_to and move_by msg.data in sequence of allowed position actuators:')
-        self.get_logger().info(f'{config.allowed_position_actuators}')
+        
+        # self.get_logger().info(f'Move_to and move_by msg.data in sequence of allowed position actuators:')
+        # self.get_logger().info(f'{config.allowed_position_actuators}')
         
         self.declare_parameter('rate', 30.0)
         self.joint_state_rate = self.get_parameter('rate').value
@@ -497,12 +526,46 @@ class StretchSimDriver(Node):
         timer_period = 1.0 / self.joint_state_rate
         self.timer = self.create_timer(timer_period, self.command_mobile_base_velocity_and_publish_state, callback_group=self.mutex_group)
 
+        self.mapping_to_mujoco = ros2mujoco_actuator_idx(mujoco_actuator_name=self.robot_sim.get_actuator_names())
+        self.get_logger().info(f"Mapping from ros actuator idx to mujoco actuator idx generated.")
+        
+        self.get_logger().info(f"{self.mapping_to_mujoco}")
+        
+
+def ros2mujoco_actuator_idx(mujoco_actuator_name: list = mujoco_actuators) -> dict:
+    """
+    ros actuator control idx to mujoco actuator control idx
+    """
+    allowed_position_actuators = config.allowed_position_actuators
+    mapping = {}
+    for i, actuator_name in enumerate(allowed_position_actuators):
+        # find matching actuator name in mujoco_actuator_name
+        if actuator_name not in ['base_translate', 'base_rotate']:
+            # 'base_translate', 'base_rotate' need velocity controllers
+            mapping[i] = mujoco_actuator_name.index(actuator_name)
+
+    return mapping
+
+def ros2mujoco_actuator_ctrl(ros_actuator_ctrl: list, mapping: dict) -> list:
+    """
+    ros actuator control list to mujoco actuator control list
+    """
+    # "left_wheel_vel", "right_wheel_vel" are temporary zero.
+    mujoco_actuator_ctrl = np.zeros(len(mujoco_actuators))  
+    for i in range(len(mapping)):
+        print("called 5:", i)
+        mujoco_actuator_ctrl[mapping[i]] = ros_actuator_ctrl[i]
+    # hardcoding idx of left_wheel_vel and right_wheel_vel
+    # mujoco_actuator_ctrl[0] = 0
+    # mujoco_actuator_ctrl[1] = 0
+    return mujoco_actuator_ctrl.tolist()
+
 
 def pull_camera_and_publish_images(node: Node, robot_sim: StretchMujocoSimulator):
     t1 = time.time()
     camera_data = robot_sim.pull_camera_data()
     t2 = time.time()
-    # node.get_logger().info(f"Time taken for camera rendering: {t2 - t1}")
+    node.get_logger().info(f"Time taken for camera rendering: {t2 - t1}")
     
     # camera_data has cam_d405_rgb, cam_d405_depth, cam_d435i_rgb, cam_d435i_depth, cam_nav_rgb
     for cam_name, cam_publisher in node.camera_pub.items():
@@ -516,23 +579,9 @@ def pull_camera_and_publish_images(node: Node, robot_sim: StretchMujocoSimulator
             cam_publisher.publish(img_msg)
             # node.get_logger().info(f"Published {cam_name}")
 
+
+
 def main():
-    # multi thread version but fail due to opengl thread safety
-    # try:
-    #     rclpy.init()
-    #     executor = MultiThreadedExecutor(num_threads=8)
-    #     node = StretchSimDriver()
-        
-    #     executor.add_node(node)
-    #     try:
-    #         executor.spin()
-    #     finally:
-    #         executor.shutdown()
-    #         node.robot_sim.stop()
-    #         node.destroy_node()
-    # except (KeyboardInterrupt):
-    #     rclpy.shutdown()
-    
     # multi thread but spin_once in while loop
 
     # os.environ["MUJOCO_GL"] = "GLFW"
