@@ -587,8 +587,18 @@ class StretchDriver(Node):
 
     # CHANGE MODES ################
 
+    def _cleanup_before_changing_mode(self):
+        """
+        Before we change modes, we want to revert parameters set by the being in the current mode.
+        """
+        if self.robot_mode == 'trajectory':
+            self.joint_trajectory_action.enable_stepper_sync_for_trajectory_mode()
+
     def change_mode(self, new_mode, code_to_run = None):
         self.robot_mode_rwlock.acquire_write()
+        
+        self._cleanup_before_changing_mode()
+
         self.robot_mode = new_mode
         
         if code_to_run:
@@ -637,6 +647,8 @@ class StretchDriver(Node):
                 return False, str(e)
             self.robot.base.first_step = True
             self.robot.base.pull_status()
+
+            self.joint_trajectory_action.disable_stepper_sync_for_trajectory_mode()
 
         self.change_mode('trajectory', code_to_run)
         return True, 'Now in trajectory mode.'
@@ -883,15 +895,6 @@ class StretchDriver(Node):
         if mode not in self.control_modes:
             self.get_logger().warn(f'{self.node_name} given invalid mode={mode}, using position instead')
             mode = 'position'
-        self.get_logger().debug('mode = ' + str(mode))
-        if mode == "position":
-            self.turn_on_position_mode()
-        elif mode == "navigation":
-            self.turn_on_navigation_mode()
-        elif mode == "trajectory":
-            self.turn_on_trajectory_mode()
-        elif mode ==  "gamepad":
-            self.turn_on_gamepad_mode()
 
         self.declare_parameter('broadcast_odom_tf', False)
         self.broadcast_odom_tf = self.get_parameter('broadcast_odom_tf').value
@@ -1010,13 +1013,6 @@ class StretchDriver(Node):
         self.last_twist_time = self.get_clock().now()
         self.last_gamepad_joy_time = self.get_clock().now()
 
-        # start action server for joint trajectories
-        self.declare_parameter('fail_out_of_range_goal', False)
-        self.fail_out_of_range_goal = self.get_parameter('fail_out_of_range_goal').value
-        
-        self.declare_parameter('action_server_rate', 30.0)
-        self.action_server_rate = self.get_parameter('action_server_rate').value
-
         # Add a callback for updating parameters
         self.add_on_set_parameters_callback(self.parameter_callback)
 
@@ -1082,6 +1078,31 @@ class StretchDriver(Node):
                                                             self.self_collision_avoidance_callback,
                                                             callback_group=self.main_group)
 
+        # start action server for joint trajectories
+        self.declare_parameter('fail_out_of_range_goal', False)
+        self.fail_out_of_range_goal:bool = self.get_parameter('fail_out_of_range_goal').value
+
+        self.declare_parameter('fail_if_motor_initial_point_is_not_trajectory_first_point', True)
+        self.fail_if_motor_initial_point_is_not_trajectory_first_point:bool = self.get_parameter('fail_if_motor_initial_point_is_not_trajectory_first_point').value
+        
+        self.declare_parameter('action_server_rate', 30.0)
+        self.action_server_rate:float = self.get_parameter('action_server_rate').value
+
+        #NOTE: SA: JointTrajectoryAction's init() mutates StretchDriver.Robot
+        # by settings _update_trajectory_non_dynamixel = lambda: none
+        self.joint_trajectory_action = JointTrajectoryAction(self, self.action_server_rate)
+
+        # Switch to mode:
+        self.get_logger().debug('mode = ' + str(mode))
+        if mode == "position":
+            self.turn_on_position_mode()
+        elif mode == "navigation":
+            self.turn_on_navigation_mode()
+        elif mode == "trajectory":
+            self.turn_on_trajectory_mode()
+        elif mode ==  "gamepad":
+            self.turn_on_gamepad_mode()
+
         # start loop to command the mobile base velocity, publish
         # odometry, and publish joint states
         timer_period = 1.0 / self.joint_state_rate
@@ -1093,7 +1114,6 @@ def main():
         rclpy.init()
         executor = MultiThreadedExecutor(num_threads=5)
         node = StretchDriver()
-        node.joint_trajectory_action = JointTrajectoryAction(node, node.action_server_rate)
         executor.add_node(node)
         try:
             executor.spin()
