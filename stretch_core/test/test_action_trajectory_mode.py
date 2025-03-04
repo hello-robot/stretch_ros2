@@ -204,7 +204,7 @@ def test_base(fixture_data):
             ],
         ),
         MultiDOFJointTrajectoryPoint(
-            time_from_start=Duration(seconds=1).to_msg(),
+            time_from_start=Duration(seconds=5).to_msg(),
             transforms=[
                 Transform(translation=Vector3(x=0.5), rotation=Quaternion(w=1.0))
             ],
