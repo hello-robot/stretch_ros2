@@ -11,6 +11,9 @@ import importlib.resources
 import os
 import sys
 
+# this fixes rviz launch issue
+os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = '/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms/libqxcb.so'
+
 
 def generate_launch_description():
     # Check is robot
