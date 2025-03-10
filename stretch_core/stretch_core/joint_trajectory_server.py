@@ -236,13 +236,12 @@ class JointTrajectoryAction:
                     robot_status = self.node.robot.get_status()
                     named_errors = [c.update_execution(robot_status, contact_detected_callback=self.contact_detected_callback)
                                     for c in self.command_groups]
-                    # It's not clear how this could ever happen. The
-                    # groups in command_groups.py seem to return
-                    # (self.name, self.error) or None, rather than True.
+
+                    # One of the elements in named_errors will
+                    # be True when guarded contact is detected
                     if any(ret == True for ret in named_errors):
                         self.node.robot_mode_rwlock.release_read()
-                        # TODO: Check when this condtion is met
-                        return self.error_callback(goal_handle, 100, "--")
+                        return self.error_callback(goal_handle, 100, self._contact_detected_err_str)
 
                     self.feedback_callback(goal_handle, desired_point=point, named_errors=named_errors)
                     goals_reached = [c.goal_reached() for c in self.command_groups]
@@ -345,6 +344,7 @@ class JointTrajectoryAction:
 
 
     def contact_detected_callback(self, err_str):
+        self._contact_detected_err_str = err_str
         self.node.get_logger().warn(err_str)
     
     def invalid_joints_callback(self, err_str):
