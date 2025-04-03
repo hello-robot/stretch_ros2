@@ -27,9 +27,12 @@ from std_srvs.srv import Trigger
 from std_srvs.srv import SetBool
 
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import LaserScan
 from sensor_msgs.msg import Image
 from std_msgs.msg import Header
+from rosgraph_msgs.msg import Clock
+
 
 
 from cv_bridge import CvBridge
@@ -60,10 +63,10 @@ BACKLASH_DEBUG = False
 STREAMING_POSITION_DEBUG = False
 
 
-def create_laser_scan_msg(ranges, frame_id="laser_frame", timestamp=None):
+def create_laser_scan_msg(ranges, timestamp, frame_id="laser_frame"):
     laser_scan_msg = LaserScan()
     laser_scan_msg.header = Header()
-    laser_scan_msg.header.stamp = timestamp or rclpyTime.Time().to_msg()
+    laser_scan_msg.header.stamp = timestamp
     laser_scan_msg.header.frame_id = frame_id
     laser_scan_msg.angle_min = -1.57  # Minimum angle of the scan (in radians)
     laser_scan_msg.angle_max = 1.57  # Maximum angle of the scan (in radians)
@@ -75,6 +78,14 @@ def create_laser_scan_msg(ranges, frame_id="laser_frame", timestamp=None):
     laser_scan_msg.ranges = ranges
     return laser_scan_msg
 
+def create_camera_info(width, height, frame_id, timestamp):
+    camera_info_msg = CameraInfo()
+    camera_info_msg.header = Header()
+    camera_info_msg.header.stamp = timestamp
+    camera_info_msg.header.frame_id = frame_id
+    camera_info_msg.width = width
+    camera_info_msg.height = height
+    return camera_info_msg
 
 class StretchDriver(Node):
 
@@ -278,8 +289,13 @@ class StretchDriver(Node):
         # self.get_logger().info('robot_time =', robot_time)
         # current_time = rospy.Time.from_sec(robot_time)
 
-        current_clock = self.get_clock().now()
-        current_time = current_clock.to_msg()
+        # current_clock = self.get_clock().now()
+        # current_time = current_clock.to_msg()
+
+        current_time = rclpyTime.Time(seconds=robot_status.time).to_msg()#type: ignore
+
+        self.clock_pub.publish( Clock(clock=current_time))
+
 
         # obtain odometry
         # assign relevant base status to variables
@@ -570,6 +586,16 @@ class StretchDriver(Node):
             header.stamp = current_time
             ros_image = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8', header=header)
             self.camera_publishers[camera_name].publish(ros_image)
+            settings = StretchCameras[camera_name].initial_camera_settings
+            self.camera_info_pub.publish(
+                create_camera_info(
+                    width=settings.width,
+                    height=settings.height,
+                    frame_id=header.frame_id,
+                    timestamp=current_time
+                )
+            )
+            
 
         accel_status = sensor_status.get_data(StretchSensors.base_accel)
         gyro_status = sensor_status.get_data(StretchSensors.base_gyro)
@@ -1049,6 +1075,9 @@ class StretchDriver(Node):
             camera.name: self.create_publisher(Image, f"/camera/{camera.name}_raw", 10)
             for camera in self.sim._cameras_to_use
         }
+        self.camera_info_pub = self.create_publisher(CameraInfo, f"/camera/camera_info", 10)
+
+        self.clock_pub = self.create_publisher( msg_type=Clock,topic='/clock', qos_profile=10)
 
         self.power_pub = self.create_publisher(BatteryState, "battery", 1)
         self.homed_pub = self.create_publisher(Bool, "is_homed", 1)
@@ -1281,7 +1310,7 @@ def main():
     try:
         while rclpy.ok() and sim.is_running():
             executor.spin_once()
-            print(f"{sim.pull_status().fps=}")
+            # print(sim.pull_status().sim_to_real_time_ratio_msg)
 
     except KeyboardInterrupt:
         print("Detecting KeyboardInterrupt")
