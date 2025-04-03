@@ -1191,7 +1191,7 @@ class StretchDriver(Node):
 
 
 def main():
-    sim = StretchMujocoSimulator(cameras_to_use=StretchCameras.none())
+    sim = StretchMujocoSimulator(cameras_to_use=[StretchCameras.cam_d405_rgb])
     sim.start(headless=False)
 
     rclpy.init()

@@ -1,17 +1,13 @@
-import importlib
 from platform import system
 
 from ament_index_python import get_package_share_path
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, LogInfo
 from launch.substitutions import Command, LaunchConfiguration
-import launch_ros.descriptions
 import launch_ros.parameter_descriptions
 from launch_ros.actions import Node
 import launch_ros
 import os
-
-import importlib.resources
 
 if system() == "Linux":
     # this fixes rviz launch issue
@@ -64,21 +60,12 @@ def generate_launch_description():
     # )
     # ld.add_action(declare_controller_arg)
 
-    try:
-        import stretch_body.robot_params as params
-        _, r = params.RobotParams.get_params()
-        model_name = r['robot']['model_name']
-        tool_name = r['robot']['tool']
-    except:
-        model_name = "SE3"  # RE1V0, RE2V0, SE3
-        tool_name = "eoa_wrist_dw3_tool_sg3"  # eoa_wrist_dw3_tool_sg3, tool_stretch_gripper, etc
-
-    uncalibrated_urdf = importlib.resources.files("stretch_urdf") / model_name / f"stretch_description_{model_name}_{tool_name}.urdf"
+    uncalibrated_urdf = get_package_share_path('stretch_description') / 'urdf' / 'stretch_main.xacro'
     calibrated_urdf = get_package_share_path('stretch_description') / 'urdf' / 'stretch.urdf'
     if calibrated_urdf.is_file():
         robot_description_content = launch_ros.parameter_descriptions.ParameterValue( Command(['xacro ', str(calibrated_urdf)]), value_type=str)
     else:
-        ld.add_action(LogInfo(msg='\n\nWARNING: Calibrated URDF not available. Using uncalibrated URDF.\n'))
+        ld.add_action(LogInfo(msg=f'\n\nWARNING: Calibrated URDF not available. Using uncalibrated URDF.\n'))
         robot_description_content = launch_ros.parameter_descriptions.ParameterValue( Command(['xacro ', str(uncalibrated_urdf)]), value_type=str)
 
     joint_state_publisher = Node(

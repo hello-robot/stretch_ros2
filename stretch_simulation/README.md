@@ -1,5 +1,9 @@
 # Stretch Simulation in ROS2
 
+## Setting up URDF
+
+Follow the instruction in the [`stretch_description #updating-the-urdf`](../stretch_description/README.md#updating-the-urdf) README file to set up the URDF meshes.
+
 ## Mujoco
 
 This ROS 2 package uses the [`stretch_mujoco`](https://github.com/hello-robot/stretch_mujoco) repo to interface with Mujoco.
