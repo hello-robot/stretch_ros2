@@ -28,7 +28,11 @@ from std_srvs.srv import SetBool
 
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import Image
 from std_msgs.msg import Header
+
+
+from cv_bridge import CvBridge
 
 
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType, SetParametersResult
@@ -55,13 +59,14 @@ GRIPPER_DEBUG = False
 BACKLASH_DEBUG = False
 STREAMING_POSITION_DEBUG = False
 
+
 def create_laser_scan_msg(ranges, frame_id="laser_frame", timestamp=None):
     laser_scan_msg = LaserScan()
     laser_scan_msg.header = Header()
     laser_scan_msg.header.stamp = timestamp or rclpyTime.Time().to_msg()
     laser_scan_msg.header.frame_id = frame_id
     laser_scan_msg.angle_min = -1.57  # Minimum angle of the scan (in radians)
-    laser_scan_msg.angle_max = 1.57   # Maximum angle of the scan (in radians)
+    laser_scan_msg.angle_max = 1.57  # Maximum angle of the scan (in radians)
     laser_scan_msg.angle_increment = 0.01  # Angular resolution (in radians)
     laser_scan_msg.time_increment = 0.0  # Time between measurements (if applicable)
     laser_scan_msg.scan_time = 0.1  # Time it takes to complete one scan (in seconds)
@@ -69,6 +74,7 @@ def create_laser_scan_msg(ranges, frame_id="laser_frame", timestamp=None):
     laser_scan_msg.range_max = 10.0  # Maximum range (in meters)
     laser_scan_msg.ranges = ranges
     return laser_scan_msg
+
 
 class StretchDriver(Node):
 
@@ -118,6 +124,9 @@ class StretchDriver(Node):
             )
         self.streaming_position_activated = False
         self.ros_setup()
+
+        self.bridge = CvBridge()
+
 
     def set_gamepad_motion_callback(self, joy):
         self.robot_mode_rwlock.acquire_read()
@@ -173,7 +182,9 @@ class StretchDriver(Node):
             if (
                 self.get_clock().now().nanoseconds * 1e-9
             ) - self.streaming_controller_lt.last_update_time > 5.0:
-                print("Reset Streaming position looptimer after 5s no message received.")
+                print(
+                    "Reset Streaming position looptimer after 5s no message received."
+                )
                 self.streaming_controller_lt.reset()
         qpos = msg.data
         self.move_to_position(qpos)
@@ -186,7 +197,9 @@ class StretchDriver(Node):
             try:
                 Idx = get_Idx("tool_stretch_gripper")
             except UnsupportedToolError:
-                self.get_logger().error("Unsupported tool for streaming position control.")
+                self.get_logger().error(
+                    "Unsupported tool for streaming position control."
+                )
                 return
             if len(qpos) != Idx.num_joints:
                 self.get_logger().error(
@@ -243,7 +256,9 @@ class StretchDriver(Node):
         if self.robot_mode == "navigation":
             time_since_last_twist = self.get_clock().now() - self.last_twist_time
             if time_since_last_twist < self.timeout:
-                self.sim.set_base_velocity(self.linear_velocity_mps, self.angular_velocity_radps)
+                self.sim.set_base_velocity(
+                    self.linear_velocity_mps, self.angular_velocity_radps
+                )
                 # self.sim.push_command() #Moved to main
             elif time_since_last_twist < Duration(seconds=self.timeout_s + 1.0):
                 # self.sim.set_base_velocity(0.0, 0.0)
@@ -273,7 +288,9 @@ class StretchDriver(Node):
         y = base_status.y
         theta = base_status.theta
         x_vel = base_status.x_vel
-        y_vel = base_status.y_vel
+        # y_vel = base_status.y_vel #TODO: implement y_vel in base_status
+        y_vel = base_status.x_vel
+
         theta_vel = base_status.theta_vel
 
         # assign relevant arm status to variables
@@ -338,7 +355,9 @@ class StretchDriver(Node):
         if BACKLASH_DEBUG:
             print("pan_backlash_correction =", pan_backlash_correction)
         head_pan_rad = (
-            head_pan_status.pos + self.head_pan_calibrated_offset_rad + pan_backlash_correction
+            head_pan_status.pos
+            + self.head_pan_calibrated_offset_rad
+            + pan_backlash_correction
         )
         head_pan_vel = head_pan_status.vel
         # head_pan_effort = head_pan_status.effort
@@ -353,7 +372,9 @@ class StretchDriver(Node):
         if BACKLASH_DEBUG:
             print("tilt_backlash_correction =", tilt_backlash_correction)
         head_tilt_rad = (
-            head_tilt_status.pos + self.head_tilt_calibrated_offset_rad + tilt_backlash_correction
+            head_tilt_status.pos
+            + self.head_tilt_calibrated_offset_rad
+            + tilt_backlash_correction
         )
         head_tilt_vel = head_tilt_status.vel
         # head_tilt_effort = head_tilt_status.effort
@@ -404,7 +425,6 @@ class StretchDriver(Node):
         odom.twist.twist.linear.y = y_vel
         odom.twist.twist.angular.z = theta_vel
         self.odom_pub.publish(odom)
-
 
         ##################################################
         # obtain battery state
@@ -486,7 +506,11 @@ class StretchDriver(Node):
         dex_wrist_attached = True
 
         if dex_wrist_attached:
-            end_of_arm_joint_names = ["joint_wrist_yaw", "joint_wrist_pitch", "joint_wrist_roll"]
+            end_of_arm_joint_names = [
+                "joint_wrist_yaw",
+                "joint_wrist_pitch",
+                "joint_wrist_roll",
+            ]
             # if 'stretch_gripper' in self.sim.end_of_arm.joints:
             end_of_arm_joint_names = end_of_arm_joint_names + [
                 "joint_gripper_finger_left",
@@ -530,10 +554,22 @@ class StretchDriver(Node):
         # publish IMU sensor data
         sensor_status = self.sim.pull_sensor_data()
 
-        lidardata = sensor_status.get_data(StretchSensors.base_lidar).astype(float).tolist()
+        try:
+            lidardata = (
+                sensor_status.get_data(StretchSensors.base_lidar).astype(float).tolist()
+            )
 
-        self.laser_scan_pub.publish(create_laser_scan_msg(lidardata, timestamp=current_time))
+            self.laser_scan_pub.publish(
+                create_laser_scan_msg(lidardata, timestamp=current_time)
+            )
+        except: ...
 
+        for camera_name, frame in self.sim.pull_camera_data().get_all():
+            header = Header()
+            header.frame_id = camera_name
+            header.stamp = current_time
+            ros_image = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8', header=header)
+            self.camera_publishers[camera_name].publish(ros_image)
 
         accel_status = sensor_status.get_data(StretchSensors.base_accel)
         gyro_status = sensor_status.get_data(StretchSensors.base_gyro)
@@ -596,7 +632,8 @@ class StretchDriver(Node):
         self.robot_mode_rwlock.release_read()
         # must happen after the read release, otherwise the write lock in change_mode() will cause a deadlock
         if (self.prev_runstop_state == None and runstop_event.data) or (
-            self.prev_runstop_state != None and runstop_event.data != self.prev_runstop_state
+            self.prev_runstop_state != None
+            and runstop_event.data != self.prev_runstop_state
         ):
             self.runstop_the_robot(runstop_event.data, just_change_mode=True)
         self.prev_runstop_state = runstop_event.data
@@ -712,9 +749,9 @@ class StretchDriver(Node):
     def stop_the_robot_callback(self, request, response):
         with self.robot_stop_lock:
             self.sim.move_by(Actuators.base_translate, 0.0)
-            self.sim.move_by(Actuators.base_rotate,0.0)
-            self.sim.move_by(Actuators.arm,0.0)
-            self.sim.move_by(Actuators.lift,0.0)
+            self.sim.move_by(Actuators.base_rotate, 0.0)
+            self.sim.move_by(Actuators.arm, 0.0)
+            self.sim.move_by(Actuators.lift, 0.0)
 
             self.sim.move_by("head_pan", 0.0)
             self.sim.move_by("head_tilt", 0.0)
@@ -800,8 +837,12 @@ class StretchDriver(Node):
         for cg in cgs:
             lower_limit, upper_limit = cg.range
             joint_limits.name.append(cg.name)
-            joint_limits.position.append(lower_limit)  # Misuse position array to mean lower limits
-            joint_limits.velocity.append(upper_limit)  # Misuse velocity array to mean upper limits
+            joint_limits.position.append(
+                lower_limit
+            )  # Misuse position array to mean lower limits
+            joint_limits.velocity.append(
+                upper_limit
+            )  # Misuse velocity array to mean upper limits
 
         gripper_cg = self.joint_trajectory_action.gripper_cg
         if gripper_cg is not None:
@@ -831,7 +872,9 @@ class StretchDriver(Node):
             self.sim.disable_collision_mgmt()
 
         response.success = True
-        response.message = f"is self collision avoidance enabled: {enable_self_collision_avoidance}"
+        response.message = (
+            f"is self collision avoidance enabled: {enable_self_collision_avoidance}"
+        )
         return response
 
     def parameter_callback(self, parameters: list[Parameter]) -> SetParametersResult:
@@ -841,7 +884,9 @@ class StretchDriver(Node):
         for parameter in parameters:
             if parameter.name == "default_goal_timeout_s":
                 self.default_goal_timeout_s = parameter.value
-                self.default_goal_timeout_duration = Duration(seconds=self.default_goal_timeout_s)
+                self.default_goal_timeout_duration = Duration(
+                    seconds=self.default_goal_timeout_s
+                )
                 self.get_logger().info(
                     f"Set default_goal_timeout_s to {self.default_goal_timeout_s}"
                 )
@@ -1000,11 +1045,18 @@ class StretchDriver(Node):
         self.odom_pub = self.create_publisher(Odometry, "odom", 1)
         self.laser_scan_pub = self.create_publisher(LaserScan, "scan", 1)
 
+        self.camera_publishers = {
+            camera.name: self.create_publisher(Image, f"/camera/{camera.name}_raw", 10)
+            for camera in self.sim._cameras_to_use
+        }
+
         self.power_pub = self.create_publisher(BatteryState, "battery", 1)
         self.homed_pub = self.create_publisher(Bool, "is_homed", 1)
         self.mode_pub = self.create_publisher(String, "mode", 1)
         self.tool_pub = self.create_publisher(String, "tool", 1)
-        self.streaming_position_mode_pub = self.create_publisher(Bool, "is_streaming_position", 1)
+        self.streaming_position_mode_pub = self.create_publisher(
+            Bool, "is_streaming_position", 1
+        )
 
         self.imu_mobile_base_pub = self.create_publisher(Imu, "imu_mobile_base", 1)
         self.magnetometer_mobile_base_pub = self.create_publisher(
@@ -1029,7 +1081,11 @@ class StretchDriver(Node):
         )
 
         self.create_subscription(
-            Joy, "gamepad_joy", self.set_gamepad_motion_callback, 1, callback_group=self.main_group
+            Joy,
+            "gamepad_joy",
+            self.set_gamepad_motion_callback,
+            1,
+            callback_group=self.main_group,
         )
 
         self.create_subscription(
@@ -1061,7 +1117,9 @@ class StretchDriver(Node):
             ),
         )
         self.default_goal_timeout_s = self.get_parameter("default_goal_timeout_s").value
-        self.default_goal_timeout_duration = Duration(seconds=self.default_goal_timeout_s)
+        self.default_goal_timeout_duration = Duration(
+            seconds=self.default_goal_timeout_s
+        )
         self.get_logger().info(f"rate = {self.joint_state_rate} Hz")
         self.get_logger().info(f"twist timeout = {self.timeout_s} s")
 
@@ -1124,19 +1182,31 @@ class StretchDriver(Node):
         )
 
         self.stop_the_robot_service = self.create_service(
-            Trigger, "/stop_the_robot", self.stop_the_robot_callback, callback_group=self.main_group
+            Trigger,
+            "/stop_the_robot",
+            self.stop_the_robot_callback,
+            callback_group=self.main_group,
         )
 
         self.home_the_robot_service = self.create_service(
-            Trigger, "/home_the_robot", self.home_the_robot_callback, callback_group=self.main_group
+            Trigger,
+            "/home_the_robot",
+            self.home_the_robot_callback,
+            callback_group=self.main_group,
         )
 
         self.stow_the_robot_service = self.create_service(
-            Trigger, "/stow_the_robot", self.stow_the_robot_callback, callback_group=self.main_group
+            Trigger,
+            "/stow_the_robot",
+            self.stow_the_robot_callback,
+            callback_group=self.main_group,
         )
 
         self.runstop_service = self.create_service(
-            SetBool, "/runstop", self.runstop_service_callback, callback_group=self.main_group
+            SetBool,
+            "/runstop",
+            self.runstop_service_callback,
+            callback_group=self.main_group,
         )
 
         self.get_joint_states = self.create_service(
@@ -1155,12 +1225,18 @@ class StretchDriver(Node):
 
         # start action server for joint trajectories
         self.declare_parameter("fail_out_of_range_goal", False)
-        self.fail_out_of_range_goal: bool = self.get_parameter("fail_out_of_range_goal").value
-
-        self.declare_parameter("fail_if_motor_initial_point_is_not_trajectory_first_point", True)
-        self.fail_if_motor_initial_point_is_not_trajectory_first_point: bool = self.get_parameter(
-            "fail_if_motor_initial_point_is_not_trajectory_first_point"
+        self.fail_out_of_range_goal: bool = self.get_parameter(
+            "fail_out_of_range_goal"
         ).value
+
+        self.declare_parameter(
+            "fail_if_motor_initial_point_is_not_trajectory_first_point", True
+        )
+        self.fail_if_motor_initial_point_is_not_trajectory_first_point: bool = (
+            self.get_parameter(
+                "fail_if_motor_initial_point_is_not_trajectory_first_point"
+            ).value
+        )
 
         self.declare_parameter("action_server_rate", 30.0)
         self.action_server_rate: float = self.get_parameter("action_server_rate").value
@@ -1192,7 +1268,7 @@ class StretchDriver(Node):
 
 def main():
     sim = StretchMujocoSimulator(cameras_to_use=[StretchCameras.cam_d405_rgb])
-    sim.start(headless=False)
+    sim.start(headless=True)
 
     rclpy.init()
 
@@ -1205,7 +1281,7 @@ def main():
     try:
         while rclpy.ok() and sim.is_running():
             executor.spin_once()
-            time.sleep(1 / 1000)
+            print(f"{sim.pull_status().fps=}")
 
     except KeyboardInterrupt:
         print("Detecting KeyboardInterrupt")

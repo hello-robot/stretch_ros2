@@ -6,7 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /LaserScan1/Status1
+        - /Camera1
         - /Camera1/Topic1
       Splitter Ratio: 0.5
     Tree Height: 340
@@ -101,67 +101,7 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        base_imu:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
         base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_accel_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_accel_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_bottom_screw_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_color_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_color_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_depth_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_depth_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_gyro_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_gyro_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_infra1_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_infra1_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_infra2_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_infra2_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -171,183 +111,71 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        gripper_camera_bottom_screw_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        gripper_camera_color_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        gripper_camera_color_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        gripper_camera_depth_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        gripper_camera_depth_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        gripper_camera_infra1_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        gripper_camera_infra1_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        gripper_camera_infra2_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        gripper_camera_infra2_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        gripper_camera_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        laser:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
         link_arm_l0:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         link_arm_l1:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         link_arm_l2:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         link_arm_l3:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         link_arm_l4:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        link_aruco_d405:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_aruco_fingertip_left:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_aruco_fingertip_right:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_aruco_inner_wrist:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_aruco_left_base:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_aruco_right_base:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_aruco_shoulder:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_aruco_top_wrist:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_grasp_center:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_gripper_finger_left:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_gripper_finger_right:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_gripper_fingertip_left:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_gripper_fingertip_right:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_gripper_s3_body:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
+          Value: true
         link_head:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        link_head_nav_cam:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
+          Value: true
         link_head_pan:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         link_head_tilt:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         link_left_wheel:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         link_lift:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         link_mast:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         link_right_wheel:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        link_wrist_pitch:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_wrist_quick_connect:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        link_wrist_roll:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
+          Value: true
         link_wrist_yaw:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        link_wrist_yaw_bottom:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        respeaker_base:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
+          Value: true
       Mass Properties:
         Inertia: false
         Mass: false
@@ -367,7 +195,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: ""
+        Value: /camera/cam_d405_rgb_raw
       Value: false
       Visibility:
         Grid: true
@@ -383,61 +211,9 @@ Visualization Manager:
         All Enabled: true
         base_footprint:
           Value: true
-        base_imu:
-          Value: true
         base_link:
           Value: true
-        camera_accel_frame:
-          Value: true
-        camera_accel_optical_frame:
-          Value: true
-        camera_bottom_screw_frame:
-          Value: true
-        camera_color_frame:
-          Value: true
-        camera_color_optical_frame:
-          Value: true
-        camera_depth_frame:
-          Value: true
-        camera_depth_optical_frame:
-          Value: true
-        camera_gyro_frame:
-          Value: true
-        camera_gyro_optical_frame:
-          Value: true
-        camera_infra1_frame:
-          Value: true
-        camera_infra1_optical_frame:
-          Value: true
-        camera_infra2_frame:
-          Value: true
-        camera_infra2_optical_frame:
-          Value: true
-        camera_link:
-          Value: true
         caster_link:
-          Value: true
-        gripper_camera_bottom_screw_frame:
-          Value: true
-        gripper_camera_color_frame:
-          Value: true
-        gripper_camera_color_optical_frame:
-          Value: true
-        gripper_camera_depth_frame:
-          Value: true
-        gripper_camera_depth_optical_frame:
-          Value: true
-        gripper_camera_infra1_frame:
-          Value: true
-        gripper_camera_infra1_optical_frame:
-          Value: true
-        gripper_camera_infra2_frame:
-          Value: true
-        gripper_camera_infra2_optical_frame:
-          Value: true
-        gripper_camera_link:
-          Value: true
-        laser:
           Value: true
         link_arm_l0:
           Value: true
@@ -449,37 +225,7 @@ Visualization Manager:
           Value: true
         link_arm_l4:
           Value: true
-        link_aruco_d405:
-          Value: true
-        link_aruco_fingertip_left:
-          Value: true
-        link_aruco_fingertip_right:
-          Value: true
-        link_aruco_inner_wrist:
-          Value: true
-        link_aruco_left_base:
-          Value: true
-        link_aruco_right_base:
-          Value: true
-        link_aruco_shoulder:
-          Value: true
-        link_aruco_top_wrist:
-          Value: true
-        link_grasp_center:
-          Value: true
-        link_gripper_finger_left:
-          Value: true
-        link_gripper_finger_right:
-          Value: true
-        link_gripper_fingertip_left:
-          Value: true
-        link_gripper_fingertip_right:
-          Value: true
-        link_gripper_s3_body:
-          Value: true
         link_head:
-          Value: true
-        link_head_nav_cam:
           Value: true
         link_head_pan:
           Value: true
@@ -493,19 +239,9 @@ Visualization Manager:
           Value: true
         link_right_wheel:
           Value: true
-        link_wrist_pitch:
-          Value: true
-        link_wrist_quick_connect:
-          Value: true
-        link_wrist_roll:
-          Value: true
         link_wrist_yaw:
           Value: true
-        link_wrist_yaw_bottom:
-          Value: true
         odom:
-          Value: true
-        respeaker_base:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -513,99 +249,30 @@ Visualization Manager:
       Show Axes: true
       Show Names: false
       Tree:
-        odom:
-          base_link:
-            base_footprint:
-              {}
-            base_imu:
-              {}
-            caster_link:
-              {}
-            laser:
-              {}
-            link_aruco_left_base:
-              {}
-            link_aruco_right_base:
-              {}
-            link_left_wheel:
-              {}
-            link_mast:
-              link_head:
-                link_head_pan:
-                  link_head_tilt:
-                    camera_bottom_screw_frame:
-                      camera_link:
-                        camera_accel_frame:
-                          camera_accel_optical_frame:
-                            {}
-                        camera_color_frame:
-                          camera_color_optical_frame:
-                            {}
-                        camera_depth_frame:
-                          camera_depth_optical_frame:
-                            {}
-                        camera_gyro_frame:
-                          camera_gyro_optical_frame:
-                            {}
-                        camera_infra1_frame:
-                          camera_infra1_optical_frame:
-                            {}
-                        camera_infra2_frame:
-                          camera_infra2_optical_frame:
-                            {}
-                    link_head_nav_cam:
-                      {}
-              link_lift:
-                link_arm_l4:
-                  link_arm_l3:
-                    link_arm_l2:
-                      link_arm_l1:
-                        link_arm_l0:
-                          link_aruco_inner_wrist:
-                            {}
-                          link_aruco_top_wrist:
-                            {}
-                          link_wrist_yaw:
-                            link_wrist_yaw_bottom:
-                              link_wrist_pitch:
-                                link_wrist_roll:
-                                  link_gripper_s3_body:
-                                    gripper_camera_bottom_screw_frame:
-                                      gripper_camera_link:
-                                        gripper_camera_color_frame:
-                                          gripper_camera_color_optical_frame:
-                                            {}
-                                        gripper_camera_depth_frame:
-                                          gripper_camera_depth_optical_frame:
-                                            {}
-                                        gripper_camera_infra1_frame:
-                                          gripper_camera_infra1_optical_frame:
-                                            {}
-                                        gripper_camera_infra2_frame:
-                                          gripper_camera_infra2_optical_frame:
-                                            {}
-                                    link_aruco_d405:
-                                      {}
-                                    link_grasp_center:
-                                      {}
-                                    link_gripper_finger_left:
-                                      link_aruco_fingertip_left:
-                                        {}
-                                      link_gripper_fingertip_left:
-                                        {}
-                                    link_gripper_finger_right:
-                                      link_aruco_fingertip_right:
-                                        {}
-                                      link_gripper_fingertip_right:
-                                        {}
-                                  link_wrist_quick_connect:
-                                    {}
-                link_aruco_shoulder:
+        base_link:
+          base_footprint:
+            {}
+          caster_link:
+            {}
+          link_left_wheel:
+            {}
+          link_mast:
+            link_head:
+              link_head_pan:
+                link_head_tilt:
                   {}
-              respeaker_base:
-                {}
-            link_right_wheel:
-              {}
+            link_lift:
+              link_arm_l4:
+                link_arm_l3:
+                  link_arm_l2:
+                    link_arm_l1:
+                      link_arm_l0:
+                        link_wrist_yaw:
+                          {}
+          link_right_wheel:
+            {}
+        odom:
+          {}
       Update Interval: 0
       Value: true
   Enabled: true
@@ -682,7 +349,7 @@ Window Geometry:
   Height: 846
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001f70000024cfc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e0000024c0000018200fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000c00430061006d006500720061000000066e000000ee0000004a00ffffff000000010000015f0000024cfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000006e0000024c0000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000005810000005afc0100000002fb0000000800540069006d00650100000000000005810000058100fffffffb0000000800540069006d00650100000000000004500000000000000000000002130000024c00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001f70000024cfc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e0000024c0000018200fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000c00430061006d0065007200610000000214000000a60000004a00ffffff000000010000015f0000024cfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000006e0000024c0000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000005810000005afc0100000002fb0000000800540069006d00650100000000000005810000058100fffffffb0000000800540069006d00650100000000000004500000000000000000000002130000024c00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
