@@ -72,7 +72,8 @@ def generate_launch_description():
         package="joint_state_publisher",
         executable="joint_state_publisher",
         output="log",
-        parameters=[{"source_list": ["/stretch/joint_states"]}, {"rate": 30.0}],
+        parameters=[{"source_list": ["/stretch/joint_states"]}, {"rate": 30.0}, {"robot_description": robot_description_content}],
+        # parameters=[{"source_list": ["/stretch/joint_states"]}, {"rate": 30.0}, {"robot_description": robot_description_content}],
         arguments=["--ros-args", "--log-level", "error"],
     )
     ld.add_action(joint_state_publisher)
@@ -123,17 +124,5 @@ def generate_launch_description():
             # arguments=["--ros-args", "--log-level", "debug"],
         )
     )
-
-    # ld.add_action(
-
-    #     Node(
-    #         package='tf2_ros',
-    #         namespace = 'scan_to_map',
-    #         executable='static_transform_publisher',
-    #         arguments= ["0", "0", "0", "0", "0", "0", "map", "scan"]
-    #     )
-
-    # )
-
 
     return ld

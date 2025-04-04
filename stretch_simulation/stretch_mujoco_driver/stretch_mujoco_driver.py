@@ -33,6 +33,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Header
 from rosgraph_msgs.msg import Clock
 
+from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 
 
 from cv_bridge import CvBridge
@@ -87,6 +88,23 @@ def create_camera_info(width, height, frame_id, timestamp):
     camera_info_msg.height = height
     return camera_info_msg
 
+def get_joint_names_in_mjcf(actuator):
+    # Temporary until stretch_mujoco PR#39 is merged in, then we can use Actuators.get_joint_names_in_mjcf:
+    """
+    An actuator may have multiple joints. Return their names here.
+    """
+    if actuator == Actuators.left_wheel_vel: return [ "joint_left_wheel"]
+    if actuator == Actuators.right_wheel_vel: return  ["joint_right_wheel"]
+    if actuator == Actuators.lift: return  ["joint_lift"]
+    if actuator == Actuators.arm: return ['joint_arm_l0', 'joint_arm_l1', 'joint_arm_l2', 'joint_arm_l3']
+    if actuator == Actuators.wrist_yaw: return  ["joint_wrist_yaw"]
+    if actuator == Actuators.wrist_pitch: return [ "joint_wrist_pitch"]
+    if actuator == Actuators.wrist_roll: return  ["joint_wrist_roll"]
+    if actuator == Actuators.gripper: return  ["joint_gripper_slide"]
+    if actuator == Actuators.head_pan: return [ "joint_head_pan"]
+    if actuator == Actuators.head_tilt: return  ["joint_head_tilt"]
+
+    raise NotImplementedError(f"Joint names for {actuator} are not defined.")
 class StretchDriver(Node):
 
     def __init__(self, sim: StretchMujocoSimulator):
@@ -398,50 +416,6 @@ class StretchDriver(Node):
 
         q = quaternion_from_euler(0.0, 0.0, theta)
 
-        if self.broadcast_odom_tf:
-            # publish odometry via TF
-            t = TransformStamped()
-            t.header.stamp = current_time
-            t.header.frame_id = self.odom_frame_id
-            t.child_frame_id = self.base_frame_id
-            t.transform.translation.x = x
-            t.transform.translation.y = y
-            t.transform.translation.z = 0.0
-            t.transform.rotation.x = q[0]
-            t.transform.rotation.y = q[1]
-            t.transform.rotation.z = q[2]
-            t.transform.rotation.w = q[3]
-            self.tf_broadcaster.sendTransform(t)
-
-            b = TransformStamped()
-            b.header.stamp = current_time
-            b.header.frame_id = self.base_frame_id
-            b.child_frame_id = "base_footprint"
-            b.transform.translation.x = 0.0
-            b.transform.translation.y = 0.0
-            b.transform.translation.z = 0.0
-            b.transform.rotation.x = 0.0
-            b.transform.rotation.y = 0.0
-            b.transform.rotation.z = 0.0
-            b.transform.rotation.w = 1.0
-            self.tf_broadcaster.sendTransform(b)
-
-        # publish odometry via the odom topic
-        odom = Odometry()
-        odom.header.stamp = current_time
-        odom.header.frame_id = self.odom_frame_id
-        odom.child_frame_id = self.base_frame_id
-        odom.pose.pose.position.x = x
-        odom.pose.pose.position.y = y
-        odom.pose.pose.orientation.x = q[0]
-        odom.pose.pose.orientation.y = q[1]
-        odom.pose.pose.orientation.z = q[2]
-        odom.pose.pose.orientation.w = q[3]
-        odom.twist.twist.linear.x = x_vel
-        odom.twist.twist.linear.y = y_vel
-        odom.twist.twist.angular.z = theta_vel
-        self.odom_pub.publish(odom)
-
         ##################################################
         # obtain battery state
 
@@ -473,6 +447,7 @@ class StretchDriver(Node):
 
         # publish joint state for the arm
         joint_state = JointState()
+        joint_state.header = Header()
         joint_state.header.stamp = current_time
         # joint_arm_l3 is the most proximal and joint_arm_l0 is the
         # most distal joint of the telescoping arm model. The joints
@@ -554,10 +529,10 @@ class StretchDriver(Node):
             positions.append(wrist_roll_rad)
             velocities.append(wrist_roll_vel)
             efforts.append(wrist_roll_effort)
-            # if 'stretch_gripper' in self.sim.end_of_arm.joints:
+            
             positions.append(robot_status.gripper.pos)
             velocities.append(robot_status.gripper.vel)
-            # efforts.append(gripper_finger_effort)
+            
             efforts.append(0.0)
 
         # set joint_state
@@ -578,7 +553,7 @@ class StretchDriver(Node):
             self.laser_scan_pub.publish(
                 create_laser_scan_msg(lidardata, timestamp=current_time)
             )
-        except: ...
+        except: ... # Lidar is disabled, get_data() throws a ValueError
 
         for camera_name, frame in self.sim.pull_camera_data().get_all():
             header = Header()
@@ -586,15 +561,16 @@ class StretchDriver(Node):
             header.stamp = current_time
             ros_image = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8', header=header)
             self.camera_publishers[camera_name].publish(ros_image)
-            settings = StretchCameras[camera_name].initial_camera_settings
-            self.camera_info_pub.publish(
-                create_camera_info(
-                    width=settings.width,
-                    height=settings.height,
-                    frame_id=header.frame_id,
-                    timestamp=current_time
-                )
-            )
+            # TODO: Image works, but Camera does not because RViz expects better camera_info(?):
+            # settings = StretchCameras[camera_name].initial_camera_settings
+            # self.camera_info_pub.publish(
+            #     create_camera_info(
+            #         width=settings.width,
+            #         height=settings.height,
+            #         frame_id=header.frame_id,
+            #         timestamp=current_time
+            #     )
+            # )
             
 
         accel_status = sensor_status.get_data(StretchSensors.base_accel)
@@ -646,6 +622,53 @@ class StretchDriver(Node):
         i.linear_acceleration.y = ay
         i.linear_acceleration.z = az
         self.imu_wrist_pub.publish(i)
+
+        if self.broadcast_odom_tf:
+            # publish odometry via TF
+            t = TransformStamped()
+            t.header.stamp = current_time
+            t.header.frame_id = self.odom_frame_id
+            t.child_frame_id = self.base_frame_id
+            t.transform.translation.x = x
+            t.transform.translation.y = y
+            t.transform.translation.z = 0.0
+            t.transform.rotation.x = q[0]
+            t.transform.rotation.y = q[1]
+            t.transform.rotation.z = q[2]
+            t.transform.rotation.w = q[3]
+            self.tf_broadcaster.sendTransform(t)
+
+            b = TransformStamped()
+            b.header.stamp = current_time
+            b.header.frame_id = self.base_frame_id
+            b.child_frame_id = "base_footprint"
+            b.transform.translation.x = 0.0
+            b.transform.translation.y = 0.0
+            b.transform.translation.z = 0.0
+            b.transform.rotation.x = 0.0
+            b.transform.rotation.y = 0.0
+            b.transform.rotation.z = 0.0
+            b.transform.rotation.w = 1.0
+            self.tf_broadcaster.sendTransform(b)
+
+            self.tf_static_broadcaster.sendTransform(t)
+
+        # publish odometry via the odom topic
+        odom = Odometry()
+        odom.header.stamp = current_time
+        odom.header.frame_id = self.odom_frame_id
+        odom.child_frame_id = self.base_frame_id
+        odom.pose.pose.position.x = x
+        odom.pose.pose.position.y = y
+        odom.pose.pose.orientation.x = q[0]
+        odom.pose.pose.orientation.y = q[1]
+        odom.pose.pose.orientation.z = q[2]
+        odom.pose.pose.orientation.w = q[3]
+        odom.twist.twist.linear.x = x_vel
+        odom.twist.twist.linear.y = y_vel
+        odom.twist.twist.angular.z = theta_vel
+        self.odom_pub.publish(odom)
+
         ##################################################
         # Publish Stretch Gamepad status
         # b = Bool()
@@ -1005,6 +1028,7 @@ class StretchDriver(Node):
         self.get_logger().info("broadcast_odom_tf = " + str(self.broadcast_odom_tf))
         if self.broadcast_odom_tf:
             self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
+            self.tf_static_broadcaster = StaticTransformBroadcaster(self)
 
         large_ang = np.radians(45.0)
 
@@ -1296,8 +1320,9 @@ class StretchDriver(Node):
 
 
 def main():
-    sim = StretchMujocoSimulator(cameras_to_use=[StretchCameras.cam_d405_rgb])
-    sim.start(headless=True)
+    sim = StretchMujocoSimulator(cameras_to_use=[])
+    # sim = StretchMujocoSimulator(cameras_to_use=[StretchCameras.cam_d405_rgb])
+    sim.start(headless=False)
 
     rclpy.init()
 
