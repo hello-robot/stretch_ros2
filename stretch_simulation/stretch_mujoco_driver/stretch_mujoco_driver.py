@@ -59,6 +59,8 @@ from ament_index_python.packages import get_package_share_path
 
 from rclpy import time as rclpyTime
 
+from stretch_mujoco.robocasa_gen import model_generation_wizard
+
 GRIPPER_DEBUG = False
 BACKLASH_DEBUG = False
 STREAMING_POSITION_DEBUG = False
@@ -79,6 +81,7 @@ def create_laser_scan_msg(ranges, timestamp, frame_id="laser_frame"):
     laser_scan_msg.ranges = ranges
     return laser_scan_msg
 
+
 def create_camera_info(width, height, frame_id, timestamp):
     camera_info_msg = CameraInfo()
     camera_info_msg.header = Header()
@@ -88,23 +91,36 @@ def create_camera_info(width, height, frame_id, timestamp):
     camera_info_msg.height = height
     return camera_info_msg
 
+
 def get_joint_names_in_mjcf(actuator):
     # Temporary until stretch_mujoco PR#39 is merged in, then we can use Actuators.get_joint_names_in_mjcf:
     """
     An actuator may have multiple joints. Return their names here.
     """
-    if actuator == Actuators.left_wheel_vel: return [ "joint_left_wheel"]
-    if actuator == Actuators.right_wheel_vel: return  ["joint_right_wheel"]
-    if actuator == Actuators.lift: return  ["joint_lift"]
-    if actuator == Actuators.arm: return ['joint_arm_l0', 'joint_arm_l1', 'joint_arm_l2', 'joint_arm_l3']
-    if actuator == Actuators.wrist_yaw: return  ["joint_wrist_yaw"]
-    if actuator == Actuators.wrist_pitch: return [ "joint_wrist_pitch"]
-    if actuator == Actuators.wrist_roll: return  ["joint_wrist_roll"]
-    if actuator == Actuators.gripper: return  ["joint_gripper_slide"]
-    if actuator == Actuators.head_pan: return [ "joint_head_pan"]
-    if actuator == Actuators.head_tilt: return  ["joint_head_tilt"]
+    if actuator == Actuators.left_wheel_vel:
+        return ["joint_left_wheel"]
+    if actuator == Actuators.right_wheel_vel:
+        return ["joint_right_wheel"]
+    if actuator == Actuators.lift:
+        return ["joint_lift"]
+    if actuator == Actuators.arm:
+        return ["joint_arm_l0", "joint_arm_l1", "joint_arm_l2", "joint_arm_l3"]
+    if actuator == Actuators.wrist_yaw:
+        return ["joint_wrist_yaw"]
+    if actuator == Actuators.wrist_pitch:
+        return ["joint_wrist_pitch"]
+    if actuator == Actuators.wrist_roll:
+        return ["joint_wrist_roll"]
+    if actuator == Actuators.gripper:
+        return ["joint_gripper_slide"]
+    if actuator == Actuators.head_pan:
+        return ["joint_head_pan"]
+    if actuator == Actuators.head_tilt:
+        return ["joint_head_tilt"]
 
     raise NotImplementedError(f"Joint names for {actuator} are not defined.")
+
+
 class StretchDriver(Node):
 
     def __init__(self, sim: StretchMujocoSimulator):
@@ -155,7 +171,6 @@ class StretchDriver(Node):
         self.ros_setup()
 
         self.bridge = CvBridge()
-
 
     def set_gamepad_motion_callback(self, joy):
         self.robot_mode_rwlock.acquire_read()
@@ -310,10 +325,9 @@ class StretchDriver(Node):
         # current_clock = self.get_clock().now()
         # current_time = current_clock.to_msg()
 
-        current_time = rclpyTime.Time(seconds=robot_status.time).to_msg()#type: ignore
+        current_time = rclpyTime.Time(seconds=robot_status.time).to_msg()  # type: ignore
 
-        self.clock_pub.publish( Clock(clock=current_time))
-
+        self.clock_pub.publish(Clock(clock=current_time))
 
         # obtain odometry
         # assign relevant base status to variables
@@ -529,10 +543,10 @@ class StretchDriver(Node):
             positions.append(wrist_roll_rad)
             velocities.append(wrist_roll_vel)
             efforts.append(wrist_roll_effort)
-            
+
             positions.append(robot_status.gripper.pos)
             velocities.append(robot_status.gripper.vel)
-            
+
             efforts.append(0.0)
 
         # set joint_state
@@ -553,13 +567,14 @@ class StretchDriver(Node):
             self.laser_scan_pub.publish(
                 create_laser_scan_msg(lidardata, timestamp=current_time)
             )
-        except: ... # Lidar is disabled, get_data() throws a ValueError
+        except:
+            ...  # Lidar is disabled, get_data() throws a ValueError
 
         for camera_name, frame in self.sim.pull_camera_data().get_all():
             header = Header()
             header.frame_id = camera_name
             header.stamp = current_time
-            ros_image = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8', header=header)
+            ros_image = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8", header=header)
             self.camera_publishers[camera_name].publish(ros_image)
             # TODO: Image works, but Camera does not because RViz expects better camera_info(?):
             # settings = StretchCameras[camera_name].initial_camera_settings
@@ -571,7 +586,6 @@ class StretchDriver(Node):
             #         timestamp=current_time
             #     )
             # )
-            
 
         accel_status = sensor_status.get_data(StretchSensors.base_accel)
         gyro_status = sensor_status.get_data(StretchSensors.base_gyro)
@@ -1099,9 +1113,13 @@ class StretchDriver(Node):
             camera.name: self.create_publisher(Image, f"/camera/{camera.name}_raw", 10)
             for camera in self.sim._cameras_to_use
         }
-        self.camera_info_pub = self.create_publisher(CameraInfo, f"/camera/camera_info", 10)
+        self.camera_info_pub = self.create_publisher(
+            CameraInfo, f"/camera/camera_info", 10
+        )
 
-        self.clock_pub = self.create_publisher( msg_type=Clock,topic='/clock', qos_profile=10)
+        self.clock_pub = self.create_publisher(
+            msg_type=Clock, topic="/clock", qos_profile=10
+        )
 
         self.power_pub = self.create_publisher(BatteryState, "battery", 1)
         self.homed_pub = self.create_publisher(Bool, "is_homed", 1)
@@ -1320,9 +1338,16 @@ class StretchDriver(Node):
 
 
 def main():
-    sim = StretchMujocoSimulator(cameras_to_use=[])
+    # model = None
+    model, xml, objects_info = model_generation_wizard(
+        task="PnPCounterToCab",
+        layout=1,
+        style=1,
+    )
+
+    sim = StretchMujocoSimulator(model=model, cameras_to_use=[])
     # sim = StretchMujocoSimulator(cameras_to_use=[StretchCameras.cam_d405_rgb])
-    sim.start(headless=False)
+    sim.start(headless=True)
 
     rclpy.init()
 

@@ -4,17 +4,29 @@ SCRIPT_DIR=$(dirname "$0")
 
 cd "$SCRIPT_DIR"
 
-mkdir dependencies
+mkdir -p dependencies
 
 cd dependencies
 
+# Install stretch_mujoco and robocasa:
 git clone https://github.com/hello-robot/stretch_mujoco.git --depth 1
 
-pip install -e ./stretch_mujoco
+cd stretch_mujoco
 
+git submodule update --init
+
+pip install ".[robocasa]"
+
+pip install "third_party/robocasa"
+pip install "third_party/robosuite"
+python3 third_party/robosuite/robosuite/scripts/setup_macros.py
+python3 third_party/robocasa/robocasa/scripts/setup_macros.py
+python3 third_party/robocasa/robocasa/scripts/download_kitchen_assets.py
+
+# Colcon Build:
 cd ~/ament_ws
 
-rosdep install -i --from-path src --rosdistro humble -y
+rosdep install --rosdistro=humble -iy --skip-keys="librealsense2 realsense2_camera" --from-paths src
 
 colcon build
 
