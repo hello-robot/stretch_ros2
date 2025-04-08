@@ -1347,7 +1347,7 @@ def main():
 
     sim = StretchMujocoSimulator(model=model, cameras_to_use=[])
     # sim = StretchMujocoSimulator(cameras_to_use=[StretchCameras.cam_d405_rgb])
-    sim.start(headless=True)
+    sim.start(headless=False)
 
     rclpy.init()
 

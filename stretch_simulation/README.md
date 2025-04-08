@@ -1,91 +1,98 @@
 # Stretch Simulation in ROS2
 
-## Setting up URDF
+Use this package to use ROS2 with Stretch in Mujoco.
+
+## System Requirements
+
+It is recommended to run this package on an Ubuntu 22.04 workstation with an Nvidia graphics card or a WSL2 environment with GPU acceleration.
+
+This package is not supported on Metal (MacOS) at this time due to the lack of GPU acceleration and OpenGL 1.5+ support in Docker, and slow performance in UTM with a virtual machine.
+
+## Getting Started
+
+You should go through all the sections in Getting Started to run this package correctly.
+
+### Install ROS2 Humble
+
+The commands below are taken from this guide: https://docs.ros.org/en/humble/index.html
+
+```shell
+sudo apt install software-properties-common
+sudo add-apt-repository universe
+
+sudo apt update && sudo apt install curl -y
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+
+sudo apt update
+
+sudo apt install ros-humble-desktop ros-dev-tools rviz python3-pip
+
+source /opt/ros/humble/setup.bash
+```
+
+### Setting up `ament_ws`
+
+If you are not running this package on a robot NUC (which is _not_ [recommended](#system-requirements)), you will need to set up a ROS2 environment similar to the environment that ships with Stretch.
+
+Please run these commands to install the environment. This will delete the existing `~/ament_ws` directory, so please proceed with caution.
+
+```sh
+cd stretch_simulation
+
+unzip ubuntu2204_ament_ws_files.zip
+
+cd ubuntu2204_ament_ws_files
+
+sudo cp -r ./etc/* /etc/
+cp -r ./stretch_user ~/
+
+git clone https://github.com/hello-robot/stretch_install.git --depth 1 ~/stretch_install
+
+bash env_install.sh
+
+cd ~/ament_ws
+
+rosdep install --rosdistro=humble -iy --skip-keys="librealsense2 realsense2_camera" --from-paths src
+
+colcon build
+
+source ./install/setup.bash
+```
+
+
+### Setting up URDF
 
 Run the commands below or follow the instruction in the [`stretch_description #updating-the-urdf`](../stretch_description/README.md#updating-the-urdf) README file to set up the URDF meshes.
 
 ```shell
 source ~/ament_ws/install/setup.bash
 
-python3 -m pip install  -U hello-robot-stretch-urdf
+python3 -m pip install -U hello-robot-stretch-urdf
 
-git clone https://github.com/hello-robot/stretch_urdf.git
+git clone https://github.com/hello-robot/stretch_urdf.git --depth 1 /tmp/stretch_urdf
 
-python3 stretch_urdf/tools/stretch_urdf_ros_update.py --model SE3 --tool eoa_wrist_dw3_tool_sg3
+python3 /tmp/stretch_urdf/tools/stretch_urdf_ros_update.py --model SE3 --tool eoa_wrist_dw3_tool_sg3
 
-colcon build 
+cd ~/ament_ws
+
+colcon build # Copy new files
 ```
 
 
-## Mujoco
+### Mujoco
 
-This ROS 2 package uses the [`stretch_mujoco`](https://github.com/hello-robot/stretch_mujoco) repo to interface with Mujoco.
+This ROS 2 package includes nodes and launch files that use the [`stretch_mujoco`](https://github.com/hello-robot/stretch_mujoco) repo to interface with Mujoco.
 
-Run the following to start interacting with Stretch in Mujoco using ROS 2:
+Run the following, after having done the previous ament_ws setup steps, to start interacting with Stretch in Mujoco using ROS 2:
 
 ```shell
-sh ./stretch_simulation/stretch_mujoco_driver/setup.sh
+source ~/ament_ws/install/setup.bash
+sh ~/ament_ws/src/stretch_ros2/stretch_simulation/stretch_mujoco_driver/setup.sh
 
 cd ~/ament_ws
 source ./install/setup.bash
 colcon build
 ros2 launch stretch_simulation stretch_mujoco_driver.launch.py 
 ```
-
-## Docker
-
-To run Stretch Simulation in Docker:
-
-Create the container:
-```shell
-cd stretch_simulation
-
-# This zip file contains scripts and files needed to build a Stretch ament_ws environment:
-unzip docker_volume.zip
-
-# Choose one depending on architecture:
-export DOCKER_DEFAULT_PLATFORM=linux/amd64/v2 # Apple Silicon
-#export DOCKER_DEFAULT_PLATFORM=linux/x86_64/v8 
-
-docker build -t stretch_ros2 .
-
-# Mac or CPU:
-docker run -it --name stretch_ros2  --env="DISPLAY=host.docker.internal:0" --net=host --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" --privileged -v ./docker_volume:/root stretch_ros2
-# Nvidia GPU:
-# docker run -it --gpus=all --name stretch_ros2  --env="DISPLAY=host.docker.internal:0" --net=host --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" --privileged -v ./docker_volume:/root stretch_ros2
-```
-
-Open a terminal on the container:
-```shell
-docker start stretch_ros2
-docker exec -it stretch_ros2 bash
-```
-
-Run the following on the container:
-```shell
-cd ~/
-
-git clone https://github.com/hello-robot/stretch_install.git --depth 1 
-
-cp -r ./etc /etc/
-
-usermod -a -G video root
-
-bash env_install.sh
-
-cd ~/ament_ws/src/stretch_ros2
-```
-
-To use RViz and Mujoco GUI, you should enable passthrough.
-
-For MacOS:
-
-1. `brew install --cask xquartz`
-2. `defaults write org.xquartz.X11 enable_iglx -bool true`
-3. `open -a XQuartz`
-4. Go to Security Settings -> "Allow connections from network clients"
-5. Restart again
-6. `open -a XQuartz`
-7. `xhost +localhost`
-8. Run `Xquartz :0 -listen tcp` and make sure it is not saying `–nolisten tcp` -> TCP is needed for X11 forwarding.
-9. You may need to repeat steps 6,7 and 8 if you quit XQuartz.

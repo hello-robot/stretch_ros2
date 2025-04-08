@@ -15,7 +15,7 @@ cd stretch_mujoco
 
 git submodule update --init
 
-pip install ".[robocasa]"
+pip install -e ".[robocasa]"
 
 pip install "third_party/robocasa"
 pip install "third_party/robosuite"
@@ -32,4 +32,4 @@ colcon build
 
 source ./install/setup.bash
 
-echo "Done. You can now use 'ros2 launch stretch_simulation <launch_file_name.launch.py>'."
+echo "Done. You can now use 'ros2 launch stretch_simulation stretch_mujoco_driver.launch.py'."
