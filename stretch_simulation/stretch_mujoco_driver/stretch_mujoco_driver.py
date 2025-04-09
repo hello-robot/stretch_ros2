@@ -26,6 +26,7 @@ from geometry_msgs.msg import TransformStamped
 from std_srvs.srv import Trigger
 from std_srvs.srv import SetBool
 
+
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import LaserScan
@@ -53,7 +54,7 @@ from hello_helpers.gamepad_conversion import (
 )
 
 # from .joint_trajectory_server import JointTrajectoryAction
-
+from builtin_interfaces.msg import Time as TimeMsg
 from ament_index_python.packages import get_package_share_path
 
 
@@ -66,19 +67,20 @@ BACKLASH_DEBUG = False
 STREAMING_POSITION_DEBUG = False
 
 
-def create_laser_scan_msg(ranges, timestamp, frame_id="laser_frame"):
-    laser_scan_msg = LaserScan()
+def create_laser_scan_msg(lidar_data: np.ndarray, timestamp:TimeMsg, frame_id:str):
+    ranges = lidar_data.tolist()
+
+    laser_scan_msg = LaserScan() # https://docs.ros.org/en/humble/p/sensor_msgs/msg/LaserScan.html 
     laser_scan_msg.header = Header()
     laser_scan_msg.header.stamp = timestamp
     laser_scan_msg.header.frame_id = frame_id
-    laser_scan_msg.angle_min = -1.57  # Minimum angle of the scan (in radians)
-    laser_scan_msg.angle_max = 1.57  # Maximum angle of the scan (in radians)
-    laser_scan_msg.angle_increment = 0.01  # Angular resolution (in radians)
-    laser_scan_msg.time_increment = 0.0  # Time between measurements (if applicable)
-    laser_scan_msg.scan_time = 0.1  # Time it takes to complete one scan (in seconds)
-    laser_scan_msg.range_min = 0.0  # Minimum range (in meters)
-    laser_scan_msg.range_max = 10.0  # Maximum range (in meters)
+    laser_scan_msg.angle_min = 0.0
+    laser_scan_msg.angle_max = 360.0 
+    laser_scan_msg.angle_increment = 360 / len(ranges)
+    laser_scan_msg.range_min = 0.2
+    laser_scan_msg.range_max = 5.0
     laser_scan_msg.ranges = ranges
+
     return laser_scan_msg
 
 
@@ -560,14 +562,12 @@ class StretchDriver(Node):
         sensor_status = self.sim.pull_sensor_data()
 
         try:
-            lidardata = (
-                sensor_status.get_data(StretchSensors.base_lidar).astype(float).tolist()
-            )
-
+            lidar_data = sensor_status.get_data(StretchSensors.base_lidar)
+            
             self.laser_scan_pub.publish(
-                create_laser_scan_msg(lidardata, timestamp=current_time)
+                create_laser_scan_msg(lidar_data, timestamp=current_time, frame_id="laser")
             )
-        except:
+        except ValueError:
             ...  # Lidar is disabled, get_data() throws a ValueError
 
         for camera_name, frame in self.sim.pull_camera_data().get_all():
@@ -1338,12 +1338,12 @@ class StretchDriver(Node):
 
 
 def main():
-    # model = None
-    model, xml, objects_info = model_generation_wizard(
-        task="PnPCounterToCab",
-        layout=1,
-        style=1,
-    )
+    model = None
+    # model, xml, objects_info = model_generation_wizard(
+    #     task="PnPCounterToCab",
+    #     layout=1,
+    #     style=1,
+    # )
 
     sim = StretchMujocoSimulator(model=model, cameras_to_use=[])
     # sim = StretchMujocoSimulator(cameras_to_use=[StretchCameras.cam_d405_rgb])
