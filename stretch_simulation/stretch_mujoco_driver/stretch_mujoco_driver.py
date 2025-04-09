@@ -546,9 +546,13 @@ class StretchDriver(Node):
             velocities.append(wrist_roll_vel)
             efforts.append(wrist_roll_effort)
 
+            # Left Finger
             positions.append(robot_status.gripper.pos)
             velocities.append(robot_status.gripper.vel)
-
+            efforts.append(0.0)
+            # Right Finger
+            positions.append(robot_status.gripper.pos)
+            velocities.append(robot_status.gripper.vel)
             efforts.append(0.0)
 
         # set joint_state

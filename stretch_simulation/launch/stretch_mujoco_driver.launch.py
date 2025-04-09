@@ -60,7 +60,7 @@ def generate_launch_description():
     # )
     # ld.add_action(declare_controller_arg)
 
-    uncalibrated_urdf = get_package_share_path('stretch_description') / 'urdf' / 'stretch_main.xacro'
+    uncalibrated_urdf = get_package_share_path('stretch_description') / 'urdf' / 'stretch_description_SE3_eoa_wrist_dw3_tool_sg3.xacro'
     calibrated_urdf = get_package_share_path('stretch_description') / 'urdf' / 'stretch.urdf'
     if calibrated_urdf.is_file():
         robot_description_content = launch_ros.parameter_descriptions.ParameterValue( Command(['xacro ', str(calibrated_urdf)]), value_type=str)
@@ -73,7 +73,6 @@ def generate_launch_description():
         executable="joint_state_publisher",
         output="log",
         parameters=[{"source_list": ["/stretch/joint_states"]}, {"rate": 30.0}, {"robot_description": robot_description_content}],
-        # parameters=[{"source_list": ["/stretch/joint_states"]}, {"rate": 30.0}, {"robot_description": robot_description_content}],
         arguments=["--ros-args", "--log-level", "error"],
     )
     ld.add_action(joint_state_publisher)
