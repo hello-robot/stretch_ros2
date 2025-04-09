@@ -1249,7 +1249,7 @@ class FunmapNode(hm.HelloNode):
         goal_pose = goal_handle.request.pose
         self.logger.info(
             'Navigate to goal simple action server received a command!')
-        self.logger.info(goal_pose)
+        self.logger.info(f"Goal pose is {str(goal_pose)}")
 
         result = NavigateToPose.Result()
 
