@@ -8,6 +8,8 @@ import launch_ros.parameter_descriptions
 from launch_ros.actions import Node
 import launch_ros
 import os
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.conditions import IfCondition, UnlessCondition
 
 if system() == "Linux":
     # this fixes rviz launch issue
@@ -38,13 +40,16 @@ def generate_launch_description():
     )
     ld.add_action(declare_fail_out_of_range_goal_arg)
 
-    declare_mode_arg = DeclareLaunchArgument(
+    ld.add_action(DeclareLaunchArgument(
         "mode",
         default_value="position",
         choices=["position", "navigation", "trajectory", "gamepad"],
         description="The mode in which the ROS driver commands the robot",
-    )
-    ld.add_action(declare_mode_arg)
+    ))
+
+    ld.add_action(DeclareLaunchArgument('use_rviz', default_value='true', choices=['true', 'false']))
+    ld.add_action(DeclareLaunchArgument('use_mujoco_viewer', default_value='true', choices=['true', 'false']))
+
 
     # calibrated_backlash = stretch_simulation_path / 'config' / 'controller_calibration_head.yaml'
     # uncalibrated_backlash = stretch_simulation_path / 'config' / 'controller_calibration_head_factory_default.yaml'
@@ -97,6 +102,7 @@ def generate_launch_description():
             "broadcast_odom_tf": LaunchConfiguration("broadcast_odom_tf"),
             "fail_out_of_range_goal": LaunchConfiguration("fail_out_of_range_goal"),
             "mode": LaunchConfiguration("mode"),
+            "use_mujoco_viewer": LaunchConfiguration("use_mujoco_viewer")
         }
     ]
     
@@ -106,6 +112,7 @@ def generate_launch_description():
             executable="rviz2",
             output="screen",
             arguments=['-d', str(stretch_simulation_path / 'rviz' / 'stretch_sim.rviz'), 'use_sim_time', 'true'],
+            condition=IfCondition(LaunchConfiguration("use_rviz"))
         )
     )
 

@@ -129,6 +129,10 @@ class StretchDriver(Node):
 
         super().__init__("stretch_driver")
 
+        self.declare_parameter("use_mujoco_viewer", True)
+        use_mujoco_viewer = self.get_parameter("use_mujoco_viewer").value
+        sim.start(headless=not use_mujoco_viewer)
+
         self.sim = sim
 
         # Initialize calibration offsets
@@ -661,13 +665,11 @@ class StretchDriver(Node):
             b.header.stamp = current_time
             b.header.frame_id = self.base_frame_id
             b.child_frame_id = "base_footprint"
-            b.transform.translation.x = 0.0
-            b.transform.translation.y = 0.0
-            b.transform.translation.z = 0.0
-            b.transform.rotation.x = 0.0
-            b.transform.rotation.y = 0.0
-            b.transform.rotation.z = 0.0
-            b.transform.rotation.w = 1.0
+            self.tf_static_broadcaster.sendTransform(b)
+            b = TransformStamped()
+            b.header.stamp = current_time
+            b.header.frame_id = "map"
+            b.child_frame_id = self.odom_frame_id
             self.tf_static_broadcaster.sendTransform(b)
 
         # publish odometry via the odom topic
@@ -1349,27 +1351,21 @@ def main():
     )
 
     sim = StretchMujocoSimulator(model=model, cameras_to_use=[])
-    # sim = StretchMujocoSimulator(cameras_to_use=[StretchCameras.cam_d405_rgb])
-    sim.start(headless=True)
 
     rclpy.init()
 
-    executor = MultiThreadedExecutor(num_threads=8)
-
     node = StretchDriver(sim=sim)
-
-    executor.add_node(node)
 
     try:
         while rclpy.ok() and sim.is_running():
-            executor.spin_once()
+            rclpy.spin_once(node)
             print(sim.pull_status().sim_to_real_time_ratio_msg)
 
     except KeyboardInterrupt:
         print("Detecting KeyboardInterrupt")
     finally:
+        print("Stopping Stretch Mujoco Driver")
         sim.stop()
-        executor.shutdown()
         node.destroy_node()
         rclpy.shutdown()
 

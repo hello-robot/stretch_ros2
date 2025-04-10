@@ -25,11 +25,32 @@ To map the simulated environment, run the following:
 ros2 launch stretch_nav2 online_async_launch.py use_sim_time:=true 
 
 # Terminal 2: Stretch Mujoco Driver
-ros2 launch stretch_simulation stretch_mujoco_driver.launch.py
+ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=true
 
 # Terminal 3: Keyboard Teleop
 ros2 service call /switch_to_navigation_mode std_srvs/srv/Trigger
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args --remap cmd_vel:=/stretch/cmd_vel
+```
+
+To save your map, run:
+
+```sh
+mkdir ${HELLO_FLEET_PATH}/maps
+ros2 run nav2_map_server map_saver_cli -f ${HELLO_FLEET_PATH}/maps/<map_name>
+```
+
+### Navigation
+
+To run navigation on a previously generated map, run:
+
+```sh
+# Terminal 1: Stretch Mujoco Driver
+ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=true use_rviz:=false
+
+# Terminal 2: Navigation
+ros2 service call /switch_to_navigation_mode std_srvs/srv/Trigger
+
+ros2 launch stretch_nav2 navigation.launch.py map:=${HELLO_FLEET_PATH}/maps/<map_name>.yaml use_sim_time:=true use_rviz:=true teleop_type:=none
 ```
 
 ## Getting Started
