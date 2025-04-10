@@ -10,6 +10,7 @@ from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.enums.stretch_sensors import StretchSensors
 from stretch_core.rwlock import RWLock
+from stretch_mujoco_driver.joint_trajectory_server import JointTrajectoryAction
 import tf2_ros
 from tf_transformations import quaternion_from_euler
 
@@ -1317,9 +1318,7 @@ class StretchDriver(Node):
         self.declare_parameter("action_server_rate", 30.0)
         self.action_server_rate: float = self.get_parameter("action_server_rate").value
 
-        # NOTE: SA: JointTrajectoryAction's init() mutates StretchDriver.Robot
-        # by settings _update_trajectory_non_dynamixel = lambda: none
-        # self.joint_trajectory_action = JointTrajectoryAction(self, self.action_server_rate)
+        self.joint_trajectory_action = JointTrajectoryAction(self, self.action_server_rate)
 
         # Switch to mode:
         self.get_logger().debug("mode = " + str(mode))

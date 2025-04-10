@@ -53,6 +53,17 @@ ros2 service call /switch_to_navigation_mode std_srvs/srv/Trigger
 ros2 launch stretch_nav2 navigation.launch.py map:=${HELLO_FLEET_PATH}/maps/<map_name>.yaml use_sim_time:=true use_rviz:=true teleop_type:=none
 ```
 
+You may want to dynamically reduce the cost_map inflation radius for most Robocasa environments:
+
+```shell
+ros2 param get /global_costmap/global_costmap inflation_layer.inflation_radius
+ros2 param get /local_costmap/local_costmap  inflation_layer.inflation_radius
+
+ros2 param set /global_costmap/global_costmap inflation_layer.inflation_radius 0.25
+ros2 param set /local_costmap/local_costmap  inflation_layer.inflation_radius 0.25
+```
+
+
 ## Getting Started
 
 You should go through all the sections in Getting Started to run this package correctly.
