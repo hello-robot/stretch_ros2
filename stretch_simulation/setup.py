@@ -22,7 +22,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'stretch_mujoco_driver = stretch_mujoco_driver.stretch_mujoco_driver:main'
+            'stretch_mujoco_driver = stretch_mujoco_driver.stretch_mujoco_driver:main',
         ],
     },
 )

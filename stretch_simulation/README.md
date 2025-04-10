@@ -4,9 +4,33 @@ Use this package to use ROS2 with Stretch in Mujoco.
 
 ## System Requirements
 
-It is recommended to run this package on an Ubuntu 22.04 workstation with an Nvidia graphics card or a WSL2 environment with GPU acceleration.
+It is recommended to run this package on an Ubuntu 22.04 workstation with an Nvidia graphics card or a WSL2 environment with GPU acceleration. 
+
+Minimum: 16GB of RAM. Recommended: 32GB of RAM.
 
 This package is not supported on Metal (MacOS) at this time due to the lack of GPU acceleration and OpenGL 1.5+ support in Docker, and slow performance in UTM with a virtual machine.
+
+## Nav2
+
+First go through the [Getting Started](#getting-started) guide to set up your environment.
+
+### Mapping
+
+This section is similar to https://docs.hello-robot.com/0.2/stretch-tutorials/ros2/navigation_stack/#mapping, but uses the Stretch simulation environment.
+
+To map the simulated environment, run the following:
+
+```shell
+# Terminal 1: Slam Toolbox
+ros2 launch stretch_nav2 online_async_launch.py use_sim_time:=true 
+
+# Terminal 2: Stretch Mujoco Driver
+ros2 launch stretch_simulation stretch_mujoco_driver.launch.py
+
+# Terminal 3: Keyboard Teleop
+ros2 service call /switch_to_navigation_mode std_srvs/srv/Trigger
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args --remap cmd_vel:=/stretch/cmd_vel
+```
 
 ## Getting Started
 

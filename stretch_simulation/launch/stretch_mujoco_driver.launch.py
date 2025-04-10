@@ -105,7 +105,7 @@ def generate_launch_description():
             package="rviz2",
             executable="rviz2",
             output="screen",
-            arguments=['-d', str(stretch_simulation_path / 'rviz' / 'stretch_sim.rviz')]
+            arguments=['-d', str(stretch_simulation_path / 'rviz' / 'stretch_sim.rviz'), 'use_sim_time', 'true'],
         )
     )
 

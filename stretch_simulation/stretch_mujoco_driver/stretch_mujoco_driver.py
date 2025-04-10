@@ -75,7 +75,7 @@ def create_laser_scan_msg(lidar_data: np.ndarray, timestamp:TimeMsg, frame_id:st
     laser_scan_msg.header.stamp = timestamp
     laser_scan_msg.header.frame_id = frame_id
     laser_scan_msg.angle_min = 0.0
-    laser_scan_msg.angle_max = 360.0 
+    laser_scan_msg.angle_max = 359.0 
     laser_scan_msg.angle_increment = 360 / len(ranges)
     laser_scan_msg.range_min = 0.2
     laser_scan_msg.range_max = 5.0
@@ -655,6 +655,7 @@ class StretchDriver(Node):
             t.transform.rotation.z = q[2]
             t.transform.rotation.w = q[3]
             self.tf_broadcaster.sendTransform(t)
+            self.tf_static_broadcaster.sendTransform(t)
 
             b = TransformStamped()
             b.header.stamp = current_time
@@ -667,9 +668,7 @@ class StretchDriver(Node):
             b.transform.rotation.y = 0.0
             b.transform.rotation.z = 0.0
             b.transform.rotation.w = 1.0
-            self.tf_broadcaster.sendTransform(b)
-
-            self.tf_static_broadcaster.sendTransform(t)
+            self.tf_static_broadcaster.sendTransform(b)
 
         # publish odometry via the odom topic
         odom = Odometry()
@@ -1111,7 +1110,7 @@ class StretchDriver(Node):
         self.max_arm_height = 1.1
 
         self.odom_pub = self.create_publisher(Odometry, "odom", 1)
-        self.laser_scan_pub = self.create_publisher(LaserScan, "scan", 1)
+        self.laser_scan_pub = self.create_publisher(LaserScan, "/scan_filtered", 1)
 
         self.camera_publishers = {
             camera.name: self.create_publisher(Image, f"/camera/{camera.name}_raw", 10)
@@ -1342,16 +1341,16 @@ class StretchDriver(Node):
 
 
 def main():
-    model = None
-    # model, xml, objects_info = model_generation_wizard(
-    #     task="PnPCounterToCab",
-    #     layout=1,
-    #     style=1,
-    # )
+    # model = None
+    model, xml, objects_info = model_generation_wizard(
+        task="PnPCounterToCab",
+        layout=1,
+        style=1,
+    )
 
     sim = StretchMujocoSimulator(model=model, cameras_to_use=[])
     # sim = StretchMujocoSimulator(cameras_to_use=[StretchCameras.cam_d405_rgb])
-    sim.start(headless=False)
+    sim.start(headless=True)
 
     rclpy.init()
 
@@ -1364,7 +1363,7 @@ def main():
     try:
         while rclpy.ok() and sim.is_running():
             executor.spin_once()
-            # print(sim.pull_status().sim_to_real_time_ratio_msg)
+            print(sim.pull_status().sim_to_real_time_ratio_msg)
 
     except KeyboardInterrupt:
         print("Detecting KeyboardInterrupt")
