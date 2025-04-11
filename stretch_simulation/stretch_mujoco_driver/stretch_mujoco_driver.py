@@ -76,8 +76,8 @@ def create_laser_scan_msg(lidar_data: np.ndarray, timestamp:TimeMsg, frame_id:st
     laser_scan_msg.header.stamp = timestamp
     laser_scan_msg.header.frame_id = frame_id
     laser_scan_msg.angle_min = 0.0
-    laser_scan_msg.angle_max = 359.0 
-    laser_scan_msg.angle_increment = 360 / len(ranges)
+    laser_scan_msg.angle_max = np.pi * 2 
+    laser_scan_msg.angle_increment = laser_scan_msg.angle_max / len(ranges)
     laser_scan_msg.range_min = 0.2
     laser_scan_msg.range_max = 5.0
     laser_scan_msg.ranges = ranges
