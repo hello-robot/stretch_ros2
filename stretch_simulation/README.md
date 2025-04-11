@@ -99,16 +99,16 @@ Please run these commands to install the environment. This will delete the exist
 ```sh
 cd stretch_simulation
 
-unzip ubuntu2204_ament_ws_files.zip
-
-cd ubuntu2204_ament_ws_files
-
-sudo cp -r ./etc/* /etc/
-cp -r ./stretch_user ~/
-
 git clone https://github.com/hello-robot/stretch_install.git --depth 1 ~/stretch_install
 
-bash env_install.sh
+unzip ubuntu2204_ament_ws_files.zip
+
+sudo cp -r ./ubuntu2204_ament_ws_files/etc/* /etc/
+cp -r ./ubuntu2204_ament_ws_files/stretch_user ~/
+
+bash ./ubuntu2204_ament_ws_files/env_install.sh
+
+rm -rf ./ubuntu2204_ament_ws_files
 
 cd ~/ament_ws
 
