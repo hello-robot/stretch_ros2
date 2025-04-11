@@ -36,10 +36,17 @@ def generate_launch_description():
                                    'map', 'home2.yaml'),
         description='Full path to the map.yaml file to use for navigation')
     
+    use_slam = DeclareLaunchArgument(
+        'use_slam',
+        default_value='False',
+        choices=['True', 'False'],
+        description='Whether run a SLAM')
+    
     rviz_param = DeclareLaunchArgument('use_rviz', default_value='true', choices=['true', 'false'])
 
     # Error out if the map file does not exist
     def map_file_check(context: LaunchContext):
+        if LaunchConfiguration('use_slam').perform(context): return
         map_path = LaunchConfiguration('map').perform(context)
         if not os.path.exists(map_path):
             msg='Map file not found in given path: {}'.format(map_path)
@@ -77,6 +84,7 @@ def generate_launch_description():
         launch_arguments={'use_sim_time': LaunchConfiguration('use_sim_time'), 
                           'autostart': LaunchConfiguration('autostart'),
                           'map': LaunchConfiguration('map'),
+                          'slam': LaunchConfiguration('use_slam'),
                           'params_file': LaunchConfiguration('params_file'),
                           'use_rviz': LaunchConfiguration('use_rviz')}.items())
 
@@ -90,6 +98,7 @@ def generate_launch_description():
         use_sim_time_param,
         autostart_param,
         map_path_param,
+        use_slam,
         params_file_param,
         rviz_param,
         stretch_driver_launch,

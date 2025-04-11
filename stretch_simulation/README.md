@@ -23,6 +23,8 @@ To map the simulated environment, run the following:
 ```shell
 # Terminal 1: Slam Toolbox
 ros2 launch stretch_nav2 online_async_launch.py use_sim_time:=true 
+# Optional: Navigation bringup:
+ros2 launch stretch_nav2 navigation.launch.py use_slam:=true use_sim_time:=true use_rviz:=true teleop_type:=none
 
 # Terminal 2: Stretch Mujoco Driver
 ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=true
