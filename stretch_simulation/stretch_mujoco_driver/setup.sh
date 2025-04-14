@@ -32,4 +32,4 @@ colcon build
 
 source ./install/setup.bash
 
-echo "Done. You can now use 'ros2 launch stretch_simulation stretch_mujoco_driver.launch.py'."
+echo "Done. You can now use 'ros2 launch stretch_simulation stretch_mujoco_driver.launch.py mode:=navigation'."

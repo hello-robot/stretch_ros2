@@ -16,7 +16,7 @@ First go through the [Getting Started](#getting-started) guide to set up your en
 
 ### Mapping
 
-This section is similar to https://docs.hello-robot.com/0.2/stretch-tutorials/ros2/navigation_stack/#mapping, but uses the Stretch simulation environment.
+This section is similar to https://docs.hello-robot.com/0.3/ros2/navigation_stack/#mapping, but uses the Stretch simulation environment.
 
 To map the simulated environment, run the following:
 
@@ -27,7 +27,7 @@ ros2 launch stretch_nav2 online_async_launch.py use_sim_time:=true
 ros2 launch stretch_nav2 navigation.launch.py use_slam:=true use_sim_time:=true use_rviz:=true teleop_type:=none
 
 # Terminal 2: Stretch Mujoco Driver
-ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=true
+ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=true mode:=navigation
 
 # Terminal 3: Keyboard Teleop
 ros2 service call /switch_to_navigation_mode std_srvs/srv/Trigger
@@ -47,7 +47,7 @@ To run navigation on a previously generated map, run:
 
 ```sh
 # Terminal 1: Stretch Mujoco Driver
-ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=true use_rviz:=false
+ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=true use_rviz:=false mode:=navigation
 
 # Terminal 2: Navigation
 ros2 service call /switch_to_navigation_mode std_srvs/srv/Trigger
@@ -65,6 +65,58 @@ ros2 param set /global_costmap/global_costmap inflation_layer.inflation_radius 0
 ros2 param set /local_costmap/local_costmap  inflation_layer.inflation_radius 0.25
 ```
 
+## Stretch Drivers
+
+Simulation Drivers interface with the simulator to read and write data.
+
+Simulation Drivers mimic the StretchDriver in `stretch_core`, which talks to the real robot. 
+
+You could display all the launch options available to the Stretch Mujoco Driver using: `ros2 launch stretch_simulation stretch_mujoco_driver.launch.py --show-args`:
+
+```
+    'broadcast_odom_tf':
+        Whether to broadcast the odom TF. Valid choices are: ['True', 'False']
+        (default: 'True')
+
+    'fail_out_of_range_goal':
+        Whether the motion action servers fail on out-of-range commands. Valid choices are: ['True', 'False']
+        (default: 'False')
+
+    'mode':
+        The mode in which the ROS driver commands the robot. Valid choices are: ['position', 'navigation', 'trajectory', 'gamepad']
+        (default: 'position')
+
+    'use_rviz':
+        One of: ['true', 'false']
+        (default: 'true')
+
+    'use_mujoco_viewer':
+        One of: ['true', 'false']
+        (default: 'true')
+
+    'use_cameras':
+        One of: ['true', 'false']
+        (default: 'false')
+
+    'use_robocasa':
+        One of: ['true', 'false']
+        (default: 'true')
+
+    'robocasa_task':
+        no description given
+        (default: 'PnPCounterToCab')
+
+    'robocasa_layout':
+        One of: ['Random', 'One wall', 'One wall w/ island', 'L-shaped', 'L-shaped w/ island', 'Galley', 'U-shaped', 'U-shaped w/ island', 'G-shaped', 'G-shaped (large)', 'Wraparound']
+        (default: 'Random')
+
+    'robocasa_style':
+        One of: ['Random', 'Industrial', 'Scandanavian', 'Coastal', 'Modern_1', 'Modern_2', 'Traditional_1', 'Traditional_2', 'Farmhouse', 'Rustic', 'Mediterranean', 'Transitional_1', 'Transitional_2']
+        (default: 'Random')
+
+```
+
+You can also set the node's argument`arguments=["--ros-args", "--log-level", "debug"]` in the launch file to display Sim-to-Real time and other useful debug information.
 
 ## Getting Started
 
@@ -152,5 +204,5 @@ sh ~/ament_ws/src/stretch_ros2/stretch_simulation/stretch_mujoco_driver/setup.sh
 cd ~/ament_ws
 source ./install/setup.bash
 colcon build
-ros2 launch stretch_simulation stretch_mujoco_driver.launch.py 
+ros2 launch stretch_simulation stretch_mujoco_driver.launch.py mode:=navigation
 ```

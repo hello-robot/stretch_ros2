@@ -1,14 +1,19 @@
 #! /usr/bin/env python3
 
 import copy
-import time
 import numpy as np
 import threading
 
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.enums.actuators import Actuators
-from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.enums.stretch_sensors import StretchSensors
+from stretch_mujoco.enums.stretch_cameras import StretchCameras
+from stretch_mujoco.robocasa_gen import (
+    layout_from_str,
+    style_from_str,
+    model_generation_wizard, get_styles, layouts
+)
+
 from stretch_core.rwlock import RWLock
 from stretch_mujoco_driver.joint_trajectory_server import JointTrajectoryAction
 import tf2_ros
@@ -16,7 +21,6 @@ from tf_transformations import quaternion_from_euler
 
 import rclpy
 from rclpy.duration import Duration
-from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.node import Node
 from rclpy.parameter import Parameter
@@ -61,22 +65,22 @@ from ament_index_python.packages import get_package_share_path
 
 from rclpy import time as rclpyTime
 
-from stretch_mujoco.robocasa_gen import model_generation_wizard
-
 GRIPPER_DEBUG = False
 BACKLASH_DEBUG = False
 STREAMING_POSITION_DEBUG = False
 
 
-def create_laser_scan_msg(lidar_data: np.ndarray, timestamp:TimeMsg, frame_id:str):
+def create_laser_scan_msg(lidar_data: np.ndarray, timestamp: TimeMsg, frame_id: str):
     ranges = lidar_data.tolist()
 
-    laser_scan_msg = LaserScan() # https://docs.ros.org/en/humble/p/sensor_msgs/msg/LaserScan.html 
+    laser_scan_msg = (
+        LaserScan()
+    )  # https://docs.ros.org/en/humble/p/sensor_msgs/msg/LaserScan.html
     laser_scan_msg.header = Header()
     laser_scan_msg.header.stamp = timestamp
     laser_scan_msg.header.frame_id = frame_id
     laser_scan_msg.angle_min = 0.0
-    laser_scan_msg.angle_max = np.pi * 2 
+    laser_scan_msg.angle_max = np.pi * 2
     laser_scan_msg.angle_increment = laser_scan_msg.angle_max / len(ranges)
     laser_scan_msg.range_min = 0.2
     laser_scan_msg.range_max = 5.0
@@ -124,14 +128,64 @@ def get_joint_names_in_mjcf(actuator):
     raise NotImplementedError(f"Joint names for {actuator} are not defined.")
 
 
-class StretchDriver(Node):
+class StretchMujocoDriver(Node):
 
-    def __init__(self, sim: StretchMujocoSimulator):
+    def __init__(self):
 
-        super().__init__("stretch_driver")
-
+        super().__init__("stretch_mujoco_driver")
+        self.declare_parameter("use_cameras", False)
         self.declare_parameter("use_mujoco_viewer", True)
+        self.declare_parameter("use_robocasa", True)
+        self.declare_parameter("robocasa_task", "PnPCounterToCab")
+        self.declare_parameter("robocasa_layout", None)
+        self.declare_parameter("robocasa_style", None)
+
+        use_cameras = self.get_parameter("use_cameras").value
         use_mujoco_viewer = self.get_parameter("use_mujoco_viewer").value
+
+        model = None
+
+        use_robocasa = self.get_parameter("use_robocasa").value
+        if use_robocasa:
+            robocasa_task = self.get_parameter("robocasa_task").value
+            robocasa_layout = self.get_parameter("robocasa_layout").value
+            robocasa_style = self.get_parameter("robocasa_style").value
+
+            if isinstance(robocasa_layout, str):
+                # Convert robocasa_layout to int
+                if robocasa_layout.isnumeric():
+                    robocasa_layout = int(robocasa_layout)
+                elif robocasa_layout == "Random":
+                    robocasa_layout = np.random.choice(range(len(layouts)))
+                else:
+                    robocasa_layout = layout_from_str(robocasa_layout)
+            elif robocasa_layout is None:
+                robocasa_layout = -1
+
+            if isinstance(robocasa_style, str):
+                # Convert robocasa_style to int
+                if robocasa_style.isnumeric():
+                    robocasa_style = int(robocasa_style)
+                elif robocasa_style == "Random":
+                    robocasa_style = np.random.choice(range(len(get_styles())))
+                else:
+                    robocasa_style = style_from_str(robocasa_style)
+            elif robocasa_style is None:
+                robocasa_style = -1
+
+            model, xml, objects_info = model_generation_wizard(
+                task=robocasa_task,
+                layout=robocasa_layout,
+                style=robocasa_style,
+            )
+
+        sim = StretchMujocoSimulator(
+            model=model,
+            cameras_to_use=(
+                StretchCameras.all() if use_cameras else StretchCameras.none()
+            ),
+        )
+
         sim.start(headless=not use_mujoco_viewer)
 
         self.sim = sim
@@ -285,6 +339,7 @@ class StretchDriver(Node):
             self.get_logger().error("Failed to move to position: {0}".format(e))
 
     def command_mobile_base_velocity_and_publish_state(self):
+
         self.robot_mode_rwlock.acquire_read()
 
         if BACKLASH_DEBUG:
@@ -321,6 +376,8 @@ class StretchDriver(Node):
 
         # get copy of the current robot status (uses lock held by the robot)
         robot_status = self.sim.pull_status()
+
+        self.get_logger().debug(robot_status.sim_to_real_time_ratio_msg)
 
         # In the future, consider using time stamps from the robot's
         # motor control boards and other boards. These would need to
@@ -572,14 +629,21 @@ class StretchDriver(Node):
 
         try:
             lidar_data = sensor_status.get_data(StretchSensors.base_lidar)
-            
+
             self.laser_scan_pub.publish(
-                create_laser_scan_msg(lidar_data, timestamp=current_time, frame_id="laser")
+                create_laser_scan_msg(
+                    lidar_data, timestamp=current_time, frame_id="laser"
+                )
             )
         except ValueError:
             ...  # Lidar is disabled, get_data() throws a ValueError
 
         for camera_name, frame in self.sim.pull_camera_data().get_all():
+
+            if StretchCameras[camera_name].is_depth:
+                # Don't publish depth camera feed here:
+                continue
+
             header = Header()
             header.frame_id = camera_name
             header.stamp = current_time
@@ -750,9 +814,11 @@ class StretchDriver(Node):
         return True, "Now in navigation mode."
 
     def turn_on_position_mode(self):
+
         # Position mode enables mobile base translation and rotation
         # using position control with sequential incremental rotations
-        # and translations. It also disables velocity control of the
+        # and translations. It 
+        raise NotImplementedError("Position Mode is not yet supported in StretchMujocoDriver.")also disables velocity control of the
         # mobile base. It does not update the virtual prismatic
         # joint. The frames associated with 'floor_link' and
         # 'base_link' become identical in this mode.
@@ -772,6 +838,8 @@ class StretchDriver(Node):
         # the trajectory, respecting each waypoints' time_from_start
         # attribute of the trajectory_msgs/JointTrajectoryPoint
         # message. This allows coordinated motion of the base + arm.
+        raise NotImplementedError("Trajectory Mode is not yet supported in StretchMujocoDriver.")
+
         def code_to_run():
             try:
                 self.sim.stop_trajectory()
@@ -780,28 +848,28 @@ class StretchDriver(Node):
             self.sim.base.first_step = True
             self.sim.base.pull_status()
 
-            self.joint_trajectory_action.disable_stepper_sync_for_trajectory_mode()
-
         self.change_mode("trajectory", code_to_run)
         return True, "Now in trajectory mode."
 
-    # def turn_on_gamepad_mode(self):
-    #     # Gamepad mode enables the provided gamepad with stretch
-    #     # to control the robot motions. If the gamepad USB dongle is plugged out
-    #     # the robot would stop making any motions in this mode and could plugged in back in reltime.
-    #     # Alternatively in this mode, stretch driver also listens to `gamepad_joy` topic
-    #     # for valid Joy type message from a remote gamepad to control stretch.
-    #     # The Joy message format is described in the gamepad_conversion.py
-    #     def code_to_run():
-    #         try:
-    #             self.sim.stop_trajectory()
-    #         except NotImplementedError as e:
-    #             return False, str(e)
-    #         self.gamepad_teleop.do_double_beep(self.robot)
-    #         self.sim.base.pull_status()
+    def turn_on_gamepad_mode(self):
+        # Gamepad mode enables the provided gamepad with stretch
+        # to control the robot motions. If the gamepad USB dongle is plugged out
+        # the robot would stop making any motions in this mode and could plugged in back in reltime.
+        # Alternatively in this mode, stretch driver also listens to `gamepad_joy` topic
+        # for valid Joy type message from a remote gamepad to control stretch.
+        # The Joy message format is described in the gamepad_conversion.py
+        raise NotImplementedError("Gamepad Mode is not yet supported in StretchMujocoDriver.")
 
-    #     self.change_mode('gamepad', code_to_run)
-    #     return True, 'Now in gamepad mode.'
+        def code_to_run():
+            try:
+                self.sim.stop_trajectory()
+            except NotImplementedError as e:
+                return False, str(e)
+            self.gamepad_teleop.do_double_beep(self.robot)
+            self.sim.base.pull_status()
+
+        self.change_mode("gamepad", code_to_run)
+        return True, "Now in gamepad mode."
 
     def activate_streaming_position(self, request):
         self.streaming_position_activated = True
@@ -1318,7 +1386,9 @@ class StretchDriver(Node):
         self.declare_parameter("action_server_rate", 30.0)
         self.action_server_rate: float = self.get_parameter("action_server_rate").value
 
-        self.joint_trajectory_action = JointTrajectoryAction(self, self.action_server_rate)
+        self.joint_trajectory_action = JointTrajectoryAction(
+            self, self.action_server_rate
+        )
 
         # Switch to mode:
         self.get_logger().debug("mode = " + str(mode))
@@ -1342,29 +1412,19 @@ class StretchDriver(Node):
 
 
 def main():
-    # model = None
-    model, xml, objects_info = model_generation_wizard(
-        task="PnPCounterToCab",
-        layout=1,
-        style=1,
-    )
-
-    sim = StretchMujocoSimulator(model=model, cameras_to_use=[])
-
     rclpy.init()
 
-    node = StretchDriver(sim=sim)
+    node = StretchMujocoDriver()
 
     try:
-        while rclpy.ok() and sim.is_running():
+        while rclpy.ok() and node.sim.is_running():
             rclpy.spin_once(node)
-            print(sim.pull_status().sim_to_real_time_ratio_msg)
 
     except KeyboardInterrupt:
         print("Detecting KeyboardInterrupt")
     finally:
         print("Stopping Stretch Mujoco Driver")
-        sim.stop()
+        node.sim.stop()
         node.destroy_node()
         rclpy.shutdown()
 

@@ -24,11 +24,11 @@ import hello_helpers.hello_misc as hm
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from stretch_mujoco_driver.stretch_mujoco_driver import StretchDriver
+    from stretch_mujoco_driver.stretch_mujoco_driver import StretchMujocoDriver
 
 class JointTrajectoryAction:
 
-    def __init__(self, node: "StretchDriver", action_server_rate_hz:int):
+    def __init__(self, node: "StretchMujocoDriver", action_server_rate_hz:int):
         self.node = node
         self._goal_handle = None
         self._goal_lock = threading.Lock()
