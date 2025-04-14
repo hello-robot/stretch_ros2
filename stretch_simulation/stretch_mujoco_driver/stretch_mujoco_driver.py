@@ -11,7 +11,9 @@ from stretch_mujoco.enums.stretch_cameras import StretchCameras
 from stretch_mujoco.robocasa_gen import (
     layout_from_str,
     style_from_str,
-    model_generation_wizard, get_styles, layouts
+    model_generation_wizard,
+    get_styles,
+    layouts,
 )
 
 from stretch_core.rwlock import RWLock
@@ -64,6 +66,7 @@ from ament_index_python.packages import get_package_share_path
 
 
 from rclpy import time as rclpyTime
+
 
 class StretchMujocoDriver(Node):
 
@@ -158,7 +161,7 @@ class StretchMujocoDriver(Node):
         self.charging_state = BatteryState.POWER_SUPPLY_STATUS_UNKNOWN
 
         self.received_gamepad_joy_msg = get_default_joy_msg()
-        
+
         self.streaming_position_activated = False
 
         self.bridge = CvBridge()
@@ -380,7 +383,7 @@ class StretchMujocoDriver(Node):
             pan_backlash_correction = self.head_pan_calibrated_looked_left_offset_rad
         else:
             pan_backlash_correction = 0.0
-            
+
         head_pan_rad = (
             head_pan_status.pos
             + self.head_pan_calibrated_offset_rad
@@ -396,7 +399,7 @@ class StretchMujocoDriver(Node):
             tilt_backlash_correction = self.head_tilt_calibrated_looking_up_offset_rad
         else:
             tilt_backlash_correction = 0.0
-            
+
         head_tilt_rad = (
             head_tilt_status.pos
             + self.head_tilt_calibrated_offset_rad
@@ -554,25 +557,22 @@ class StretchMujocoDriver(Node):
 
         for camera_name, frame in self.sim.pull_camera_data().get_all():
 
-            if StretchCameras[camera_name].is_depth:
-                # Don't publish depth camera feed here:
-                continue
-
             header = Header()
             header.frame_id = camera_name
             header.stamp = current_time
-            ros_image = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8", header=header)
+            ros_image = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8" if not StretchCameras[camera_name].is_depth else "32FC1", header=header)
             self.camera_publishers[camera_name].publish(ros_image)
-            # TODO: Image works, but Camera does not because RViz expects better camera_info(?):
-            # settings = StretchCameras[camera_name].initial_camera_settings
-            # self.camera_info_pub.publish(
-            #     create_camera_info(
-            #         width=settings.width,
-            #         height=settings.height,
-            #         frame_id=header.frame_id,
-            #         timestamp=current_time
-            #     )
-            # )
+
+            settings = StretchCameras[camera_name].initial_camera_settings
+            self.camera_info_pub.publish(
+                create_camera_info(
+                    fovy=settings.fovy,
+                    width=settings.width,
+                    height=settings.height,
+                    frame_id=header.frame_id,
+                    timestamp=current_time,
+                )
+            )
 
         accel_status = sensor_status.get_data(StretchSensors.base_accel)
         gyro_status = sensor_status.get_data(StretchSensors.base_gyro)
@@ -723,7 +723,10 @@ class StretchMujocoDriver(Node):
         # mobile base. It does not update the virtual prismatic
         # joint. The frames associated with 'floor_link' and
         # 'base_link' become identical in this mode.
-        raise NotImplementedError("Position Mode is not yet supported in StretchMujocoDriver.")
+        raise NotImplementedError(
+            "Position Mode is not yet supported in StretchMujocoDriver."
+        )
+
         def code_to_run():
             # self.sim.base.enable_pos_incr_mode()
             ...
@@ -740,7 +743,9 @@ class StretchMujocoDriver(Node):
         # the trajectory, respecting each waypoints' time_from_start
         # attribute of the trajectory_msgs/JointTrajectoryPoint
         # message. This allows coordinated motion of the base + arm.
-        raise NotImplementedError("Trajectory Mode is not yet supported in StretchMujocoDriver.")
+        raise NotImplementedError(
+            "Trajectory Mode is not yet supported in StretchMujocoDriver."
+        )
 
         def code_to_run():
             try:
@@ -760,7 +765,9 @@ class StretchMujocoDriver(Node):
         # Alternatively in this mode, stretch driver also listens to `gamepad_joy` topic
         # for valid Joy type message from a remote gamepad to control stretch.
         # The Joy message format is described in the gamepad_conversion.py
-        raise NotImplementedError("Gamepad Mode is not yet supported in StretchMujocoDriver.")
+        raise NotImplementedError(
+            "Gamepad Mode is not yet supported in StretchMujocoDriver."
+        )
 
         def code_to_run():
             try:
@@ -1313,7 +1320,6 @@ class StretchMujocoDriver(Node):
         )
 
 
-
 def create_laser_scan_msg(lidar_data: np.ndarray, timestamp: TimeMsg, frame_id: str):
     ranges = lidar_data.tolist()
 
@@ -1333,13 +1339,45 @@ def create_laser_scan_msg(lidar_data: np.ndarray, timestamp: TimeMsg, frame_id: 
     return laser_scan_msg
 
 
-def create_camera_info(width, height, frame_id, timestamp):
+def create_camera_info(
+    fovy: float, width: int, height: int, frame_id: str, timestamp: TimeMsg
+):
     camera_info_msg = CameraInfo()
     camera_info_msg.header = Header()
     camera_info_msg.header.stamp = timestamp
     camera_info_msg.header.frame_id = frame_id
     camera_info_msg.width = width
     camera_info_msg.height = height
+    camera_info_msg.distortion_model = "plumb_bob"
+
+    focal_scaling = ((0.5*height) / np.tan((fovy * np.pi / 360.0)))
+    camera_info_msg.d = [0.0, 0.0, 0.0, 0.0, 0.0]
+    camera_info_msg.k = [
+        focal_scaling,
+        0.0,
+        width / 2,
+        0.0,
+        focal_scaling,
+        height / 2,
+        0.0,
+        0.0,
+        1.0,
+    ]
+    camera_info_msg.p = [
+        focal_scaling,
+        0.0,
+        width / 2,
+        0.0,
+        0.0,
+        focal_scaling,
+        height / 2,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0
+    ]
+
     return camera_info_msg
 
 
@@ -1370,6 +1408,7 @@ def get_joint_names_in_mjcf(actuator):
         return ["joint_head_tilt"]
 
     raise NotImplementedError(f"Joint names for {actuator} are not defined.")
+
 
 def main():
     rclpy.init()
