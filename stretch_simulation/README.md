@@ -61,9 +61,31 @@ You may want to dynamically reduce the cost_map inflation radius for most Roboca
 ros2 param get /global_costmap/global_costmap inflation_layer.inflation_radius
 ros2 param get /local_costmap/local_costmap  inflation_layer.inflation_radius
 
-ros2 param set /global_costmap/global_costmap inflation_layer.inflation_radius 0.25
-ros2 param set /local_costmap/local_costmap  inflation_layer.inflation_radius 0.25
+ros2 param set /global_costmap/global_costmap inflation_layer.inflation_radius 0.20
+ros2 param set /local_costmap/local_costmap  inflation_layer.inflation_radius 0.20
 ```
+
+#### Pre-mapped scene
+
+There is a map included in the [ubuntu2204_ament_ws_files.zip](ubuntu2204_ament_ws_files.zip) file that you can use with navigation out of the box.
+
+If you set up your environment using the [Getting Started](#getting-started) section below, you should already have this map in your environment.
+
+Launch the pre-mapped environment using the following commands:
+
+```shell
+# Terminal 1
+ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=true mode:=navigation robocasa_layout:='G-shaped' robocasa_style:=Modern_1
+
+# Terminal 2
+ros2 launch stretch_nav2 navigation.launch.py map:=${HELLO_FLEET_PATH}/maps/gshaped_modern1_robocasa.yaml use_sim_time:=true use_rviz:=true teleop_type:=none
+
+# Terminal 3
+ros2 service call /stow_the_robot std_srvs/srv/Trigger
+ros2 param set /global_costmap/global_costmap inflation_layer.inflation_radius 0.20
+ros2 param set /local_costmap/local_costmap  inflation_layer.inflation_radius 0.20
+```
+
 
 ## Stretch Drivers
 
