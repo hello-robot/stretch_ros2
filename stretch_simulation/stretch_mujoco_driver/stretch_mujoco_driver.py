@@ -65,69 +65,6 @@ from ament_index_python.packages import get_package_share_path
 
 from rclpy import time as rclpyTime
 
-GRIPPER_DEBUG = False
-BACKLASH_DEBUG = False
-STREAMING_POSITION_DEBUG = False
-
-
-def create_laser_scan_msg(lidar_data: np.ndarray, timestamp: TimeMsg, frame_id: str):
-    ranges = lidar_data.tolist()
-
-    laser_scan_msg = (
-        LaserScan()
-    )  # https://docs.ros.org/en/humble/p/sensor_msgs/msg/LaserScan.html
-    laser_scan_msg.header = Header()
-    laser_scan_msg.header.stamp = timestamp
-    laser_scan_msg.header.frame_id = frame_id
-    laser_scan_msg.angle_min = 0.0
-    laser_scan_msg.angle_max = np.pi * 2
-    laser_scan_msg.angle_increment = laser_scan_msg.angle_max / len(ranges)
-    laser_scan_msg.range_min = 0.2
-    laser_scan_msg.range_max = 5.0
-    laser_scan_msg.ranges = ranges
-
-    return laser_scan_msg
-
-
-def create_camera_info(width, height, frame_id, timestamp):
-    camera_info_msg = CameraInfo()
-    camera_info_msg.header = Header()
-    camera_info_msg.header.stamp = timestamp
-    camera_info_msg.header.frame_id = frame_id
-    camera_info_msg.width = width
-    camera_info_msg.height = height
-    return camera_info_msg
-
-
-def get_joint_names_in_mjcf(actuator):
-    # Temporary until stretch_mujoco PR#39 is merged in, then we can use Actuators.get_joint_names_in_mjcf:
-    """
-    An actuator may have multiple joints. Return their names here.
-    """
-    if actuator == Actuators.left_wheel_vel:
-        return ["joint_left_wheel"]
-    if actuator == Actuators.right_wheel_vel:
-        return ["joint_right_wheel"]
-    if actuator == Actuators.lift:
-        return ["joint_lift"]
-    if actuator == Actuators.arm:
-        return ["joint_arm_l0", "joint_arm_l1", "joint_arm_l2", "joint_arm_l3"]
-    if actuator == Actuators.wrist_yaw:
-        return ["joint_wrist_yaw"]
-    if actuator == Actuators.wrist_pitch:
-        return ["joint_wrist_pitch"]
-    if actuator == Actuators.wrist_roll:
-        return ["joint_wrist_roll"]
-    if actuator == Actuators.gripper:
-        return ["joint_gripper_slide"]
-    if actuator == Actuators.head_pan:
-        return ["joint_head_pan"]
-    if actuator == Actuators.head_tilt:
-        return ["joint_head_tilt"]
-
-    raise NotImplementedError(f"Joint names for {actuator} are not defined.")
-
-
 class StretchMujocoDriver(Node):
 
     def __init__(self):
@@ -216,22 +153,17 @@ class StretchMujocoDriver(Node):
         self.control_modes = ["position", "navigation", "trajectory", "gamepad"]
         self.prev_runstop_state = None  # helps track if runstop state has changed
 
-        # manages when `robot.push_command()` is called
-        self.dirty_command = False
-
         self.voltage_history = []
         self.charging_state_history = [BatteryState.POWER_SUPPLY_STATUS_UNKNOWN] * 10
         self.charging_state = BatteryState.POWER_SUPPLY_STATUS_UNKNOWN
 
         self.received_gamepad_joy_msg = get_default_joy_msg()
-        if STREAMING_POSITION_DEBUG:
-            self.streaming_controller_lt = LoopTimer(
-                name="Streaming Position", print_debug=STREAMING_POSITION_DEBUG
-            )
+        
         self.streaming_position_activated = False
-        self.ros_setup()
 
         self.bridge = CvBridge()
+
+        self.ros_setup()
 
     def set_gamepad_motion_callback(self, joy):
         self.robot_mode_rwlock.acquire_read()
@@ -283,19 +215,9 @@ class StretchMujocoDriver(Node):
             self.robot_mode_rwlock.release_read()
             return
 
-        if STREAMING_POSITION_DEBUG:
-            if (
-                self.get_clock().now().nanoseconds * 1e-9
-            ) - self.streaming_controller_lt.last_update_time > 5.0:
-                print(
-                    "Reset Streaming position looptimer after 5s no message received."
-                )
-                self.streaming_controller_lt.reset()
         qpos = msg.data
         self.move_to_position(qpos)
         self.robot_mode_rwlock.release_read()
-        if STREAMING_POSITION_DEBUG:
-            self.streaming_controller_lt.update()
 
     def move_to_position(self, qpos):
         try:
@@ -341,10 +263,6 @@ class StretchMujocoDriver(Node):
     def command_mobile_base_velocity_and_publish_state(self):
 
         self.robot_mode_rwlock.acquire_read()
-
-        if BACKLASH_DEBUG:
-            print("***")
-            print("self.backlash_state =", self.backlash_state)
 
         # During gamepad mode, the robot can be controlled with provided gamepad dongle plugged into the robot
         # Or a Joy message type could also be published which can be used for controlling robot with an remote gamepad.
@@ -412,8 +330,6 @@ class StretchMujocoDriver(Node):
         else:
             arm_backlash_correction = 0.0
 
-        if BACKLASH_DEBUG:
-            print("arm_backlash_correction =", arm_backlash_correction)
         pos_out = arm_status.pos + arm_backlash_correction
         vel_out = arm_status.vel
         # eff_out = arm_status.motor.effort_pct
@@ -464,8 +380,7 @@ class StretchMujocoDriver(Node):
             pan_backlash_correction = self.head_pan_calibrated_looked_left_offset_rad
         else:
             pan_backlash_correction = 0.0
-        if BACKLASH_DEBUG:
-            print("pan_backlash_correction =", pan_backlash_correction)
+            
         head_pan_rad = (
             head_pan_status.pos
             + self.head_pan_calibrated_offset_rad
@@ -481,8 +396,7 @@ class StretchMujocoDriver(Node):
             tilt_backlash_correction = self.head_tilt_calibrated_looking_up_offset_rad
         else:
             tilt_backlash_correction = 0.0
-        if BACKLASH_DEBUG:
-            print("tilt_backlash_correction =", tilt_backlash_correction)
+            
         head_tilt_rad = (
             head_tilt_status.pos
             + self.head_tilt_calibrated_offset_rad
@@ -780,17 +694,8 @@ class StretchMujocoDriver(Node):
 
     # CHANGE MODES ################
 
-    def _cleanup_before_changing_mode(self):
-        """
-        Before we change modes, we want to revert parameters set by the being in the current mode.
-        """
-        if self.robot_mode == "trajectory":
-            self.joint_trajectory_action.enable_stepper_sync_for_trajectory_mode()
-
     def change_mode(self, new_mode, code_to_run=None):
         self.robot_mode_rwlock.acquire_write()
-
-        self._cleanup_before_changing_mode()
 
         self.robot_mode = new_mode
 
@@ -799,8 +704,6 @@ class StretchMujocoDriver(Node):
 
         self.get_logger().info(f"Changed to mode = {self.robot_mode}")
         self.robot_mode_rwlock.release_write()
-
-    # TODO : add a freewheel mode or something comparable for the mobile base?
 
     def turn_on_navigation_mode(self):
         # Navigation mode enables mobile base velocity control via
@@ -814,14 +717,13 @@ class StretchMujocoDriver(Node):
         return True, "Now in navigation mode."
 
     def turn_on_position_mode(self):
-
         # Position mode enables mobile base translation and rotation
         # using position control with sequential incremental rotations
-        # and translations. It 
-        raise NotImplementedError("Position Mode is not yet supported in StretchMujocoDriver.")also disables velocity control of the
+        # and translations. It also disables velocity control of the
         # mobile base. It does not update the virtual prismatic
         # joint. The frames associated with 'floor_link' and
         # 'base_link' become identical in this mode.
+        raise NotImplementedError("Position Mode is not yet supported in StretchMujocoDriver.")
         def code_to_run():
             # self.sim.base.enable_pos_incr_mode()
             ...
@@ -1410,6 +1312,64 @@ class StretchMujocoDriver(Node):
             callback_group=self.mutex_group,
         )
 
+
+
+def create_laser_scan_msg(lidar_data: np.ndarray, timestamp: TimeMsg, frame_id: str):
+    ranges = lidar_data.tolist()
+
+    laser_scan_msg = (
+        LaserScan()
+    )  # https://docs.ros.org/en/humble/p/sensor_msgs/msg/LaserScan.html
+    laser_scan_msg.header = Header()
+    laser_scan_msg.header.stamp = timestamp
+    laser_scan_msg.header.frame_id = frame_id
+    laser_scan_msg.angle_min = 0.0
+    laser_scan_msg.angle_max = np.pi * 2
+    laser_scan_msg.angle_increment = laser_scan_msg.angle_max / len(ranges)
+    laser_scan_msg.range_min = 0.2
+    laser_scan_msg.range_max = 5.0
+    laser_scan_msg.ranges = ranges
+
+    return laser_scan_msg
+
+
+def create_camera_info(width, height, frame_id, timestamp):
+    camera_info_msg = CameraInfo()
+    camera_info_msg.header = Header()
+    camera_info_msg.header.stamp = timestamp
+    camera_info_msg.header.frame_id = frame_id
+    camera_info_msg.width = width
+    camera_info_msg.height = height
+    return camera_info_msg
+
+
+def get_joint_names_in_mjcf(actuator):
+    # Temporary until stretch_mujoco PR#39 is merged in, then we can use Actuators.get_joint_names_in_mjcf:
+    """
+    An actuator may have multiple joints. Return their names here.
+    """
+    if actuator == Actuators.left_wheel_vel:
+        return ["joint_left_wheel"]
+    if actuator == Actuators.right_wheel_vel:
+        return ["joint_right_wheel"]
+    if actuator == Actuators.lift:
+        return ["joint_lift"]
+    if actuator == Actuators.arm:
+        return ["joint_arm_l0", "joint_arm_l1", "joint_arm_l2", "joint_arm_l3"]
+    if actuator == Actuators.wrist_yaw:
+        return ["joint_wrist_yaw"]
+    if actuator == Actuators.wrist_pitch:
+        return ["joint_wrist_pitch"]
+    if actuator == Actuators.wrist_roll:
+        return ["joint_wrist_roll"]
+    if actuator == Actuators.gripper:
+        return ["joint_gripper_slide"]
+    if actuator == Actuators.head_pan:
+        return ["joint_head_pan"]
+    if actuator == Actuators.head_tilt:
+        return ["joint_head_tilt"]
+
+    raise NotImplementedError(f"Joint names for {actuator} are not defined.")
 
 def main():
     rclpy.init()
