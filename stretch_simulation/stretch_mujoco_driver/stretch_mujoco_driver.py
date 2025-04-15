@@ -300,17 +300,9 @@ class StretchMujocoDriver(Node):
 
         self.get_logger().debug(robot_status.sim_to_real_time_ratio_msg)
 
-        # In the future, consider using time stamps from the robot's
-        # motor control boards and other boards. These would need to
-        # be synchronized with the ros clock.
-        # robot_time = robot_status['timestamp_pc']
-        # self.get_logger().info('robot_time =', robot_time)
-        # current_time = rospy.Time.from_sec(robot_time)
-
-        # current_clock = self.get_clock().now()
-        # current_time = current_clock.to_msg()
-
-        current_time = rclpyTime.Time(seconds=robot_status.time).to_msg()  # type: ignore
+        seconds = int(robot_status.time)
+        nanoseconds = int((robot_status.time - seconds) * 1e9)
+        current_time = rclpyTime.Time(seconds=seconds, nanoseconds=nanoseconds).to_msg()  
 
         self.clock_pub.publish(Clock(clock=current_time))
 
