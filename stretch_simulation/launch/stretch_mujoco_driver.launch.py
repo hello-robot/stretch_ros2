@@ -7,6 +7,8 @@ from launch.actions import DeclareLaunchArgument, LogInfo
 from launch.substitutions import Command, LaunchConfiguration
 import launch_ros.parameter_descriptions
 from launch_ros.actions import Node
+from launch_ros.descriptions import ComposableNode
+from launch_ros.actions import ComposableNodeContainer
 import launch_ros
 import os
 from launch.actions import (
@@ -200,10 +202,9 @@ def generate_launch_description():
             output="screen",
             arguments=[
                 "-d",
-                str(stretch_simulation_path / "rviz" / "stretch_sim.rviz"),
-                "use_sim_time",
-                "true",
+                str(stretch_simulation_path / "rviz" / "stretch_sim.rviz")
             ],
+            parameters=[{"use_sim_time": True}],
             condition=IfCondition(LaunchConfiguration("use_rviz")),
         )
     )
