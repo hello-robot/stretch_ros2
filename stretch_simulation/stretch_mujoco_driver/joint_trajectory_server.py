@@ -77,7 +77,7 @@ class JointTrajectoryAction:
         goal_handle.execute()
 
     def goal_callback(self, goal_request):
-        self.node.get_logger().info("Received goal request")
+        self.node.get_logger().info(f"Received goal request, {goal_request}")
         new_goal_time = self.node.get_clock().now().to_msg()
         time_duration = (new_goal_time.sec + new_goal_time.nanosec * pow(10, -9)) - (
             self.last_goal_time.sec + self.last_goal_time.nanosec * pow(10, -9)
@@ -131,9 +131,9 @@ class JointTrajectoryAction:
                 self.node.sim.move_to(actuator, target_position, timeout=None)
 
             # Simulate wait until point.time_from_start
-            self._wait_until(
-                point.time_from_start.sec + point.time_from_start.nanosec * 1e-9
-            )
+            # self._wait_until(
+            #     point.time_from_start.sec + point.time_from_start.nanosec * 1e-9
+            # )
 
         goal_handle.succeed()
         result = FollowJointTrajectory.Result()

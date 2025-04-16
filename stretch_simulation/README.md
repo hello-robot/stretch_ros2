@@ -86,6 +86,51 @@ ros2 param set /global_costmap/global_costmap inflation_layer.inflation_radius 0
 ros2 param set /local_costmap/local_costmap  inflation_layer.inflation_radius 0.20
 ```
 
+### Web Teleop
+
+You can use Stretch Web Teleop with the Stretch Simulation environment! 
+
+First you should install `NodeJS` and `npm` if you don't already have them:
+```shell
+curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+Install dependencies for Web Teleop:
+```shell
+cd ~/ament_ws/src/stretch_web_teleop
+npm install --legacy-peer-deps
+npx install playwright                 ║
+sudo npx playwright install-deps 
+openssl req -new -x509 -nodes -out certificates/server.crt -keyout certificates/server.key
+
+sudo add-apt-repository ppa:sweptlaser/python3-pcl
+sudo apt update
+sudo apt install python3-pcl
+```
+
+Use the following commands to start Stretch Mujoco with Web Teleop:
+```shell
+# Terminal 1
+ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=false mode:=position robocasa_layout:='G-shaped' robocasa_style:=Modern_1 use_rviz:=false use_cameras:=true
+
+# Terminal 2
+ros2 launch stretch_simulation stretch_simulation_web_interface.launch.py
+
+# Terminal 3
+cd ~/ament_ws/src/stretch_web_teleop
+npm run localstorage
+
+# Terminal 4
+cd ~/ament_ws/src/stretch_web_teleop
+sudo keyfile="server.key" certfile="server.crt" node ./server.js
+
+# Terminal 4
+cd ~/ament_ws/src/stretch_web_teleop
+node start_robot_browser.js
+
+```
+
 ## Cameras and PointClouds
 
 Please use the `use_cameras:=true` argument to enable cameras and pointclouds. e.g. `ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=true mode:=navigation use_cameras:=true`

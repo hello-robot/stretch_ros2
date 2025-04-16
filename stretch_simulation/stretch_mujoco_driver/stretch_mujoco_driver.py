@@ -884,39 +884,39 @@ class StretchMujocoDriver(Node):
     def get_joint_states_callback(self, request, response):
         joint_limits = JointState()
         joint_limits.header.stamp = self.get_clock().now().to_msg()
-        cgs = list(
-            set(self.joint_trajectory_action.command_groups)
-            - set(
-                [
-                    self.joint_trajectory_action.mobile_base_cg,
-                    self.joint_trajectory_action.gripper_cg,
-                ]
-            )
-        )
-        for cg in cgs:
-            lower_limit, upper_limit = cg.range
-            joint_limits.name.append(cg.name)
-            joint_limits.position.append(
-                lower_limit
-            )  # Misuse position array to mean lower limits
-            joint_limits.velocity.append(
-                upper_limit
-            )  # Misuse velocity array to mean upper limits
+        # cgs = list(
+        #     set(self.joint_trajectory_action.command_groups)
+        #     - set(
+        #         [
+        #             self.joint_trajectory_action.mobile_base_cg,
+        #             self.joint_trajectory_action.gripper_cg,
+        #         ]
+        #     )
+        # )
+        # for cg in cgs:
+        #     lower_limit, upper_limit = cg.range
+        #     joint_limits.name.append(cg.name)
+        #     joint_limits.position.append(
+        #         lower_limit
+        #     )  # Misuse position array to mean lower limits
+        #     joint_limits.velocity.append(
+        #         upper_limit
+        #     )  # Misuse velocity array to mean upper limits
 
-        gripper_cg = self.joint_trajectory_action.gripper_cg
-        if gripper_cg is not None:
-            lower_aperture_limit, upper_aperture_limit = gripper_cg.range_aperture_m
-            joint_limits.name.append("gripper_aperture")
-            joint_limits.position.append(lower_aperture_limit)
-            joint_limits.velocity.append(upper_aperture_limit)
+        # gripper_cg = self.joint_trajectory_action.gripper_cg
+        # if gripper_cg is not None:
+        #     lower_aperture_limit, upper_aperture_limit = gripper_cg.range_aperture_m
+        #     joint_limits.name.append("gripper_aperture")
+        #     joint_limits.position.append(lower_aperture_limit)
+        #     joint_limits.velocity.append(upper_aperture_limit)
 
-            lower_finger_limit, upper_finger_limit = gripper_cg.range_finger_rad
-            joint_limits.name.append("joint_gripper_finger_left")
-            joint_limits.position.append(lower_finger_limit)
-            joint_limits.velocity.append(upper_finger_limit)
-            joint_limits.name.append("joint_gripper_finger_right")
-            joint_limits.position.append(lower_finger_limit)
-            joint_limits.velocity.append(upper_finger_limit)
+        #     lower_finger_limit, upper_finger_limit = gripper_cg.range_finger_rad
+        #     joint_limits.name.append("joint_gripper_finger_left")
+        #     joint_limits.position.append(lower_finger_limit)
+        #     joint_limits.velocity.append(upper_finger_limit)
+        #     joint_limits.name.append("joint_gripper_finger_right")
+        #     joint_limits.position.append(lower_finger_limit)
+        #     joint_limits.velocity.append(upper_finger_limit)
 
         self.joint_limits_pub.publish(joint_limits)
         response.success = True
