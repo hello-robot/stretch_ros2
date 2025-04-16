@@ -236,13 +236,13 @@ class StretchMujocoDriver(Node):
                     "Received qpos does not match the number of joints in the robot"
                 )
                 return
-            self.sim.move_to("arm", qpos[Idx.ARM])
-            self.sim.move_to("lift", qpos[Idx.LIFT])
-            self.sim.move_to("wrist_yaw", qpos[Idx.WRIST_YAW])
-            self.sim.move_to("wrist_pitch", qpos[Idx.WRIST_PITCH])
-            self.sim.move_to("wrist_roll", qpos[Idx.WRIST_ROLL])
-            self.sim.move_to("head_pan", qpos[Idx.HEAD_PAN])
-            self.sim.move_to("head_tilt", qpos[Idx.HEAD_TILT])
+            self.sim.move_to(Actuators.arm, qpos[Idx.ARM])
+            self.sim.move_to(Actuators.lift, qpos[Idx.LIFT])
+            self.sim.move_to(Actuators.wrist_yaw, qpos[Idx.WRIST_YAW])
+            self.sim.move_to(Actuators.wrist_pitch, qpos[Idx.WRIST_PITCH])
+            self.sim.move_to(Actuators.wrist_roll, qpos[Idx.WRIST_ROLL])
+            self.sim.move_to(Actuators.head_pan, qpos[Idx.HEAD_PAN])
+            self.sim.move_to(Actuators.head_tilt, qpos[Idx.HEAD_TILT])
             if (
                 abs(qpos[Idx.BASE_TRANSLATE]) > 0.0
                 and abs(qpos[Idx.BASE_ROTATE]) > 0.0
@@ -740,10 +740,6 @@ class StretchMujocoDriver(Node):
         # mobile base. It does not update the virtual prismatic
         # joint. The frames associated with 'floor_link' and
         # 'base_link' become identical in this mode.
-        raise NotImplementedError(
-            "Position Mode is not yet supported in StretchMujocoDriver."
-        )
-
         def code_to_run():
             # self.sim.base.enable_pos_incr_mode()
             ...
@@ -1494,35 +1490,6 @@ def get_camera_frame(camera: StretchCameras):
         return "link_head_nav_cam"
 
     raise NotImplementedError(f"Camera {camera} frame is not implemented")
-
-
-def get_joint_names_in_mjcf(actuator):
-    # Temporary until stretch_mujoco PR#39 is merged in, then we can use Actuators.get_joint_names_in_mjcf:
-    """
-    An actuator may have multiple joints. Return their names here.
-    """
-    if actuator == Actuators.left_wheel_vel:
-        return ["joint_left_wheel"]
-    if actuator == Actuators.right_wheel_vel:
-        return ["joint_right_wheel"]
-    if actuator == Actuators.lift:
-        return ["joint_lift"]
-    if actuator == Actuators.arm:
-        return ["joint_arm_l0", "joint_arm_l1", "joint_arm_l2", "joint_arm_l3"]
-    if actuator == Actuators.wrist_yaw:
-        return ["joint_wrist_yaw"]
-    if actuator == Actuators.wrist_pitch:
-        return ["joint_wrist_pitch"]
-    if actuator == Actuators.wrist_roll:
-        return ["joint_wrist_roll"]
-    if actuator == Actuators.gripper:
-        return ["joint_gripper_slide"]
-    if actuator == Actuators.head_pan:
-        return ["joint_head_pan"]
-    if actuator == Actuators.head_tilt:
-        return ["joint_head_tilt"]
-
-    raise NotImplementedError(f"Joint names for {actuator} are not defined.")
 
 
 def main():
