@@ -86,6 +86,19 @@ ros2 param set /global_costmap/global_costmap inflation_layer.inflation_radius 0
 ros2 param set /local_costmap/local_costmap  inflation_layer.inflation_radius 0.20
 ```
 
+## Cameras and PointClouds
+
+Please use the `use_cameras:=true` argument to enable cameras and pointclouds. e.g. `ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=true mode:=navigation use_cameras:=true`
+
+There are five camera topics being published:
+- RGB and Depth for the D405 camera in the gripper.
+- RGB and Depth or the D435i camera in the head.
+- RGB for the wide-lens camera in the head.
+
+The RGB and Depth frames are used to create two PointCloud2 topics as well.
+
+<img src="camera.png" width=600 />
+
 
 ## Stretch Drivers
 
