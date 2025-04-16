@@ -33,7 +33,6 @@ from geometry_msgs.msg import TransformStamped
 from std_srvs.srv import Trigger
 from std_srvs.srv import SetBool
 
-
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import LaserScan
@@ -44,6 +43,8 @@ from rosgraph_msgs.msg import Clock
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 
 
+from sensor_msgs.msg import PointCloud2, PointField
+import sensor_msgs_py.point_cloud2 as pc2
 from cv_bridge import CvBridge
 
 
@@ -53,7 +54,6 @@ from std_msgs.msg import Bool, String, Float64MultiArray
 
 from hello_helpers.gripper_conversion import GripperConversion
 from hello_helpers.joint_qpos_conversion import get_Idx, UnsupportedToolError
-from hello_helpers.hello_misc import LoopTimer
 from hello_helpers.gamepad_conversion import (
     unpack_joy_to_gamepad_state,
     unpack_gamepad_state_to_joy,
@@ -286,26 +286,24 @@ class StretchMujocoDriver(Node):
                 self.sim.set_base_velocity(
                     self.linear_velocity_mps, self.angular_velocity_radps
                 )
-                # self.sim.push_command() #Moved to main
             elif time_since_last_twist < Duration(seconds=self.timeout_s + 1.0):
                 # self.sim.set_base_velocity(0.0, 0.0)
                 self.sim.move_by(Actuators.base_translate, 0.0)
-                # self.sim.push_command() #Moved to main
             else:
                 self.sim.set_base_velocity(0.0, 0.0)
-                # self.sim.push_command() #Moved to main
 
-        # get copy of the current robot status (uses lock held by the robot)
+        # get copy of the current robot status
         robot_status = self.sim.pull_status()
 
         self.get_logger().debug(robot_status.sim_to_real_time_ratio_msg)
 
+        # Publish /clock for ROS to use sim time:
         seconds = int(robot_status.time)
         nanoseconds = int((robot_status.time - seconds) * 1e9)
-        sim_time = rclpyTime.Time(seconds=seconds, nanoseconds=nanoseconds).to_msg()  
-
+        sim_time = rclpyTime.Time(seconds=seconds, nanoseconds=nanoseconds).to_msg()
         self.clock_pub.publish(Clock(clock=sim_time))
 
+        # Use node time for other topics, using sim time makes bad things happen.
         current_time = self.get_clock().now().to_msg()
 
         # obtain odometry
@@ -319,6 +317,35 @@ class StretchMujocoDriver(Node):
         y_vel = base_status.x_vel
 
         theta_vel = base_status.theta_vel
+
+        q = quaternion_from_euler(0.0, 0.0, theta)
+
+        if self.broadcast_odom_tf:
+            # publish odometry via TF
+            t = TransformStamped()
+            t.header.stamp = current_time
+            t.header.frame_id = self.odom_frame_id
+            t.child_frame_id = self.base_frame_id
+            t.transform.translation.x = x
+            t.transform.translation.y = y
+            t.transform.translation.z = 0.0
+            t.transform.rotation.x = q[0]
+            t.transform.rotation.y = q[1]
+            t.transform.rotation.z = q[2]
+            t.transform.rotation.w = q[3]
+            self.tf_broadcaster.sendTransform(t)
+            
+            # This is important, otherwise all the joints are not transformed correctly. The alternative is to broadcast a static_transform, but that doesn't help if another node is trying to lookup transforms.
+            self.tf_buffer.wait_for_transform_async("base_link", "link_lift", rclpyTime.Time(seconds=0))
+
+            b = TransformStamped()
+            b.header.stamp = current_time
+            b.header.frame_id = self.base_frame_id
+            b.child_frame_id = "base_footprint"
+            self.tf_static_broadcaster.sendTransform(b)
+            b.header.frame_id = "map"
+            b.child_frame_id = self.odom_frame_id
+            self.tf_static_broadcaster.sendTransform(b)
 
         # assign relevant arm status to variables
         arm_status = robot_status.arm
@@ -402,11 +429,6 @@ class StretchMujocoDriver(Node):
         head_tilt_vel = head_tilt_status.vel
         # head_tilt_effort = head_tilt_status.effort
         head_tilt_effort = 0.0
-
-        q = quaternion_from_euler(0.0, 0.0, theta)
-
-        ##################################################
-        # obtain battery state
 
         ##################################################
         # publish homed status
@@ -538,36 +560,6 @@ class StretchMujocoDriver(Node):
         # publish IMU sensor data
         sensor_status = self.sim.pull_sensor_data()
 
-        try:
-            lidar_data = sensor_status.get_data(StretchSensors.base_lidar)
-
-            self.laser_scan_pub.publish(
-                create_laser_scan_msg(
-                    lidar_data, timestamp=current_time, frame_id="laser"
-                )
-            )
-        except ValueError:
-            ...  # Lidar is disabled, get_data() throws a ValueError
-
-        for camera, frame in self.sim.pull_camera_data().get_all().items():
-
-            header = Header()
-            header.frame_id = camera.name
-            header.stamp = current_time
-            ros_image = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8" if not camera.is_depth else "32FC1", header=header)
-            self.camera_publishers[camera.name].publish(ros_image)
-
-            settings = camera.initial_camera_settings
-            self.camera_info_pub.publish(
-                create_camera_info(
-                    fovy=settings.field_of_view_vertical_in_degrees,
-                    width=settings.width,
-                    height=settings.height,
-                    frame_id=header.frame_id,
-                    timestamp=current_time,
-                )
-            )
-
         accel_status = sensor_status.get_data(StretchSensors.base_accel)
         gyro_status = sensor_status.get_data(StretchSensors.base_gyro)
         ax = accel_status[0]
@@ -618,36 +610,6 @@ class StretchMujocoDriver(Node):
         i.linear_acceleration.z = az
         self.imu_wrist_pub.publish(i)
 
-        if self.broadcast_odom_tf:
-            # publish odometry via TF
-            t = TransformStamped()
-            t.header.stamp = current_time
-            t.header.frame_id = self.odom_frame_id
-            t.child_frame_id = self.base_frame_id
-            t.transform.translation.x = x
-            t.transform.translation.y = y
-            t.transform.translation.z = 0.0
-            t.transform.rotation.x = q[0]
-            t.transform.rotation.y = q[1]
-            t.transform.rotation.z = q[2]
-            t.transform.rotation.w = q[3]
-            self.tf_broadcaster.sendTransform(t)
-
-            # This is important, otherwise all the joints are not transformed correctly. The alternative is to broadcast a static_transform, but that doesn't help if another node is trying to lookup transforms.
-            self.tf_buffer.wait_for_transform_async("base_link", "link_lift", rclpyTime.Time(seconds=0))
-
-
-            b = TransformStamped()
-            b.header.stamp = current_time
-            b.header.frame_id = self.base_frame_id
-            b.child_frame_id = "base_footprint"
-            self.tf_static_broadcaster.sendTransform(b)
-            b = TransformStamped()
-            b.header.stamp = current_time
-            b.header.frame_id = "map"
-            b.child_frame_id = self.odom_frame_id
-            self.tf_static_broadcaster.sendTransform(b)
-
         # publish odometry via the odom topic
         odom = Odometry()
         odom.header.stamp = current_time
@@ -680,17 +642,75 @@ class StretchMujocoDriver(Node):
             and runstop_event.data != self.prev_runstop_state
         ):
             self.runstop_the_robot(runstop_event.data, just_change_mode=True)
+
         self.prev_runstop_state = runstop_event.data
 
-        # if self.sim.pimu.params.get('ros_fan_on', True):
-        #     self.sim.pimu.set_fan_on()
-        # self.sim.non_dxl_thread.step()
-        # if not self.robot_mode == 'trajectory':
-        #     self.sim.push_command() # Main push command
-        #     self.dirty_command = False
+        self.publish_camera_and_lidar(current_time=current_time)
+
+    def publish_camera_and_lidar(self, current_time: TimeMsg | None = None):
+
+        current_time = current_time or self.get_clock().now().to_msg()
+
+        sensor_status = self.sim.pull_sensor_data()
+
+        try:
+            lidar_data = sensor_status.get_data(StretchSensors.base_lidar)
+
+            self.laser_scan_pub.publish(
+                create_laser_scan_msg(
+                    lidar_data, timestamp=current_time, frame_id="laser"
+                )
+            )
+        except ValueError:
+            ...  # Lidar is disabled, get_data() throws a ValueError
+
+        camera_data = self.sim.pull_camera_data()
+        for camera, frame in camera_data.get_all(auto_rotate=True).items():
+            header = Header()
+            header.frame_id = get_camera_frame(camera)
+            header.stamp = current_time
+
+            ros_image = self.bridge.cv2_to_imgmsg(
+                frame,
+                encoding="bgr8" if not camera.is_depth else "32FC1",
+                header=header,
+            )
+            self.camera_publishers[camera.name].publish(ros_image)
+
+            settings = camera.initial_camera_settings
+            camera_info = create_camera_info(
+                fovy=settings.fovy,
+                width=settings.width,
+                height=settings.height,
+                frame_id=header.frame_id,
+                timestamp=current_time,
+            )
+            self.camera_info_pub.publish(camera_info)
+
+            if camera.is_depth:
+                if camera == StretchCameras.cam_d405_depth:
+                    pointcloud_msg = create_pointcloud_rgb_msg(
+                        camera_info_msg=camera_info,
+                        rgb_image=camera_data.get_camera_data(
+                            StretchCameras.cam_d405_rgb
+                        ),
+                        depth_image=frame,
+                    )
+                elif camera == StretchCameras.cam_d435i_depth:
+                    pointcloud_msg = create_pointcloud_rgb_msg(
+                        camera_info_msg=camera_info,
+                        rgb_image=camera_data.get_camera_data(
+                            StretchCameras.cam_d435i_rgb, auto_rotate=False
+                        ),
+                        depth_image=camera_data.get_camera_data(
+                            StretchCameras.cam_d435i_depth, auto_rotate=False
+                        ),
+                    )
+                else:
+                    pointcloud_msg = create_pointcloud_msg(camera_info, frame)
+                self.pointcloud_publishers[camera.name].publish(pointcloud_msg)
 
     # CHANGE MODES ################
-
     def change_mode(self, new_mode, code_to_run=None):
         self.robot_mode_rwlock.acquire_write()
 
@@ -1092,18 +1112,29 @@ class StretchMujocoDriver(Node):
         self.max_arm_height = 1.1
 
         self.odom_pub = self.create_publisher(Odometry, "odom", 1)
-        self.laser_scan_pub = self.create_publisher(LaserScan, "/scan_filtered", 1)
+        self.laser_scan_pub = self.create_publisher(
+            LaserScan, "/scan_filtered", qos_profile=5
+        )
 
         self.camera_publishers = {
-            camera.name: self.create_publisher(Image, f"/camera/{camera.name}_raw", 10)
+            camera.name: self.create_publisher(
+                Image, f"/camera/{camera.name}_raw", qos_profile=5
+            )
             for camera in self.sim._cameras_to_use
         }
+        self.pointcloud_publishers = {
+            camera.name: self.create_publisher(
+                PointCloud2, f"/pointcloud/{camera.name}", qos_profile=5
+            )
+            for camera in self.sim._cameras_to_use
+            if camera.is_depth
+        }
         self.camera_info_pub = self.create_publisher(
-            CameraInfo, f"/camera/camera_info", 10
+            CameraInfo, f"/camera/camera_info", qos_profile=5
         )
 
         self.clock_pub = self.create_publisher(
-            msg_type=Clock, topic="/clock", qos_profile=10
+            msg_type=Clock, topic="/clock", qos_profile=5
         )
 
         self.power_pub = self.create_publisher(BatteryState, "battery", 1)
@@ -1321,6 +1352,11 @@ class StretchMujocoDriver(Node):
             callback_group=self.mutex_group,
         )
 
+        # self.create_timer(
+        #     1/15,
+        #     self.publish_camera_and_lidar,
+        # )
+
 
 def create_laser_scan_msg(lidar_data: np.ndarray, timestamp: TimeMsg, frame_id: str):
     ranges = lidar_data.tolist()
@@ -1341,6 +1377,68 @@ def create_laser_scan_msg(lidar_data: np.ndarray, timestamp: TimeMsg, frame_id: 
     return laser_scan_msg
 
 
+def create_pointcloud_msg(camera_info_msg: CameraInfo, depth_image):
+    fx = camera_info_msg.k[0]
+    fy = camera_info_msg.k[4]
+    cx = camera_info_msg.k[2]
+    cy = camera_info_msg.k[5]
+
+    height, width = depth_image.shape
+    xx, yy = np.meshgrid(np.arange(width), np.arange(height))
+    valid = (depth_image > 0) & np.isfinite(depth_image)
+
+    z = depth_image[valid]
+    x = (xx[valid] - cx) * z / fx
+    y = (yy[valid] - cy) * z / fy
+
+    points = np.stack((x, y, z), axis=-1)
+
+    cloud_msg = pc2.create_cloud_xyz32(camera_info_msg.header, points)
+    return cloud_msg
+
+
+def create_pointcloud_rgb_msg(
+    camera_info_msg: CameraInfo, rgb_image: np.ndarray, depth_image: np.ndarray
+):
+    fx = camera_info_msg.k[0]
+    fy = camera_info_msg.k[4]
+    cx = camera_info_msg.k[2]
+    cy = camera_info_msg.k[5]
+
+    height, width = depth_image.shape
+
+    xx, yy = np.meshgrid(np.arange(width), np.arange(height))
+    valid = (depth_image > 0) & np.isfinite(depth_image)
+
+    z = depth_image[valid]
+    x = (xx[valid] - cx) * z / fx
+    y = (yy[valid] - cy) * z / fy
+
+    r = rgb_image[:, :, 2][valid]
+    g = rgb_image[:, :, 1][valid]
+    b = rgb_image[:, :, 0][valid]
+    rgb = (r.astype(np.uint32) << 16) | (g.astype(np.uint32) << 8) | b.astype(np.uint32)
+
+    # Create XYZRGB tuples
+    cloud_data = [(x[i], y[i], z[i], rgb[i]) for i in range(len(z))]
+
+    fields = [
+        PointField(name="x", offset=0, datatype=PointField.FLOAT32, count=1),
+        PointField(name="y", offset=4, datatype=PointField.FLOAT32, count=1),
+        PointField(name="z", offset=8, datatype=PointField.FLOAT32, count=1),
+        PointField(name="rgb", offset=12, datatype=PointField.UINT32, count=1),
+    ]
+
+    header = Header()
+    header.stamp = camera_info_msg.header.stamp
+    header.frame_id = (
+        camera_info_msg.header.frame_id
+    )  # typically "camera_link" or similar
+
+    cloud_msg = pc2.create_cloud(header, fields, cloud_data)
+    return cloud_msg
+
+
 def create_camera_info(
     fovy: float, width: int, height: int, frame_id: str, timestamp: TimeMsg
 ):
@@ -1352,7 +1450,7 @@ def create_camera_info(
     camera_info_msg.height = height
     camera_info_msg.distortion_model = "plumb_bob"
 
-    focal_scaling = ((0.5*height) / np.tan((fovy * np.pi / 360.0)))
+    focal_scaling = (0.5 * height) / np.tan((fovy * np.pi / 360.0))
     camera_info_msg.d = [0.0, 0.0, 0.0, 0.0, 0.0]
     camera_info_msg.k = [
         focal_scaling,
@@ -1377,10 +1475,30 @@ def create_camera_info(
         0.0,
         0.0,
         1.0,
-        0.0
+        0.0,
     ]
 
     return camera_info_msg
+
+
+def get_camera_frame(camera: StretchCameras):
+    # return "link_head_pan"
+    if camera == StretchCameras.cam_d405_rgb:
+        # return "gripper_camera_link"
+        return "gripper_camera_color_optical_frame"
+    if camera == StretchCameras.cam_d405_depth:
+        # return "gripper_camera_link"
+        return "gripper_camera_depth_optical_frame"
+    if camera == StretchCameras.cam_d435i_rgb:
+        # return "camera_link"
+        return "camera_color_optical_frame"
+    if camera == StretchCameras.cam_d435i_depth:
+        # return "camera_link"
+        return "camera_depth_optical_frame"
+    if camera == StretchCameras.cam_nav_rgb:
+        return "link_head_nav_cam"
+
+    raise NotImplementedError(f"Camera {camera} frame is not implemented")
 
 
 def get_joint_names_in_mjcf(actuator):
