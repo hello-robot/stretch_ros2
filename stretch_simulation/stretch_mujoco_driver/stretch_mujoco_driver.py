@@ -433,7 +433,7 @@ class StretchMujocoDriver(Node):
         ##################################################
         # publish homed status
         homed_status = Bool()
-        # homed_status.data = bool(self.sim.is_homed())
+        homed_status.data = True
         self.homed_pub.publish(homed_status)
 
         # publish runstop event
@@ -665,7 +665,7 @@ class StretchMujocoDriver(Node):
             ...  # Lidar is disabled, get_data() throws a ValueError
 
         camera_data = self.sim.pull_camera_data()
-        for camera, frame in camera_data.get_all(auto_rotate=True).items():
+        for camera, frame in camera_data.get_all(auto_rotate=False, auto_correct_rgb=True).items():
             header = Header()
             header.frame_id = get_camera_frame(camera)
             header.stamp = current_time
@@ -884,39 +884,26 @@ class StretchMujocoDriver(Node):
     def get_joint_states_callback(self, request, response):
         joint_limits = JointState()
         joint_limits.header.stamp = self.get_clock().now().to_msg()
-        # cgs = list(
-        #     set(self.joint_trajectory_action.command_groups)
-        #     - set(
-        #         [
-        #             self.joint_trajectory_action.mobile_base_cg,
-        #             self.joint_trajectory_action.gripper_cg,
-        #         ]
-        #     )
-        # )
-        # for cg in cgs:
-        #     lower_limit, upper_limit = cg.range
-        #     joint_limits.name.append(cg.name)
-        #     joint_limits.position.append(
-        #         lower_limit
-        #     )  # Misuse position array to mean lower limits
-        #     joint_limits.velocity.append(
-        #         upper_limit
-        #     )  # Misuse velocity array to mean upper limits
 
-        # gripper_cg = self.joint_trajectory_action.gripper_cg
-        # if gripper_cg is not None:
-        #     lower_aperture_limit, upper_aperture_limit = gripper_cg.range_aperture_m
-        #     joint_limits.name.append("gripper_aperture")
-        #     joint_limits.position.append(lower_aperture_limit)
-        #     joint_limits.velocity.append(upper_aperture_limit)
+        joint_limits_from_sim = self.sim.pull_joint_limits()
+        for actuator, min_max in joint_limits_from_sim.items():
+            joint_name = actuator.get_joint_names_in_mjcf()[0]
+            if actuator == Actuators.arm:
+                joint_name = "joint_arm"  # Instead of the telescoping names
+            if actuator == Actuators.gripper:
+                joint_name = "gripper_aperture" # A different mapping from stretch_core command_groups
+            if actuator in [Actuators.gripper_left_finger, Actuators.gripper_right_finger]:
+                joint_name = joint_name.replace("_open", "") # A different mapping from stretch_core command_groups
 
-        #     lower_finger_limit, upper_finger_limit = gripper_cg.range_finger_rad
-        #     joint_limits.name.append("joint_gripper_finger_left")
-        #     joint_limits.position.append(lower_finger_limit)
-        #     joint_limits.velocity.append(upper_finger_limit)
-        #     joint_limits.name.append("joint_gripper_finger_right")
-        #     joint_limits.position.append(lower_finger_limit)
-        #     joint_limits.velocity.append(upper_finger_limit)
+            joint_limits.name.append(joint_name) #type:ignore
+            joint_limits.position.append(min_max[0])
+            joint_limits.velocity.append(min_max[1])
+        
+        # add "wrist_extension" because it's expected downstream
+        arm_joint_limit = joint_limits_from_sim[Actuators.arm]
+        joint_limits.name.append("wrist_extension") #type:ignore
+        joint_limits.position.append(arm_joint_limit[0])
+        joint_limits.velocity.append(arm_joint_limit[1])
 
         self.joint_limits_pub.publish(joint_limits)
         response.success = True

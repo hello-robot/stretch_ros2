@@ -149,35 +149,6 @@ class JointTrajectoryAction:
             loop_rate.sleep()
 
 
-def get_joint_names_in_mjcf(actuator: Actuators) -> list[str]:
-    # Temporary until stretch_mujoco PR#39 is merged in, then we can use Actuators.get_joint_names_in_mjcf:
-    """
-    An actuator may have multiple joints. Return their names here. Useful for querying positions from Mujoco.
-    """
-    if actuator == Actuators.left_wheel_vel:
-        return ["joint_left_wheel"]
-    if actuator == Actuators.right_wheel_vel:
-        return ["joint_right_wheel"]
-    if actuator == Actuators.lift:
-        return ["joint_lift"]
-    if actuator == Actuators.arm:
-        return ["joint_arm_l0", "joint_arm_l1", "joint_arm_l2", "joint_arm_l3"]
-    if actuator == Actuators.wrist_yaw:
-        return ["joint_wrist_yaw"]
-    if actuator == Actuators.wrist_pitch:
-        return ["joint_wrist_pitch"]
-    if actuator == Actuators.wrist_roll:
-        return ["joint_wrist_roll"]
-    if actuator == Actuators.gripper:
-        return ["joint_gripper_slide"]
-    if actuator == Actuators.head_pan:
-        return ["joint_head_pan"]
-    if actuator == Actuators.head_tilt:
-        return ["joint_head_tilt"]
-
-    raise NotImplementedError(f"Joint names for {actuator} are not defined.")
-
-
 @cache
 def get_actuator_by_joint_names_in_command_groups(joint_name: str) -> Actuators:
     """
