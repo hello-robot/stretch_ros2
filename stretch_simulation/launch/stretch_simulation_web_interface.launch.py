@@ -110,30 +110,6 @@ def generate_launch_description():
     )
     ld.add_action(rosbridge_launch)
 
-    camera_topic_remappings = [
-        # cam_nav_rgb_raw
-        ("/navigation_camera/image_raw", "/camera/cam_nav_rgb"),
-
-        # cam_d405_rgb_raw
-        ("/gripper_camera/image_raw", "/camera/cam_d405_rgb"),
-        ("/gripper_camera/image_raw/compressed", "/camera/cam_d405_rgb/compressed"),
-
-        # cam_d435i_rgb_raw
-        ("/camera/color/image_raw", "/camera/cam_d435i_rgb"),
-        ("/camera/color/image_raw/compressed", "/camera/cam_d435i_rgb/compressed"),
-
-        # cam_d405_depth
-        ("/gripper_camera/depth/color/points", "/pointcloud/cam_d405_depth"),
-        
-
-        # cam_d435i_depth
-        ("/camera/depth/color/points", "/pointcloud/cam_d435i_depth"),
-
-        # camera_info
-        ("/gripper_camera/color/camera_info", "/camera/camera_info"),
-        ("/camera/color/camera_info", "/camera/camera_info"),
-    ]
-
     # Configure Video Streams
     configure_video_streams_node = Node(
         package="stretch_web_teleop",
@@ -152,7 +128,6 @@ def generate_launch_description():
                 "stretch_tool": "eoa_wrist_dw3_tool_sg3",
             }
         ],
-        remappings=camera_topic_remappings,
     )
     ld.add_action(configure_video_streams_node)
 
@@ -233,7 +208,6 @@ def generate_launch_description():
         output="screen",
         arguments=[LaunchConfiguration("params")],
         parameters=[],
-        remappings=camera_topic_remappings,
     )
     ld.add_action(move_to_pregrasp_node)
 

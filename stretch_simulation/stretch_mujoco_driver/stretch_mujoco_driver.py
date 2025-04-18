@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import copy
+from functools import cache
 import numpy as np
 import threading
 
@@ -123,6 +124,7 @@ class StretchMujocoDriver(Node):
 
         sim = StretchMujocoSimulator(
             model=model,
+            camera_hz=10,
             cameras_to_use=(
                 StretchCameras.all() if use_cameras else StretchCameras.none()
             ),
@@ -668,7 +670,7 @@ class StretchMujocoDriver(Node):
 
         camera_data = self.sim.pull_camera_data()
         for camera, frame in camera_data.get_all(
-            auto_rotate=True, auto_correct_rgb=True
+            auto_rotate=False, auto_correct_rgb=True
         ).items():
             header = Header()
             header.frame_id = get_camera_frame(camera)
@@ -689,7 +691,7 @@ class StretchMujocoDriver(Node):
                 frame_id=header.frame_id,
                 timestamp=current_time,
             )
-            self.camera_info_pub.publish(camera_info)
+            self.camera_info_publishers[camera.name].publish(camera_info)
 
             if not camera.is_depth:
                 ros_image_compressed: CompressedImage = (
@@ -1118,7 +1120,7 @@ class StretchMujocoDriver(Node):
 
         self.camera_publishers = {
             camera.name: self.create_publisher(
-                Image, f"/camera/{camera.name}", qos_profile=QoSProfile(
+                Image,  get_camera_topic_name(camera), qos_profile=QoSProfile(
                     depth=1, reliability=ReliabilityPolicy.BEST_EFFORT
                 ),
             )
@@ -1127,7 +1129,7 @@ class StretchMujocoDriver(Node):
         self.camera_compressed_publishers = {
             camera.name: self.create_publisher(
                 CompressedImage,
-                f"/camera/{camera.name}/compressed",
+                f"{get_camera_topic_name(camera)}/compressed",
                 qos_profile=QoSProfile(
                     depth=1, reliability=ReliabilityPolicy.BEST_EFFORT
                 ),
@@ -1137,7 +1139,7 @@ class StretchMujocoDriver(Node):
         }
         self.pointcloud_publishers = {
             camera.name: self.create_publisher(
-                PointCloud2, f"/pointcloud/{camera.name}", 
+                PointCloud2, get_camera_pointcloud_topic_name(camera), 
                 qos_profile=QoSProfile(
                     depth=1, reliability=ReliabilityPolicy.BEST_EFFORT
                 ),
@@ -1145,12 +1147,16 @@ class StretchMujocoDriver(Node):
             for camera in self.sim._cameras_to_use
             if camera.is_depth
         }
-        self.camera_info_pub = self.create_publisher(
-            CameraInfo, f"/camera/camera_info", qos_profile=QoSProfile(
+        self.camera_info_publishers = {
+            camera.name: self.create_publisher(
+                CameraInfo, get_camera_info_topic_name(camera), 
+                qos_profile=QoSProfile(
                     depth=1, reliability=ReliabilityPolicy.BEST_EFFORT
                 ),
-        )
-
+            )
+            for camera in self.sim._cameras_to_use
+        }
+        
         self.clock_pub = self.create_publisher(
             msg_type=Clock, topic="/clock", qos_profile=5
         )
@@ -1499,7 +1505,66 @@ def create_camera_info(
     return camera_info_msg
 
 
+@cache
+def get_camera_topic_name(camera: StretchCameras):
+    """
+    Topic names to match the camera topics published by the real Stretch robot.
+    """
+    if camera == StretchCameras.cam_d405_rgb:
+        return "/gripper_camera/image_raw"
+    if camera == StretchCameras.cam_d405_depth:
+        return "/gripper_camera/depth/image_rect_raw"
+    if camera == StretchCameras.cam_d435i_rgb:
+        return "/camera/color/image_raw"
+    if camera == StretchCameras.cam_d435i_depth:
+        return "/camera/depth/image_rect_raw"
+    if camera == StretchCameras.cam_nav_rgb:
+        return "/navigation_camera/image_raw"
+
+    raise NotImplementedError(f"Camera {camera} topic mapping is not implemented")
+
+@cache
+def get_camera_info_topic_name(camera: StretchCameras):
+    """
+    Topic names to match the camera_info topics published by the real Stretch robot.
+    """
+    if camera == StretchCameras.cam_d405_rgb:
+        return "/gripper_camera/camera_info"
+    if camera == StretchCameras.cam_d405_depth:
+        return "/gripper_camera/depth/camera_info"
+    if camera == StretchCameras.cam_d435i_rgb:
+        return "/camera/color/camera_info"
+    if camera == StretchCameras.cam_d435i_depth:
+        return "/camera/depth/camera_info"
+    if camera == StretchCameras.cam_nav_rgb:
+        return "/navigation_camera/camera_info"
+
+    raise NotImplementedError(f"Camera {camera} topic mapping is not implemented")
+
+@cache
+def get_camera_pointcloud_topic_name(camera: StretchCameras):
+    """
+    Topic names to match the pointcloud2 topics published by the real Stretch robot.
+    """
+    if camera == StretchCameras.cam_d405_rgb:
+        raise KeyError(f"{camera} camera does not have a pointcloud.")
+    if camera == StretchCameras.cam_d405_depth:
+        return "/gripper_camera/depth/color/points"
+    if camera == StretchCameras.cam_d435i_rgb:
+        raise KeyError(f"{camera} camera does not have a pointcloud.")
+    if camera == StretchCameras.cam_d435i_depth:
+        return "/camera/depth/color/points"
+    if camera == StretchCameras.cam_nav_rgb:
+        raise KeyError(f"{camera} camera does not have a pointcloud.")
+
+    raise NotImplementedError(f"Camera {camera} topic mapping is not implemented")
+
+
+@cache
 def get_camera_frame(camera: StretchCameras):
+    """
+    Matches the simulation camera with the optical frame on the robot urdf.
+    """
     if camera == StretchCameras.cam_d405_rgb:
         return "gripper_camera_color_optical_frame"
     if camera == StretchCameras.cam_d405_depth:
