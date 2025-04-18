@@ -109,26 +109,45 @@ sudo apt update
 sudo apt install python3-pcl
 ```
 
+Some more steps to get IK for gripper working:
+```shell
+cd stretch_description/urdf
+cp ./stretch_uncalibrated.urdf stretch.urdf
+sudo apt install rpl
+./export_urdf.sh # It's okay if it fails on calibrated params
+mkdir -p $HELLO_FLEET_PATH/$HELLO_FLEET_ID/exported_urdf
+cp -r ./exported_urdf/* $HELLO_FLEET_PATH/$HELLO_FLEET_ID/exported_urdf
+
+# Install Pinocchio for IK (https://stack-of-tasks.github.io/pinocchio/download.html)
+sudo apt install -qqy lsb-release curl
+sudo mkdir -p /etc/apt/keyrings
+curl http://robotpkg.openrobots.org/packages/debian/robotpkg.asc \
+    | sudo tee /etc/apt/keyrings/robotpkg.asc
+    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/robotpkg.asc] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -cs) robotpkg" \
+    | sudo tee /etc/apt/sources.list.d/robotpkg.list
+sudo apt update
+sudo apt install -qqy robotpkg-py3*-pinocchio
+echo "export PATH=/opt/openrobots/bin:$PATH;export PKG_CONFIG_PATH=/opt/openrobots/lib/pkgconfig:$PKG_CONFIG_PATH;export LD_LIBRARY_PATH=/opt/openrobots/lib:$LD_LIBRARY_PATH;export PYTHONPATH=/opt/openrobots/lib/python3.10/site-packages:$PYTHONPATH;export CMAKE_PREFIX_PATH=/opt/openrobots:$CMAKE_PREFIX_PATH" >> ~/.bashrc
+```
+
 Use the following commands to start Stretch Mujoco with Web Teleop:
 ```shell
+parallel_terminal="gnome-terminal --tab -- /bin/bash -c " # or "xterm -e"
+
 # Terminal 1
-ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=false mode:=position robocasa_layout:='G-shaped' robocasa_style:=Modern_1 use_rviz:=false use_cameras:=true
+$parallel_terminal "ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=false mode:=position robocasa_layout:='G-shaped' robocasa_style:=Modern_1 use_rviz:=false use_cameras:=true" &
 
 # Terminal 2
-ros2 launch stretch_simulation stretch_simulation_web_interface.launch.py
+$parallel_terminal "ros2 launch stretch_simulation stretch_simulation_web_interface.launch.py" &
 
 # Terminal 3
-cd ~/ament_ws/src/stretch_web_teleop
-npm run localstorage
+$parallel_terminal "cd ~/ament_ws/src/stretch_web_teleop; npm run localstorage" &
 
 # Terminal 4
-cd ~/ament_ws/src/stretch_web_teleop
-sudo keyfile="server.key" certfile="server.crt" node ./server.js
+$parallel_terminal "cd ~/ament_ws/src/stretch_web_teleop; sudo keyfile="server.key" certfile="server.crt" node ./server.js" &
 
 # Terminal 4
-cd ~/ament_ws/src/stretch_web_teleop
-node start_robot_browser.js
-
+$parallel_terminal "cd ~/ament_ws/src/stretch_web_teleop; node start_robot_browser.js" &
 ```
 
 ## Cameras and PointClouds

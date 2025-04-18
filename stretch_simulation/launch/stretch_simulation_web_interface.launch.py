@@ -1,4 +1,3 @@
-import fnmatch
 import os
 
 from ament_index_python import get_package_share_directory
@@ -22,6 +21,8 @@ from launch.substitutions import (
     LaunchConfiguration,
     PathJoinSubstitution,
 )
+
+
 def generate_launch_description():
     teleop_interface_package = str(get_package_share_path("stretch_web_teleop"))
     core_package = str(get_package_share_path("stretch_core"))
@@ -49,12 +50,8 @@ def generate_launch_description():
         description="name of the TTS engine. Either pyttsx3 or gtts.",
         default_value="gtts",
     )
-    certfile_arg = DeclareLaunchArgument(
-        "certfile", default_value="server.crt"
-    )
-    keyfile_arg = DeclareLaunchArgument(
-        "keyfile", default_value="server.key"
-    )
+    certfile_arg = DeclareLaunchArgument("certfile", default_value="server.crt")
+    keyfile_arg = DeclareLaunchArgument("keyfile", default_value="server.key")
     nav2_params_file_param = DeclareLaunchArgument(
         "nav2_params_file",
         default_value=os.path.join(
@@ -74,39 +71,7 @@ def generate_launch_description():
             keyfile_arg,
         ]
     )
-
-    ld.add_action(
-        Node(
-            package="image_publisher",
-            executable="image_publisher_node",
-            name="navigation_camera_node",
-            output="screen",
-            parameters=[{"publish_rate": 15.0}],
-            remappings=[("image_raw", "/camera/cam_nav_rgb_raw")],
-            arguments=[
-                PathJoinSubstitution(
-                    [teleop_interface_package, "nodes", "blank_image.png"]
-                )
-            ],
-        )
-    )
-
-    ld.add_action(
-        Node(
-            package="image_publisher",
-            executable="image_publisher_node",
-            name="gripper_camera_node",
-            output="screen",
-            parameters=[{"publish_rate": 15.0}],
-            remappings=[("image_raw", "/camera/camera_d405_rgb_raw")],
-            arguments=[
-                PathJoinSubstitution(
-                    [teleop_interface_package, "nodes", "blank_image.png"]
-                )
-            ],
-        )
-    )
-
+    
     tf2_web_republisher_node = Node(
         package="tf2_web_republisher_py",
         executable="tf2_web_republisher",
@@ -145,33 +110,51 @@ def generate_launch_description():
     )
     ld.add_action(rosbridge_launch)
 
+    camera_topic_remappings = [
+        # cam_nav_rgb_raw
+        ("/navigation_camera/image_raw", "/camera/cam_nav_rgb"),
 
+        # cam_d405_rgb_raw
+        ("/gripper_camera/image_raw", "/camera/cam_d405_rgb"),
+        ("/gripper_camera/image_raw/compressed", "/camera/cam_d405_rgb/compressed"),
+
+        # cam_d435i_rgb_raw
+        ("/camera/color/image_raw", "/camera/cam_d435i_rgb"),
+        ("/camera/color/image_raw/compressed", "/camera/cam_d435i_rgb/compressed"),
+
+        # cam_d405_depth
+        ("/gripper_camera/depth/color/points", "/pointcloud/cam_d405_depth"),
+        
+
+        # cam_d435i_depth
+        ("/camera/depth/color/points", "/pointcloud/cam_d435i_depth"),
+
+        # camera_info
+        ("/gripper_camera/color/camera_info", "/camera/camera_info"),
+        ("/camera/color/camera_info", "/camera/camera_info"),
+    ]
 
     # Configure Video Streams
-    labels = ["overhead", "realsense", "gripper"]
-    for i in range(len(labels)):
-        bools = ["False", "False", "False"]
-        bools[i] = "True"
-        label = labels[i]
-        configure_video_streams_node = Node(
-            package="stretch_web_teleop",
-            executable="configure_video_streams.py",
-            name=f"configure_video_streams_{label}",
-            output="screen",
-            arguments=[
-                LaunchConfiguration("params"),
-                str(False),
-                *bools,
-            ],
-            parameters=[
-                {
-                    "has_beta_teleop_kit": False,
-                    "stretch_tool": "stretch_tool",
-                }
-            ],
-        )
-        ld.add_action(configure_video_streams_node)
-
+    configure_video_streams_node = Node(
+        package="stretch_web_teleop",
+        executable="configure_video_streams.py",
+        output="screen",
+        arguments=[
+            LaunchConfiguration("params"),
+            str(False),
+            "True",  # overhead"
+            "True",  # "realsense"
+            "True",  # "gripper"
+        ],
+        parameters=[
+            {
+                "has_beta_teleop_kit": False,
+                "stretch_tool": "eoa_wrist_dw3_tool_sg3",
+            }
+        ],
+        remappings=camera_topic_remappings,
+    )
+    ld.add_action(configure_video_streams_node)
 
     navigation_bringup_launch = GroupAction(
         condition=LaunchConfigurationNotEquals("map_yaml", ""),
@@ -244,14 +227,15 @@ def generate_launch_description():
     # )
 
     # Move To Pre-grasp Action Server
-    # move_to_pregrasp_node = Node(
-    #     package="stretch_web_teleop",
-    #     executable="move_to_pregrasp.py",
-    #     output="screen",
-    #     arguments=[LaunchConfiguration("params")],
-    #     parameters=[],
-    # )
-    # ld.add_action(move_to_pregrasp_node)
+    move_to_pregrasp_node = Node(
+        package="stretch_web_teleop",
+        executable="move_to_pregrasp.py",
+        output="screen",
+        arguments=[LaunchConfiguration("params")],
+        parameters=[],
+        remappings=camera_topic_remappings,
+    )
+    ld.add_action(move_to_pregrasp_node)
 
     # Text to speech
     text_to_speech_node = Node(
