@@ -4,6 +4,7 @@ import copy
 import numpy as np
 import threading
 
+from sensor_msgs.msg._compressed_image import CompressedImage
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_sensors import StretchSensors
@@ -16,6 +17,7 @@ from stretch_mujoco.robocasa_gen import (
     layouts,
 )
 
+from rclpy.qos import QoSProfile, ReliabilityPolicy
 from stretch_core.rwlock import RWLock
 from stretch_mujoco_driver.joint_trajectory_server import JointTrajectoryAction
 import tf2_ros
@@ -438,7 +440,7 @@ class StretchMujocoDriver(Node):
 
         # publish runstop event
         runstop_event = Bool()
-        # runstop_event.data = robot_status.pimu.runstop_event
+        runstop_event.data = self.is_runstopped()
         self.runstop_event_pub.publish(runstop_event)
 
         # publish stretch_driver operation mode
@@ -665,7 +667,9 @@ class StretchMujocoDriver(Node):
             ...  # Lidar is disabled, get_data() throws a ValueError
 
         camera_data = self.sim.pull_camera_data()
-        for camera, frame in camera_data.get_all(auto_rotate=False, auto_correct_rgb=True).items():
+        for camera, frame in camera_data.get_all(
+            auto_rotate=True, auto_correct_rgb=True
+        ).items():
             header = Header()
             header.frame_id = get_camera_frame(camera)
             header.stamp = current_time
@@ -686,6 +690,14 @@ class StretchMujocoDriver(Node):
                 timestamp=current_time,
             )
             self.camera_info_pub.publish(camera_info)
+
+            if not camera.is_depth:
+                ros_image_compressed: CompressedImage = (
+                    self.bridge.cv2_to_compressed_imgmsg(frame)
+                )
+                self.camera_compressed_publishers[camera.name].publish(
+                    ros_image_compressed
+                )
 
             if camera.is_depth:
                 if camera == StretchCameras.cam_d405_depth:
@@ -888,22 +900,29 @@ class StretchMujocoDriver(Node):
         joint_limits_from_sim = self.sim.pull_joint_limits()
         for actuator, min_max in joint_limits_from_sim.items():
             joint_name = actuator.get_joint_names_in_mjcf()[0]
+            min_limit, max_limit = min_max
             if actuator == Actuators.arm:
                 joint_name = "joint_arm"  # Instead of the telescoping names
+                max_limit *= 4 # 4x the telescoping limit
             if actuator == Actuators.gripper:
-                joint_name = "gripper_aperture" # A different mapping from stretch_core command_groups
-            if actuator in [Actuators.gripper_left_finger, Actuators.gripper_right_finger]:
-                joint_name = joint_name.replace("_open", "") # A different mapping from stretch_core command_groups
+                joint_name = "gripper_aperture"  # A different mapping from stretch_core command_groups
+            if actuator in [
+                Actuators.gripper_left_finger,
+                Actuators.gripper_right_finger,
+            ]:
+                joint_name = joint_name.replace(
+                    "_open", ""
+                )  # A different mapping from stretch_core command_groups
 
-            joint_limits.name.append(joint_name) #type:ignore
-            joint_limits.position.append(min_max[0])
-            joint_limits.velocity.append(min_max[1])
-        
+            joint_limits.name.append(joint_name)  # type:ignore
+            joint_limits.position.append(min_limit)
+            joint_limits.velocity.append(max_limit)
+
         # add "wrist_extension" because it's expected downstream
         arm_joint_limit = joint_limits_from_sim[Actuators.arm]
-        joint_limits.name.append("wrist_extension") #type:ignore
+        joint_limits.name.append("wrist_extension")  # type:ignore
         joint_limits.position.append(arm_joint_limit[0])
-        joint_limits.velocity.append(arm_joint_limit[1])
+        joint_limits.velocity.append(arm_joint_limit[1] * 4)  # 4x the telescoping limit
 
         self.joint_limits_pub.publish(joint_limits)
         response.success = True
@@ -966,6 +985,8 @@ class StretchMujocoDriver(Node):
         self.change_mode(last_robot_mode, lambda: None)
         return True, "Stowed."
 
+    def is_runstopped(self):
+        return self.robot_mode == "runstopped"
     def runstop_the_robot(self, runstopped, just_change_mode=False):
         if runstopped:
             self.robot_mode_rwlock.acquire_read()
@@ -976,8 +997,6 @@ class StretchMujocoDriver(Node):
             if already_runstopped:
                 return
             self.change_mode("runstopped", lambda: None)
-            if not just_change_mode:
-                self.sim.pimu.runstop_event_trigger()
         else:
             self.robot_mode_rwlock.acquire_read()
             already_not_runstopped = self.robot_mode != "runstopped"
@@ -985,8 +1004,6 @@ class StretchMujocoDriver(Node):
             if already_not_runstopped:
                 return
             self.change_mode(self.prerunstop_mode, lambda: None)
-            if not just_change_mode:
-                self.sim.pimu.runstop_event_reset()
 
     # ROS Setup #################
     def ros_setup(self):
@@ -1101,19 +1118,37 @@ class StretchMujocoDriver(Node):
 
         self.camera_publishers = {
             camera.name: self.create_publisher(
-                Image, f"/camera/{camera.name}_raw", qos_profile=5
+                Image, f"/camera/{camera.name}", qos_profile=QoSProfile(
+                    depth=1, reliability=ReliabilityPolicy.BEST_EFFORT
+                ),
             )
             for camera in self.sim._cameras_to_use
         }
+        self.camera_compressed_publishers = {
+            camera.name: self.create_publisher(
+                CompressedImage,
+                f"/camera/{camera.name}/compressed",
+                qos_profile=QoSProfile(
+                    depth=1, reliability=ReliabilityPolicy.BEST_EFFORT
+                ),
+            )
+            for camera in self.sim._cameras_to_use
+            if not camera.is_depth
+        }
         self.pointcloud_publishers = {
             camera.name: self.create_publisher(
-                PointCloud2, f"/pointcloud/{camera.name}", qos_profile=5
+                PointCloud2, f"/pointcloud/{camera.name}", 
+                qos_profile=QoSProfile(
+                    depth=1, reliability=ReliabilityPolicy.BEST_EFFORT
+                ),
             )
             for camera in self.sim._cameras_to_use
             if camera.is_depth
         }
         self.camera_info_pub = self.create_publisher(
-            CameraInfo, f"/camera/camera_info", qos_profile=5
+            CameraInfo, f"/camera/camera_info", qos_profile=QoSProfile(
+                    depth=1, reliability=ReliabilityPolicy.BEST_EFFORT
+                ),
         )
 
         self.clock_pub = self.create_publisher(

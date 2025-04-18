@@ -165,7 +165,7 @@ def get_actuator_by_joint_names_in_command_groups(joint_name: str) -> Actuators:
     
     if joint_name == "joint_lift":
         return Actuators.lift
-    if joint_name == "joint_arm":
+    if joint_name == "joint_arm" or joint_name == "wrist_extension":
         return Actuators.arm
     if joint_name == "joint_wrist_yaw":
         return Actuators.wrist_yaw
