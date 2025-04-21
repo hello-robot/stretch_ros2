@@ -1115,7 +1115,9 @@ class StretchMujocoDriver(Node):
 
         self.odom_pub = self.create_publisher(Odometry, "odom", 1)
         self.laser_scan_pub = self.create_publisher(
-            LaserScan, "/scan_filtered", qos_profile=5
+            LaserScan, "/scan_filtered", qos_profile=QoSProfile(
+                    depth=1, reliability=ReliabilityPolicy.BEST_EFFORT
+                )
         )
 
         self.camera_publishers = {

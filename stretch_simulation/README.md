@@ -135,7 +135,7 @@ Use the following commands to start Stretch Mujoco with Web Teleop:
 parallel_terminal="gnome-terminal --tab -- /bin/bash -c " # or "xterm -e"
 
 # Terminal 1
-$parallel_terminal "ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=false mode:=position robocasa_layout:='G-shaped' robocasa_style:=Modern_1 use_rviz:=false use_cameras:=true" &
+$parallel_terminal "ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=false mode:=position robocasa_layout:='G-shaped' robocasa_style:=Modern_1 use_rviz:=false use_cameras:=true map_yaml:=${HELLO_FLEET_PATH}/maps/gshaped_modern1_robocasa.yaml" &
 
 # Terminal 2
 $parallel_terminal "ros2 launch stretch_simulation stretch_simulation_web_interface.launch.py" &

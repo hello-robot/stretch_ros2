@@ -139,7 +139,7 @@ def generate_launch_description():
                     [stretch_navigation_path, "/launch/bringup_launch.py"]
                 ),
                 launch_arguments={
-                    "use_sim_time": "false",
+                    "use_sim_time": "true",
                     "autostart": "true",
                     "map": PathJoinSubstitution(
                         [
