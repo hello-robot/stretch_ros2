@@ -9,7 +9,7 @@ from sensor_msgs.msg._compressed_image import CompressedImage
 from stretch_mujoco import StretchMujocoSimulator
 from stretch_mujoco.enums.actuators import Actuators
 from stretch_mujoco.enums.stretch_sensors import StretchSensors
-from stretch_mujoco.enums.stretch_cameras import StretchCameras
+from stretch_mujoco.enums.stretch_cameras import CameraSettings, StretchCameras
 from stretch_mujoco.robocasa_gen import (
     layout_from_str,
     style_from_str,
@@ -452,7 +452,7 @@ class StretchMujocoDriver(Node):
 
         # publish end of arm tool
         tool_msg = String()
-        # tool_msg.data = self.sim.end_of_arm.name
+        tool_msg.data = "eoa_wrist_dw3_tool_sg3"
         self.tool_pub.publish(tool_msg)
 
         # publish streaming position status
@@ -683,11 +683,9 @@ class StretchMujocoDriver(Node):
             )
             self.camera_publishers[camera.name].publish(ros_image)
 
-            settings = camera.initial_camera_settings
+            settings: CameraSettings = camera.initial_camera_settings
             camera_info = create_camera_info(
-                fovy=settings.field_of_view_vertical_in_degrees,
-                width=settings.width,
-                height=settings.height,
+                camera_settings=settings,
                 frame_id=header.frame_id,
                 timestamp=current_time,
             )
@@ -1466,43 +1464,26 @@ def create_pointcloud_rgb_msg(
 
 
 def create_camera_info(
-    fovy: float, width: int, height: int, frame_id: str, timestamp: TimeMsg
+   camera_settings:CameraSettings, frame_id: str, timestamp: TimeMsg
 ):
     camera_info_msg = CameraInfo()
     camera_info_msg.header = Header()
     camera_info_msg.header.stamp = timestamp
     camera_info_msg.header.frame_id = frame_id
-    camera_info_msg.width = width
-    camera_info_msg.height = height
+    camera_info_msg.width = camera_settings.width
+    camera_info_msg.height = camera_settings.height
     camera_info_msg.distortion_model = "plumb_bob"
 
-    focal_scaling = (0.5 * height) / np.tan((fovy * np.pi / 360.0))
-    camera_info_msg.d = [0.0, 0.0, 0.0, 0.0, 0.0]
-    camera_info_msg.k = [
-        focal_scaling,
-        0.0,
-        width / 2,
-        0.0,
-        focal_scaling,
-        height / 2,
-        0.0,
-        0.0,
-        1.0,
-    ]
-    camera_info_msg.p = [
-        focal_scaling,
-        0.0,
-        width / 2,
-        0.0,
-        0.0,
-        focal_scaling,
-        height / 2,
-        0.0,
-        0.0,
-        0.0,
-        1.0,
-        0.0,
-    ]
+    
+    camera_info_msg.d = camera_settings.get_distortion_params_d()
+    camera_info_msg.k = camera_settings.get_intrinsic_params_k()
+    camera_info_msg.p = camera_settings.get_projection_matrix_p()
+
+    if camera_settings.crop is not None:
+        camera_info_msg.roi.x_offset = camera_settings.crop.x_offset
+        camera_info_msg.roi.y_offset = camera_settings.crop.y_offset
+        camera_info_msg.roi.width = camera_settings.crop.width
+        camera_info_msg.roi.height = camera_settings.crop.height
 
     return camera_info_msg
 
