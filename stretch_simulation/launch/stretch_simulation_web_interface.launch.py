@@ -25,7 +25,6 @@ from launch.substitutions import (
 
 def generate_launch_description():
     teleop_interface_package = str(get_package_share_path("stretch_web_teleop"))
-    core_package = str(get_package_share_path("stretch_core"))
     rosbridge_package = str(get_package_share_path("rosbridge_server"))
     stretch_navigation_path = str(get_package_share_directory("stretch_nav2"))
 
@@ -114,6 +113,7 @@ def generate_launch_description():
     configure_video_streams_node = Node(
         package="stretch_web_teleop",
         executable="configure_video_streams.py",
+        name=f"configure_video_streams_gripper",
         output="screen",
         arguments=[
             LaunchConfiguration("params"),
@@ -126,6 +126,7 @@ def generate_launch_description():
             {
                 "has_beta_teleop_kit": False,
                 "stretch_tool": "eoa_wrist_dw3_tool_sg3",
+                "use_sim_time": True
             }
         ],
     )
