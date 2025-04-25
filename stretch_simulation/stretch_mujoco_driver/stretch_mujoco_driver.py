@@ -302,9 +302,11 @@ class StretchMujocoDriver(Node):
 
         seconds = int(robot_status.time)
         nanoseconds = int((robot_status.time - seconds) * 1e9)
-        current_time = rclpyTime.Time(seconds=seconds, nanoseconds=nanoseconds).to_msg()  
+        sim_time = rclpyTime.Time(seconds=seconds, nanoseconds=nanoseconds).to_msg()  
 
-        self.clock_pub.publish(Clock(clock=current_time))
+        self.clock_pub.publish(Clock(clock=sim_time))
+
+        current_time = self.get_clock().now().to_msg()
 
         # obtain odometry
         # assign relevant base status to variables
@@ -547,18 +549,18 @@ class StretchMujocoDriver(Node):
         except ValueError:
             ...  # Lidar is disabled, get_data() throws a ValueError
 
-        for camera_name, frame in self.sim.pull_camera_data().get_all():
+        for camera, frame in self.sim.pull_camera_data().get_all().items():
 
             header = Header()
-            header.frame_id = camera_name
+            header.frame_id = camera.name
             header.stamp = current_time
-            ros_image = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8" if not StretchCameras[camera_name].is_depth else "32FC1", header=header)
-            self.camera_publishers[camera_name].publish(ros_image)
+            ros_image = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8" if not camera.is_depth else "32FC1", header=header)
+            self.camera_publishers[camera.name].publish(ros_image)
 
-            settings = StretchCameras[camera_name].initial_camera_settings
+            settings = camera.initial_camera_settings
             self.camera_info_pub.publish(
                 create_camera_info(
-                    fovy=settings.fovy,
+                    fovy=settings.field_of_view_vertical_in_degrees,
                     width=settings.width,
                     height=settings.height,
                     frame_id=header.frame_id,
@@ -630,7 +632,10 @@ class StretchMujocoDriver(Node):
             t.transform.rotation.z = q[2]
             t.transform.rotation.w = q[3]
             self.tf_broadcaster.sendTransform(t)
-            self.tf_static_broadcaster.sendTransform(t)
+
+            # This is important, otherwise all the joints are not transformed correctly. The alternative is to broadcast a static_transform, but that doesn't help if another node is trying to lookup transforms.
+            self.tf_buffer.wait_for_transform_async("base_link", "link_lift", rclpyTime.Time(seconds=0))
+
 
             b = TransformStamped()
             b.header.stamp = current_time
@@ -1019,13 +1024,18 @@ class StretchMujocoDriver(Node):
             self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
             self.tf_static_broadcaster = StaticTransformBroadcaster(self)
 
-        large_ang = np.radians(45.0)
+
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+
 
         stretch_core_path = get_package_share_path("stretch_core")
         self.declare_parameter(
             "controller_calibration_file",
             str(stretch_core_path / "config" / "controller_calibration_head.yaml"),
         )
+
+        # large_ang = np.radians(45.0)
         # filename = self.get_parameter('controller_calibration_file').value
         # self.get_logger().debug('Loading controller calibration parameters for the head from YAML file named {0}'.format(filename))
         # with open(filename, 'r') as fid:
