@@ -57,8 +57,9 @@ from rcl_interfaces.msg import ParameterDescriptor, ParameterType, SetParameters
 from sensor_msgs.msg import BatteryState, JointState, Imu, MagneticField, Joy
 from std_msgs.msg import Bool, String, Float64MultiArray
 
+from hello_helpers.joint_qpos_conversion import SE3_dw3_sg3_Idx
+from hello_helpers.joint_qpos_conversion import get_Idx
 from hello_helpers.gripper_conversion import GripperConversion
-from hello_helpers.joint_qpos_conversion import get_Idx, UnsupportedToolError
 from hello_helpers.gamepad_conversion import (
     unpack_joy_to_gamepad_state,
     unpack_gamepad_state_to_joy,
@@ -73,6 +74,12 @@ from ament_index_python.packages import get_package_share_path
 from rclpy import time as rclpyTime
 
 
+DEFAULT_TIMEOUT = 0.5
+DEFAULT_GOAL_TIMEOUT = 10.0
+DEFAULT_ROBOCASA_TASK = "PnPCounterToCab"
+DEFAULT_ACTION_SERVER_HZ = 30.0
+DEFAULT_JOINT_STATE_HZ = 30.0
+DEFAULT_SIM_TOOL = "eoa_wrist_dw3_tool_sg3"
 class StretchMujocoDriver(Node):
 
     def __init__(self):
@@ -81,7 +88,7 @@ class StretchMujocoDriver(Node):
         self.declare_parameter("use_cameras", False)
         self.declare_parameter("use_mujoco_viewer", True)
         self.declare_parameter("use_robocasa", True)
-        self.declare_parameter("robocasa_task", "PnPCounterToCab")
+        self.declare_parameter("robocasa_task", DEFAULT_ROBOCASA_TASK)
         self.declare_parameter("robocasa_layout", None)
         self.declare_parameter("robocasa_style", None)
 
@@ -92,7 +99,7 @@ class StretchMujocoDriver(Node):
 
         use_robocasa = self.get_parameter("use_robocasa").value
         if use_robocasa:
-            robocasa_task = self.get_parameter("robocasa_task").value
+            robocasa_task:str|None = self.get_parameter("robocasa_task").value
             robocasa_layout = self.get_parameter("robocasa_layout").value
             robocasa_style = self.get_parameter("robocasa_style").value
 
@@ -119,7 +126,7 @@ class StretchMujocoDriver(Node):
                 robocasa_style = -1
 
             model, xml, objects_info = model_generation_wizard(
-                task=robocasa_task,
+                task=robocasa_task or DEFAULT_ROBOCASA_TASK,
                 layout=robocasa_layout,
                 style=robocasa_style,
             )
@@ -230,13 +237,8 @@ class StretchMujocoDriver(Node):
 
     def move_to_position(self, qpos):
         try:
-            try:
-                Idx = get_Idx("tool_stretch_gripper")
-            except UnsupportedToolError:
-                self.get_logger().error(
-                    "Unsupported tool for streaming position control."
-                )
-                return
+            Idx: SE3_dw3_sg3_Idx =  get_Idx(DEFAULT_SIM_TOOL) # type: ignore
+
             if len(qpos) != Idx.num_joints:
                 self.get_logger().error(
                     "Received qpos does not match the number of joints in the robot"
@@ -292,7 +294,7 @@ class StretchMujocoDriver(Node):
                 self.sim.set_base_velocity(
                     self.linear_velocity_mps, self.angular_velocity_radps
                 )
-            elif time_since_last_twist < Duration(seconds=self.timeout_s + 1.0):
+            elif time_since_last_twist < Duration(seconds=self.timeout_s + 1.0): #type: ignore
                 # self.sim.set_base_velocity(0.0, 0.0)
                 self.sim.move_by(Actuators.base_translate, 0.0)
             else:
@@ -933,16 +935,17 @@ class StretchMujocoDriver(Node):
         return response
 
     def self_collision_avoidance_callback(self, request, response):
-        enable_self_collision_avoidance = request.data
-        if enable_self_collision_avoidance:
-            self.sim.enable_collision_mgmt()
-        else:
-            self.sim.disable_collision_mgmt()
+        # enable_self_collision_avoidance = request.data
+        # if enable_self_collision_avoidance:
+        #     self.sim.enable_collision_mgmt()
+        # else:
+        #     self.sim.disable_collision_mgmt()
 
-        response.success = True
-        response.message = (
-            f"is self collision avoidance enabled: {enable_self_collision_avoidance}"
-        )
+        response.success = False
+        response.message = "collision avoidance is not supported in simulation mode."
+        # response.message = (
+        #     f"is self collision avoidance enabled: {enable_self_collision_avoidance}"
+        # )
         return response
 
     def parameter_callback(self, parameters: list[Parameter]) -> SetParametersResult:
@@ -951,9 +954,9 @@ class StretchMujocoDriver(Node):
         """
         for parameter in parameters:
             if parameter.name == "default_goal_timeout_s":
-                self.default_goal_timeout_s = parameter.value
+                self.default_goal_timeout_s = parameter.value or DEFAULT_GOAL_TIMEOUT
                 self.default_goal_timeout_duration = Duration(
-                    seconds=self.default_goal_timeout_s
+                    seconds=self.default_goal_timeout_s #type: ignore
                 )
                 self.get_logger().info(
                     f"Set default_goal_timeout_s to {self.default_goal_timeout_s}"
@@ -1213,29 +1216,30 @@ class StretchMujocoDriver(Node):
             callback_group=self.main_group,
         )
 
-        self.declare_parameter("rate", 30.0)
-        self.joint_state_rate = self.get_parameter("rate").value
+        self.declare_parameter("rate", DEFAULT_JOINT_STATE_HZ)
+        self.joint_state_rate: float = self.get_parameter("rate").value or DEFAULT_JOINT_STATE_HZ
+
         self.declare_parameter(
             "timeout",
-            0.5,
+            DEFAULT_TIMEOUT,
             ParameterDescriptor(
                 type=ParameterType.PARAMETER_DOUBLE,
                 description="Timeout (sec) after which Twist/Joy commands are considered stale",
             ),
         )
-        self.timeout_s = self.get_parameter("timeout").value
-        self.timeout = Duration(seconds=self.timeout_s)
+        self.timeout_s = self.get_parameter("timeout").value or DEFAULT_TIMEOUT
+        self.timeout = Duration(seconds=self.timeout_s) #type: ignore
         self.declare_parameter(
             "default_goal_timeout_s",
-            10.0,
+            DEFAULT_GOAL_TIMEOUT,
             ParameterDescriptor(
                 type=ParameterType.PARAMETER_DOUBLE,
                 description="Default timeout (sec) for goal execution",
             ),
         )
-        self.default_goal_timeout_s = self.get_parameter("default_goal_timeout_s").value
+        self.default_goal_timeout_s:float = self.get_parameter("default_goal_timeout_s").value or DEFAULT_GOAL_TIMEOUT
         self.default_goal_timeout_duration = Duration(
-            seconds=self.default_goal_timeout_s
+            seconds=self.default_goal_timeout_s #type: ignore
         )
         self.get_logger().info(f"rate = {self.joint_state_rate} Hz")
         self.get_logger().info(f"twist timeout = {self.timeout_s} s")
@@ -1342,21 +1346,21 @@ class StretchMujocoDriver(Node):
 
         # start action server for joint trajectories
         self.declare_parameter("fail_out_of_range_goal", False)
-        self.fail_out_of_range_goal: bool = self.get_parameter(
+        self.fail_out_of_range_goal = bool(self.get_parameter(
             "fail_out_of_range_goal"
-        ).value
+        ).value)
 
         self.declare_parameter(
             "fail_if_motor_initial_point_is_not_trajectory_first_point", True
         )
-        self.fail_if_motor_initial_point_is_not_trajectory_first_point: bool = (
+        self.fail_if_motor_initial_point_is_not_trajectory_first_point: bool = bool(
             self.get_parameter(
                 "fail_if_motor_initial_point_is_not_trajectory_first_point"
             ).value
         )
 
-        self.declare_parameter("action_server_rate", 30.0)
-        self.action_server_rate: float = self.get_parameter("action_server_rate").value
+        self.declare_parameter("action_server_rate", DEFAULT_ACTION_SERVER_HZ)
+        self.action_server_rate: float = self.get_parameter("action_server_rate").value or DEFAULT_ACTION_SERVER_HZ
 
         self.joint_trajectory_action = JointTrajectoryAction(
             self, self.action_server_rate
@@ -1375,7 +1379,7 @@ class StretchMujocoDriver(Node):
 
         # start loop to command the mobile base velocity, publish
         # odometry, and publish joint states
-        timer_period = 1.0 / self.joint_state_rate
+        timer_period:float = 1.0 / self.joint_state_rate
         self.timer = self.create_timer(
             timer_period,
             self.command_mobile_base_velocity_and_publish_state,
@@ -1587,6 +1591,7 @@ def get_camera_frame(camera: StretchCameras):
         return "link_head_nav_cam"
 
     raise NotImplementedError(f"Camera {camera} frame is not implemented")
+
 
 
 def main():

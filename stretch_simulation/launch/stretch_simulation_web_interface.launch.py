@@ -21,6 +21,7 @@ from launch.substitutions import (
     LaunchConfiguration,
     PathJoinSubstitution,
 )
+from stretch_mujoco_driver.stretch_mujoco_driver import DEFAULT_SIM_TOOL
 
 
 def generate_launch_description():
@@ -125,7 +126,7 @@ def generate_launch_description():
         parameters=[
             {
                 "has_beta_teleop_kit": False,
-                "stretch_tool": "eoa_wrist_dw3_tool_sg3",
+                "stretch_tool": DEFAULT_SIM_TOOL,
                 "use_sim_time": True
             }
         ],
