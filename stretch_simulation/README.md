@@ -67,7 +67,7 @@ ros2 param set /local_costmap/local_costmap  inflation_layer.inflation_radius 0.
 
 #### Pre-mapped scene
 
-There is a map included in the [ubuntu2204_ament_ws_files.zip](ubuntu2204_ament_ws_files.zip) file that you can use with navigation out of the box.
+There are maps included in the [ubuntu2204_ament_ws_files.zip](ubuntu2204_ament_ws_files.zip) file that you can use with navigation out of the box.
 
 If you set up your environment using the [Getting Started](#getting-started) section below, you should already have this map in your environment.
 
@@ -90,45 +90,9 @@ ros2 param set /local_costmap/local_costmap  inflation_layer.inflation_radius 0.
 
 You can use Stretch Web Teleop with the Stretch Simulation environment! 
 
-First you should install `NodeJS` and `npm` if you don't already have them:
-```shell
-curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt install -y nodejs
-```
 
-Install dependencies for Web Teleop:
-```shell
-cd ~/ament_ws/src/stretch_web_teleop
-npm install --legacy-peer-deps
-npx install playwright                 ║
-sudo npx playwright install-deps 
-openssl req -new -x509 -nodes -out certificates/server.crt -keyout certificates/server.key
+Before you start, install the dependencies for Stretch Web Teleop by following these [instructions](#setting-up-stretch-web-teleop).
 
-sudo add-apt-repository ppa:sweptlaser/python3-pcl
-sudo apt update
-sudo apt install python3-pcl
-```
-
-Some more steps to get IK for gripper working:
-```shell
-cd stretch_description/urdf
-cp ./stretch_uncalibrated.urdf stretch.urdf
-sudo apt install rpl
-./export_urdf.sh # It's okay if it fails on calibrated params
-mkdir -p $HELLO_FLEET_PATH/$HELLO_FLEET_ID/exported_urdf
-cp -r ./exported_urdf/* $HELLO_FLEET_PATH/$HELLO_FLEET_ID/exported_urdf
-
-# Install Pinocchio for IK (https://stack-of-tasks.github.io/pinocchio/download.html)
-sudo apt install -qqy lsb-release curl
-sudo mkdir -p /etc/apt/keyrings
-curl http://robotpkg.openrobots.org/packages/debian/robotpkg.asc \
-    | sudo tee /etc/apt/keyrings/robotpkg.asc
-    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/robotpkg.asc] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -cs) robotpkg" \
-    | sudo tee /etc/apt/sources.list.d/robotpkg.list
-sudo apt update
-sudo apt install -qqy robotpkg-py3*-pinocchio
-echo "export PATH=/opt/openrobots/bin:$PATH;export PKG_CONFIG_PATH=/opt/openrobots/lib/pkgconfig:$PKG_CONFIG_PATH;export LD_LIBRARY_PATH=/opt/openrobots/lib:$LD_LIBRARY_PATH;export PYTHONPATH=/opt/openrobots/lib/python3.10/site-packages:$PYTHONPATH;export CMAKE_PREFIX_PATH=/opt/openrobots:$CMAKE_PREFIX_PATH" >> ~/.bashrc
-```
 
 Use the following commands to start Stretch Mujoco with Web Teleop:
 ```shell
@@ -247,6 +211,12 @@ source /opt/ros/humble/setup.bash
 
 If you are not running this package on a robot NUC (which is _not_ [recommended](#system-requirements)), you will need to set up a ROS2 environment similar to the environment that ships with Stretch.
 
+First you should install `NodeJS>=21.x` and `npm` if you don't already have them:
+```shell
+curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
 Please run these commands to install the environment. This will delete the existing `~/ament_ws` directory, so please proceed with caution.
 
 ```sh
@@ -285,6 +255,39 @@ A successful `ament_ws` setup will look like this:
 ```
 $ ls ~/ament_ws/src
 audio_common  realsense-ros  respeaker_ros2  ros2_numpy  rosbridge_suite  sllidar_ros2  stretch_ros2  stretch_tutorials  stretch_web_teleop  tf2_web_republisher_py
+```
+
+### Setting up Stretch Web Teleop
+
+Make sure you've already completed everything under [Setting up `ament_ws`](#setting-up-ament_ws) above.
+
+Then run the following:
+
+```shell
+cd ~/ament_ws/src/stretch_web_teleop
+
+# Install both npm and pip dependencies:
+npm install --legacy-peer-deps
+pip install -r ./requirements.txt 
+
+# Install Playwright:
+npx install playwright
+sudo npx playwright install-deps 
+
+# Create a certificate for SSL/HTTPS:
+openssl req -new -x509 -nodes -out certificates/server.crt -keyout certificates/server.key
+```
+
+Some more steps to get IK for gripper working:
+```shell
+cd stretch_description/urdf
+cp ./stretch_uncalibrated.urdf stretch.urdf
+
+sudo apt install rpl
+./export_urdf.sh # It's okay if it fails on calibrated params
+
+mkdir -p $HELLO_FLEET_PATH/$HELLO_FLEET_ID/exported_urdf
+cp -r ./exported_urdf/* $HELLO_FLEET_PATH/$HELLO_FLEET_ID/exported_urdf
 ```
 
 ### Setting up URDF (15 minutes)
