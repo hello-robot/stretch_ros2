@@ -679,7 +679,7 @@ class StretchMujocoDriver(Node):
 
             settings = camera.initial_camera_settings
             camera_info = create_camera_info(
-                fovy=settings.fovy,
+                fovy=settings.field_of_view_vertical_in_degrees,
                 width=settings.width,
                 height=settings.height,
                 frame_id=header.frame_id,
@@ -1482,18 +1482,13 @@ def create_camera_info(
 
 
 def get_camera_frame(camera: StretchCameras):
-    # return "link_head_pan"
     if camera == StretchCameras.cam_d405_rgb:
-        # return "gripper_camera_link"
         return "gripper_camera_color_optical_frame"
     if camera == StretchCameras.cam_d405_depth:
-        # return "gripper_camera_link"
         return "gripper_camera_depth_optical_frame"
     if camera == StretchCameras.cam_d435i_rgb:
-        # return "camera_link"
         return "camera_color_optical_frame"
     if camera == StretchCameras.cam_d435i_depth:
-        # return "camera_link"
         return "camera_depth_optical_frame"
     if camera == StretchCameras.cam_nav_rgb:
         return "link_head_nav_cam"
