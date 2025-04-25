@@ -1,7 +1,9 @@
 #! /usr/bin/env python3
 
+import array
 import copy
 from functools import cache
+import cv2
 import numpy as np
 import threading
 
@@ -691,13 +693,14 @@ class StretchMujocoDriver(Node):
             )
             self.camera_info_publishers[camera.name].publish(camera_info)
 
-            if not camera.is_depth:
+            if camera.is_depth:
+                ros_image_compressed = compress_depth_image(frame)
+            else:
                 ros_image_compressed: CompressedImage = (
-                    self.bridge.cv2_to_compressed_imgmsg(frame)
+                    self.bridge.cv2_to_compressed_imgmsg(frame, "png")
                 )
-                self.camera_compressed_publishers[camera.name].publish(
-                    ros_image_compressed
-                )
+            ros_image_compressed.header.frame_id = get_camera_frame(camera)
+            self.camera_compressed_publishers[camera.name].publish(ros_image_compressed)
 
             if camera.is_depth:
                 if camera == StretchCameras.cam_d405_depth:
@@ -903,7 +906,7 @@ class StretchMujocoDriver(Node):
             min_limit, max_limit = min_max
             if actuator == Actuators.arm:
                 joint_name = "joint_arm"  # Instead of the telescoping names
-                max_limit *= 4 # 4x the telescoping limit
+                max_limit *= 4  # 4x the telescoping limit
             if actuator == Actuators.gripper:
                 joint_name = "gripper_aperture"  # A different mapping from stretch_core command_groups
             if actuator in [
@@ -987,6 +990,7 @@ class StretchMujocoDriver(Node):
 
     def is_runstopped(self):
         return self.robot_mode == "runstopped"
+
     def runstop_the_robot(self, runstopped, just_change_mode=False):
         if runstopped:
             self.robot_mode_rwlock.acquire_read()
@@ -1054,7 +1058,6 @@ class StretchMujocoDriver(Node):
             "controller_calibration_file",
             str(stretch_core_path / "config" / "controller_calibration_head.yaml"),
         )
-
         # large_ang = np.radians(45.0)
         # filename = self.get_parameter('controller_calibration_file').value
         # self.get_logger().debug('Loading controller calibration parameters for the head from YAML file named {0}'.format(filename))
@@ -1113,14 +1116,16 @@ class StretchMujocoDriver(Node):
 
         self.odom_pub = self.create_publisher(Odometry, "odom", 1)
         self.laser_scan_pub = self.create_publisher(
-            LaserScan, "/scan_filtered", qos_profile=QoSProfile(
-                    depth=1, reliability=ReliabilityPolicy.BEST_EFFORT
-                )
+            LaserScan,
+            "/scan_filtered",
+            qos_profile=QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT),
         )
 
         self.camera_publishers = {
             camera.name: self.create_publisher(
-                Image,  get_camera_topic_name(camera), qos_profile=QoSProfile(
+                Image,
+                get_camera_topic_name(camera),
+                qos_profile=QoSProfile(
                     depth=1, reliability=ReliabilityPolicy.BEST_EFFORT
                 ),
             )
@@ -1135,11 +1140,11 @@ class StretchMujocoDriver(Node):
                 ),
             )
             for camera in self.sim._cameras_to_use
-            if not camera.is_depth
         }
         self.pointcloud_publishers = {
             camera.name: self.create_publisher(
-                PointCloud2, get_camera_pointcloud_topic_name(camera), 
+                PointCloud2,
+                get_camera_pointcloud_topic_name(camera),
                 qos_profile=QoSProfile(
                     depth=1, reliability=ReliabilityPolicy.BEST_EFFORT
                 ),
@@ -1149,14 +1154,15 @@ class StretchMujocoDriver(Node):
         }
         self.camera_info_publishers = {
             camera.name: self.create_publisher(
-                CameraInfo, get_camera_info_topic_name(camera), 
+                CameraInfo,
+                get_camera_info_topic_name(camera),
                 qos_profile=QoSProfile(
                     depth=1, reliability=ReliabilityPolicy.BEST_EFFORT
                 ),
             )
             for camera in self.sim._cameras_to_use
         }
-        
+
         self.clock_pub = self.create_publisher(
             msg_type=Clock, topic="/clock", qos_profile=5
         )
@@ -1463,8 +1469,28 @@ def create_pointcloud_rgb_msg(
     return cloud_msg
 
 
+__COMPRESSED_DEPTH_16UC1_HEADER = array.array("B", [0] * 12)
+
+
+def compress_depth_image(frame: np.ndarray):
+    """
+    Converts a F32 depth map in meters to a U16 map in millimeters
+    """
+    normalized_array = (frame * 1000).astype(np.uint16)
+
+    _, encoded_image = cv2.imencode(".png", normalized_array)
+
+    ros_image_compressed = CompressedImage()
+    ros_image_compressed.format = "16uc1; compressedDepth"
+    ros_image_compressed.data = __COMPRESSED_DEPTH_16UC1_HEADER + array.array(
+        "B", encoded_image.tobytes()
+    )
+
+    return ros_image_compressed
+
+
 def create_camera_info(
-   camera_settings:CameraSettings, frame_id: str, timestamp: TimeMsg
+    camera_settings: CameraSettings, frame_id: str, timestamp: TimeMsg
 ):
     camera_info_msg = CameraInfo()
     camera_info_msg.header = Header()
@@ -1474,7 +1500,6 @@ def create_camera_info(
     camera_info_msg.height = camera_settings.height
     camera_info_msg.distortion_model = "plumb_bob"
 
-    
     camera_info_msg.d = camera_settings.get_distortion_params_d()
     camera_info_msg.k = camera_settings.get_intrinsic_params_k()
     camera_info_msg.p = camera_settings.get_projection_matrix_p()
@@ -1506,6 +1531,7 @@ def get_camera_topic_name(camera: StretchCameras):
 
     raise NotImplementedError(f"Camera {camera} topic mapping is not implemented")
 
+
 @cache
 def get_camera_info_topic_name(camera: StretchCameras):
     """
@@ -1523,6 +1549,7 @@ def get_camera_info_topic_name(camera: StretchCameras):
         return "/navigation_camera/camera_info"
 
     raise NotImplementedError(f"Camera {camera} topic mapping is not implemented")
+
 
 @cache
 def get_camera_pointcloud_topic_name(camera: StretchCameras):

@@ -41,8 +41,8 @@ def generate_launch_description():
             )
         ],
     )
-    map_yaml = DeclareLaunchArgument(
-        "map_yaml", description="filepath to previously captured map", default_value=""
+    map = DeclareLaunchArgument(
+        "map", description="filepath to previously captured map", default_value=""
     )
     tts_engine = DeclareLaunchArgument(
         "tts_engine",
@@ -62,7 +62,7 @@ def generate_launch_description():
     # Start collecting nodes to launch
     ld = LaunchDescription(
         [
-            map_yaml,
+            map,
             tts_engine,
             nav2_params_file_param,
             params_file,
@@ -129,11 +129,12 @@ def generate_launch_description():
                 "use_sim_time": True
             }
         ],
+        remappings=[("/gripper_camera/color/camera_info","/gripper_camera/camera_info")]
     )
     ld.add_action(configure_video_streams_node)
 
     navigation_bringup_launch = GroupAction(
-        condition=LaunchConfigurationNotEquals("map_yaml", ""),
+        condition=LaunchConfigurationNotEquals("map", ""),
         actions=[
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
@@ -142,13 +143,7 @@ def generate_launch_description():
                 launch_arguments={
                     "use_sim_time": "true",
                     "autostart": "true",
-                    "map": PathJoinSubstitution(
-                        [
-                            teleop_interface_package,
-                            "maps",
-                            LaunchConfiguration("map_yaml"),
-                        ]
-                    ),
+                    "map": LaunchConfiguration("map"),
                     "params_file": LaunchConfiguration("nav2_params_file"),
                     "use_rviz": "false",
                 }.items(),
@@ -208,7 +203,12 @@ def generate_launch_description():
         executable="move_to_pregrasp.py",
         output="screen",
         arguments=[LaunchConfiguration("params")],
-        parameters=[],
+        parameters=[{
+                "use_sim_time": True}],
+        remappings=[
+            ("/camera/aligned_depth_to_color/camera_info", "/camera/depth/camera_info"),
+            ("/camera/aligned_depth_to_color/image_raw/compressedDepth", "/camera/depth/image_rect_raw/compressed")
+        ]
     )
     ld.add_action(move_to_pregrasp_node)
 
