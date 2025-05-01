@@ -27,6 +27,7 @@ ros2 launch stretch_nav2 online_async_launch.py use_sim_time:=true
 ros2 launch stretch_nav2 navigation.launch.py use_slam:=true use_sim_time:=true use_rviz:=true teleop_type:=none
 
 # Terminal 2: Stretch Mujoco Driver
+export MUJOCO_GL=egl # On Ubuntu, tell Mujoco to use the GPU
 ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=true mode:=navigation
 
 # Terminal 3: Keyboard Teleop
@@ -99,7 +100,7 @@ Use the following commands to start Stretch Mujoco with Web Teleop:
 parallel_terminal="gnome-terminal --tab -- /bin/bash -c " # or "xterm -e"
 
 # Terminal 1
-$parallel_terminal "ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=false mode:=position robocasa_layout:='G-shaped' robocasa_style:=Modern_1 use_rviz:=false use_cameras:=true map_yaml:=${HELLO_FLEET_PATH}/maps/gshaped_modern1_robocasa.yaml" &
+$parallel_terminal "MUJOCO_GL=egl ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=false mode:=position robocasa_layout:='G-shaped' robocasa_style:=Modern_1 use_rviz:=false use_cameras:=true map:=${HELLO_FLEET_PATH}/maps/gshaped_modern1_robocasa.yaml" &
 
 # Terminal 2
 $parallel_terminal "ros2 launch stretch_simulation stretch_simulation_web_interface.launch.py" &
@@ -108,7 +109,7 @@ $parallel_terminal "ros2 launch stretch_simulation stretch_simulation_web_interf
 $parallel_terminal "cd ~/ament_ws/src/stretch_web_teleop; npm run localstorage" &
 
 # Terminal 4
-$parallel_terminal "cd ~/ament_ws/src/stretch_web_teleop; sudo keyfile="server.key" certfile="server.crt" node ./server.js" &
+$parallel_terminal "cd ~/ament_ws/src/stretch_web_teleop; sudo node ./server.js" &
 
 # Terminal 4
 $parallel_terminal "cd ~/ament_ws/src/stretch_web_teleop; node start_robot_browser.js" &
@@ -276,6 +277,10 @@ sudo npx playwright install-deps
 
 # Create a certificate for SSL/HTTPS:
 openssl req -new -x509 -nodes -out certificates/server.crt -keyout certificates/server.key
+
+touch .env
+echo certfile=server.crt >> .env
+echo keyfile=server.key >> .env
 ```
 
 Some more steps to get IK for gripper working:
