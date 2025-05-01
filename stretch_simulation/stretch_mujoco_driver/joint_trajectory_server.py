@@ -112,6 +112,8 @@ class JointTrajectoryAction:
                 point.velocities if point.velocities else [None] * len(joint_names)
             )
 
+            actuators_in_use = []
+
             for i, joint in enumerate(joint_names):
                 try:
                     actuator = get_actuator_by_joint_names_in_command_groups(joint)
@@ -128,7 +130,15 @@ class JointTrajectoryAction:
                     self.node.sim.set_base_velocity(velocity, 0)
                     continue
 
-                self.node.sim.move_to(actuator, target_position, timeout=None)
+                self.node.sim.move_to(actuator, target_position)
+
+                actuators_in_use.append(actuator)
+
+            for actuator in actuators_in_use:
+                self.node.sim.wait_until_at_setpoint(actuator)
+
+            for actuator in [Actuators.left_wheel_vel, Actuators.right_wheel_vel]:
+                self.node.sim.wait_while_is_moving(actuator)
 
             # Simulate wait until point.time_from_start
             # self._wait_until(

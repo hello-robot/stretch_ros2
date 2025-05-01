@@ -80,6 +80,8 @@ DEFAULT_ROBOCASA_TASK = "PnPCounterToCab"
 DEFAULT_ACTION_SERVER_HZ = 30.0
 DEFAULT_JOINT_STATE_HZ = 30.0
 DEFAULT_SIM_TOOL = "eoa_wrist_dw3_tool_sg3"
+
+
 class StretchMujocoDriver(Node):
 
     def __init__(self):
@@ -99,7 +101,7 @@ class StretchMujocoDriver(Node):
 
         use_robocasa = self.get_parameter("use_robocasa").value
         if use_robocasa:
-            robocasa_task:str|None = self.get_parameter("robocasa_task").value
+            robocasa_task: str | None = self.get_parameter("robocasa_task").value
             robocasa_layout = self.get_parameter("robocasa_layout").value
             robocasa_style = self.get_parameter("robocasa_style").value
 
@@ -237,7 +239,7 @@ class StretchMujocoDriver(Node):
 
     def move_to_position(self, qpos):
         try:
-            Idx: SE3_dw3_sg3_Idx =  get_Idx(DEFAULT_SIM_TOOL) # type: ignore
+            Idx: SE3_dw3_sg3_Idx = get_Idx(DEFAULT_SIM_TOOL)  # type: ignore
 
             if len(qpos) != Idx.num_joints:
                 self.get_logger().error(
@@ -267,6 +269,32 @@ class StretchMujocoDriver(Node):
             pos = self.gripper_conversion.finger_to_robotis(qpos[Idx.GRIPPER])
             self.sim.move_to(Actuators.gripper, pos)
 
+            for actuator in [
+                Actuators.arm,
+                Actuators.lift,
+                Actuators.wrist_pitch,
+                Actuators.wrist_roll,
+                Actuators.wrist_yaw,
+                Actuators.head_pan,
+                Actuators.head_tilt,
+                Actuators.gripper,
+            ]:
+                succeeded = self.sim.wait_until_at_setpoint(actuator)
+                if not succeeded:
+                    raise Exception(
+                        f"{actuator} failed to move to {self.sim.data_proxies.get_command().move_to[actuator.name]}"
+                    )
+                
+            for actuator in [
+                Actuators.base_translate,
+                Actuators.base_rotate,
+            ]:
+                succeeded = self.sim.wait_while_is_moving(actuator)
+                if not succeeded:
+                    raise Exception(
+                        f"{actuator} failed to move to {self.sim.data_proxies.get_command().move_to[actuator.name]}"
+                    )
+
             self.get_logger().info(f"Moved to position qpos: {qpos}")
         except Exception as e:
             self.get_logger().error("Failed to move to position: {0}".format(e))
@@ -294,7 +322,7 @@ class StretchMujocoDriver(Node):
                 self.sim.set_base_velocity(
                     self.linear_velocity_mps, self.angular_velocity_radps
                 )
-            elif time_since_last_twist < Duration(seconds=self.timeout_s + 1.0): #type: ignore
+            elif time_since_last_twist < Duration(seconds=self.timeout_s + 1.0):  # type: ignore
                 # self.sim.set_base_velocity(0.0, 0.0)
                 self.sim.move_by(Actuators.base_translate, 0.0)
             else:
@@ -342,9 +370,11 @@ class StretchMujocoDriver(Node):
             t.transform.rotation.z = q[2]
             t.transform.rotation.w = q[3]
             self.tf_broadcaster.sendTransform(t)
-            
+
             # This is important, otherwise all the joints are not transformed correctly. The alternative is to broadcast a static_transform, but that doesn't help if another node is trying to lookup transforms.
-            self.tf_buffer.wait_for_transform_async("base_link", "link_lift", rclpyTime.Time(seconds=0))
+            self.tf_buffer.wait_for_transform_async(
+                "base_link", "link_lift", rclpyTime.Time(seconds=0)
+            )
 
             b = TransformStamped()
             b.header.stamp = current_time
@@ -956,7 +986,7 @@ class StretchMujocoDriver(Node):
             if parameter.name == "default_goal_timeout_s":
                 self.default_goal_timeout_s = parameter.value or DEFAULT_GOAL_TIMEOUT
                 self.default_goal_timeout_duration = Duration(
-                    seconds=self.default_goal_timeout_s #type: ignore
+                    seconds=self.default_goal_timeout_s  # type: ignore
                 )
                 self.get_logger().info(
                     f"Set default_goal_timeout_s to {self.default_goal_timeout_s}"
@@ -1051,10 +1081,8 @@ class StretchMujocoDriver(Node):
             self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
             self.tf_static_broadcaster = StaticTransformBroadcaster(self)
 
-
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
-
 
         stretch_core_path = get_package_share_path("stretch_core")
         self.declare_parameter(
@@ -1217,7 +1245,9 @@ class StretchMujocoDriver(Node):
         )
 
         self.declare_parameter("rate", DEFAULT_JOINT_STATE_HZ)
-        self.joint_state_rate: float = self.get_parameter("rate").value or DEFAULT_JOINT_STATE_HZ
+        self.joint_state_rate: float = (
+            self.get_parameter("rate").value or DEFAULT_JOINT_STATE_HZ
+        )
 
         self.declare_parameter(
             "timeout",
@@ -1228,7 +1258,7 @@ class StretchMujocoDriver(Node):
             ),
         )
         self.timeout_s = self.get_parameter("timeout").value or DEFAULT_TIMEOUT
-        self.timeout = Duration(seconds=self.timeout_s) #type: ignore
+        self.timeout = Duration(seconds=self.timeout_s)  # type: ignore
         self.declare_parameter(
             "default_goal_timeout_s",
             DEFAULT_GOAL_TIMEOUT,
@@ -1237,9 +1267,11 @@ class StretchMujocoDriver(Node):
                 description="Default timeout (sec) for goal execution",
             ),
         )
-        self.default_goal_timeout_s:float = self.get_parameter("default_goal_timeout_s").value or DEFAULT_GOAL_TIMEOUT
+        self.default_goal_timeout_s: float = (
+            self.get_parameter("default_goal_timeout_s").value or DEFAULT_GOAL_TIMEOUT
+        )
         self.default_goal_timeout_duration = Duration(
-            seconds=self.default_goal_timeout_s #type: ignore
+            seconds=self.default_goal_timeout_s  # type: ignore
         )
         self.get_logger().info(f"rate = {self.joint_state_rate} Hz")
         self.get_logger().info(f"twist timeout = {self.timeout_s} s")
@@ -1346,9 +1378,9 @@ class StretchMujocoDriver(Node):
 
         # start action server for joint trajectories
         self.declare_parameter("fail_out_of_range_goal", False)
-        self.fail_out_of_range_goal = bool(self.get_parameter(
-            "fail_out_of_range_goal"
-        ).value)
+        self.fail_out_of_range_goal = bool(
+            self.get_parameter("fail_out_of_range_goal").value
+        )
 
         self.declare_parameter(
             "fail_if_motor_initial_point_is_not_trajectory_first_point", True
@@ -1360,7 +1392,9 @@ class StretchMujocoDriver(Node):
         )
 
         self.declare_parameter("action_server_rate", DEFAULT_ACTION_SERVER_HZ)
-        self.action_server_rate: float = self.get_parameter("action_server_rate").value or DEFAULT_ACTION_SERVER_HZ
+        self.action_server_rate: float = (
+            self.get_parameter("action_server_rate").value or DEFAULT_ACTION_SERVER_HZ
+        )
 
         self.joint_trajectory_action = JointTrajectoryAction(
             self, self.action_server_rate
@@ -1379,7 +1413,7 @@ class StretchMujocoDriver(Node):
 
         # start loop to command the mobile base velocity, publish
         # odometry, and publish joint states
-        timer_period:float = 1.0 / self.joint_state_rate
+        timer_period: float = 1.0 / self.joint_state_rate
         self.timer = self.create_timer(
             timer_period,
             self.command_mobile_base_velocity_and_publish_state,
@@ -1591,7 +1625,6 @@ def get_camera_frame(camera: StretchCameras):
         return "link_head_nav_cam"
 
     raise NotImplementedError(f"Camera {camera} frame is not implemented")
-
 
 
 def main():
