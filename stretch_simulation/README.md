@@ -144,7 +144,9 @@ You can also set the node's argument`arguments=["--ros-args", "--log-level", "de
 
 You should go through all the sections in Getting Started to run this package correctly.
 
-### Install ROS2 Humble
+Estimated install time: `~1-2hrs`.
+
+### Install ROS2 Humble (10 minutes)
 
 The commands below are taken from this guide: https://docs.ros.org/en/humble/index.html
 
@@ -164,7 +166,7 @@ sudo apt install ros-humble-desktop ros-dev-tools rviz python3-pip
 source /opt/ros/humble/setup.bash
 ```
 
-### Setting up `ament_ws`
+### Setting up `ament_ws` (1 hour)
 
 If you are not running this package on a robot NUC (which is _not_ [recommended](#system-requirements)), you will need to set up a ROS2 environment similar to the environment that ships with Stretch.
 
@@ -203,7 +205,7 @@ echo 'source ~/ament_ws/install/setup.bash' >> ~/.bashrc
 ```
 
 
-### Setting up URDF
+### Setting up URDF (15 minutes)
 
 Run the commands below or follow the instruction in the [`stretch_description #updating-the-urdf`](../stretch_description/README.md#updating-the-urdf) README file to set up the URDF meshes.
 
@@ -220,7 +222,7 @@ python3 /tmp/stretch_urdf/tools/stretch_urdf_ros_update.py --ros2_rebuild
 ```
 
 
-### Mujoco
+### Mujoco (15 minutes)
 
 This ROS 2 package includes nodes and launch files that use the [`stretch_mujoco`](https://github.com/hello-robot/stretch_mujoco) repo to interface with Mujoco.
 
@@ -228,6 +230,7 @@ Run the following, after having done the previous ament_ws setup steps, to start
 
 ```shell
 source ~/ament_ws/install/setup.bash
+# This script is interactive, it will ask you if you want to install robocasa model files:
 sh ~/ament_ws/src/stretch_ros2/stretch_simulation/stretch_mujoco_driver/setup.sh
 
 cd ~/ament_ws
@@ -235,3 +238,6 @@ source ./install/setup.bash
 colcon build
 ros2 launch stretch_simulation stretch_mujoco_driver.launch.py mode:=navigation
 ```
+
+> Note: If you see this error: `AttributeError: module 'OpenGL.EGL' has no attribute 'EGLDeviceEXT'`, please try this command: `pip install PyOpenGL==3.1.4`
+
