@@ -182,6 +182,8 @@ cp -r ./ubuntu2204_ament_ws_files/stretch_user ~/
 
 bash ./ubuntu2204_ament_ws_files/stretch_create_ament_workspace.sh
 
+source ~/.bashrc # source .bashrc to get HELLO_FLEET_PATH
+
 rm -rf ./ubuntu2204_ament_ws_files
 
 cd ~/ament_ws
@@ -195,6 +197,9 @@ rosdep install --rosdistro=humble -iy --skip-keys="librealsense2 realsense2_came
 colcon build
 
 source ./install/setup.bash
+
+# Optional: add source install/setup.bash to .bashrc:
+echo 'source ~/ament_ws/install/setup.bash' >> ~/.bashrc
 ```
 
 
@@ -209,11 +214,9 @@ python3 -m pip install -U hello-robot-stretch-urdf
 
 git clone https://github.com/hello-robot/stretch_urdf.git --depth 1 /tmp/stretch_urdf
 
-python3 /tmp/stretch_urdf/tools/stretch_urdf_ros_update.py --model SE3 --tool eoa_wrist_dw3_tool_sg3
-
-cd ~/ament_ws
-
-colcon build # Copy new files
+# If you get a message saying the tool config was not found, you may need to run `python3 -m pip install hello-robot-stretch-body`
+python3 /tmp/stretch_urdf/tools/stretch_urdf_ros_update.py
+python3 /tmp/stretch_urdf/tools/stretch_urdf_ros_update.py --ros2_rebuild
 ```
 
 
