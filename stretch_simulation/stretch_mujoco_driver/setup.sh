@@ -17,7 +17,7 @@ git submodule update --init
 
 pip install -e ".[robocasa]"
 
-pip install "third_party/robocasa"
+pip install -e "third_party/robocasa"
 pip install "third_party/robosuite"
 python3 third_party/robosuite/robosuite/scripts/setup_macros.py
 python3 third_party/robocasa/robocasa/scripts/setup_macros.py
