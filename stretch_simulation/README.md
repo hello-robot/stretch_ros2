@@ -180,11 +180,15 @@ unzip ubuntu2204_ament_ws_files.zip
 sudo cp -r ./ubuntu2204_ament_ws_files/etc/* /etc/
 cp -r ./ubuntu2204_ament_ws_files/stretch_user ~/
 
-bash ./ubuntu2204_ament_ws_files/env_install.sh
+bash ./ubuntu2204_ament_ws_files/stretch_create_ament_workspace.sh
 
 rm -rf ./ubuntu2204_ament_ws_files
 
 cd ~/ament_ws
+
+sudo rosdep init
+
+rosdep update
 
 rosdep install --rosdistro=humble -iy --skip-keys="librealsense2 realsense2_camera" --from-paths src
 
