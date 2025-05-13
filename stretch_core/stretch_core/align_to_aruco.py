@@ -18,12 +18,11 @@ from action_msgs.msg import GoalStatus
 
 class AlignToAruco(Node):
     def __init__(
-        self, node, trans_base: TransformStamped, offset=0.75, marker_yaw_offset_deg=0.0
+        self, node, trans_base: TransformStamped, offset=0.75
     ):
         self.trans_base = trans_base
         self.offset = offset  # Desired y-offset of base from marker
         self.node = node
-        self.marker_yaw_offset_rad = np.deg2rad(marker_yaw_offset_deg)
 
         self.trajectory_client = ActionClient(
             self.node,
@@ -156,7 +155,7 @@ def main():
 
     # Create aligner and run
     align = AlignToAruco(
-        node=node, trans_base=trans_base, offset=0.2, marker_yaw_offset_deg=0.0
+        node=node, trans_base=trans_base
     )
     align.align_to_marker()
 
