@@ -1,230 +1,185 @@
 #!/usr/bin/env python3
 
-# This node uses the tf_listener tutorial from Stretch Tutorials
-# Head should always point at ArUco marker even while moving and aligning
-
 import sys
 import time
 from math import atan2, sqrt
-
 import numpy as np
 import rclpy
 from control_msgs.action import FollowJointTrajectory
-from geometry_msgs.msg import Transform, TransformStamped
+from geometry_msgs.msg import TransformStamped
 from rclpy.action import ActionClient
 from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.time import Time
-from sensor_msgs.msg import JointState
-from tf2_ros import TransformException
-from tf2_ros.buffer import Buffer
-from tf2_ros.transform_listener import TransformListener
-from tf_transformations import (euler_from_quaternion, quaternion_from_euler,
-                                quaternion_matrix)
-from trajectory_msgs.msg import MultiDOFJointTrajectoryPoint
+from tf2_ros import TransformException, Buffer, TransformListener
+from tf_transformations import euler_from_quaternion, quaternion_matrix
+from trajectory_msgs.msg import JointTrajectoryPoint
+from action_msgs.msg import GoalStatus
 
-
-class FrameListener(Node):
-
-    def __init__(self):
-        super().__init__('align_to_aruco')
-
-        self.trans_base = TransformStamped()
-        self.trans_camera = TransformStamped()
-        self.tf_buffer = Buffer()
-        self.tf_listener = TransformListener(self.tf_buffer, self)
-
-        time_period = 0.2 # seconds
-        self.timer = self.create_timer(time_period, self.on_timer)
-
-    def get_transforms(self):
-        return self.trans_base, self.trans_camera
-
-    def on_timer(self):
-        marker_frame_rel = 'base_right' # 'aruco_tag'
-        base_frame_rel = 'base_link'
-        camera_frame_rel = 'camera_link'
-
-        try:
-            now = Time()
-            self.trans_base = self.tf_buffer.lookup_transform(
-                base_frame_rel,
-                marker_frame_rel,
-                now)
-        except TransformException as ex:
-            self.get_logger().info(
-                f'Could not transform {marker_frame_rel} to {base_frame_rel}: {ex}')
-            return
-
-        try:
-            now = Time()
-            self.trans_camera = self.tf_buffer.lookup_transform(
-                camera_frame_rel,
-                marker_frame_rel,
-                now)
-        except TransformException as ex:
-            self.get_logger().info(
-                f'Could not transform {marker_frame_rel} to {base_frame_rel}: {ex}')
-            return
-
-# Align x-axis of base_link to x-axis of marker
-# Robot should first align x-axes then minimize distance along x-axis and then along y-axis
-class AlignToAruco(FrameListener):
-    def __init__(self, node, offset=0.75):
-        self.trans_base = TransformStamped()
-        self.trans_camera = TransformStamped()
-        self.joint_state = JointState()
-        self.offset = offset
+class AlignToAruco(Node):
+    def __init__(
+        self, node, trans_base: TransformStamped, offset=0.75
+    ):
+        self.trans_base = trans_base
+        self.offset = offset  # Desired y-offset of base from marker
         self.node = node
 
-        self.trajectory_client = ActionClient(self.node, FollowJointTrajectory, '/stretch_controller/follow_joint_trajectory')
-        server_reached = self.trajectory_client.wait_for_server(timeout_sec=60.0)
-        if not server_reached:
-            self.node.get_logger().error('Unable to connect to arm action server. Timeout exceeded.')
+        self.trajectory_client = ActionClient(
+            self.node,
+            FollowJointTrajectory,
+            "/stretch_controller/follow_joint_trajectory",
+        )
+
+        if not self.trajectory_client.wait_for_server(timeout_sec=60.0):
+            self.node.get_logger().error("Unable to connect to trajectory server.")
             sys.exit()
 
-    def joint_states_callback(self, joint_state):
-        self.joint_state = joint_state
-
     def compute_difference(self):
-        self.trans_base, self.trans_camera = self.node.get_transforms()
-
-        x = self.trans_base.transform.rotation.x
-        y = self.trans_base.transform.rotation.y
-        z = self.trans_base.transform.rotation.z
-        w = self.trans_base.transform.rotation.w
-
-        ############## changes for offset ###############
+        # Extract quaternion and rotation matrix of marker in base_link frame
+        x, y, z, w = (
+            self.trans_base.transform.rotation.x,
+            self.trans_base.transform.rotation.y,
+            self.trans_base.transform.rotation.z,
+            self.trans_base.transform.rotation.w,
+        )
         R = quaternion_matrix((x, y, z, w))
+
+        # Apply rotation to the offset vector
         P_dash = np.array([[0], [-self.offset], [0], [1]])
-        P = np.array([[self.trans_base.transform.translation.x], [self.trans_base.transform.translation.y], [0], [1]])
-
+        P = np.array(
+            [
+                [self.trans_base.transform.translation.x],
+                [self.trans_base.transform.translation.y],
+                [0],
+                [1],
+            ]
+        )
         X = np.matmul(R, P_dash)
-        P_base = X + P
 
+        # Compute the marker position with offset in base_link frame
+        P_base = X + P
+        P_base[3, 0] = 1  # Homogeneous coordinate
+
+        # Extract adjusted position
         base_position_x = P_base[0, 0]
         base_position_y = P_base[1, 0]
-        #################################################
 
-        # base_position_x = self.trans_base.transform.translation.x
-        # base_position_y = self.trans_base.transform.translation.y # - self.offset
-
+        # Compute rotation and translation needed
         phi = atan2(base_position_y, base_position_x)
-        self.node.get_logger().info("Angle phi is: {}".format(phi))
-        dist = sqrt(pow(base_position_x, 2) + pow(base_position_y, 2))
-        self.node.get_logger().info("Distance x is: {}".format(dist))
+        dist = sqrt(base_position_x**2 + base_position_y**2)
 
-        x_rot_base, y_rot_base, z_rot_base = euler_from_quaternion([x, y, z, w])
-        z_rot_base = -phi + z_rot_base + 3.14159
-        self.node.get_logger().info("Angle z_rot_base is: {}".format(z_rot_base))
-        # camera_position_x = self.trans_base.transform.translation.x
-        # camera_position_y = self.trans_base.transform.translation.y
-        # camera_position_z = self.trans_base.transform.translation.z
+        _, _, z_rot_base = euler_from_quaternion([x, y, z, w])
+        # Calculate final rotation: -phi (cancel rotation needed to align),
+        # + z_rot_base (original marker rotation),
+        # + pi (such that the base and the marker axis are aligned as shown in tutorial)
+        z_rot_base = -phi + z_rot_base + np.pi
 
         return phi, dist, z_rot_base
 
     def align_to_marker(self):
-        # Turn phi
-        # Travel dist
-        # -Turn phi + x_rot_base + 3.14159
+        phi, dist, final_theta = self.compute_difference()
 
-        phi, dist, z_rot_base = self.compute_difference()
+        def send_base_goal_blocking(joint_name, inc):
+            point = JointTrajectoryPoint()
+            point.positions = [inc]
+            point.time_from_start = Duration(seconds=5.0).to_msg()
 
-        x, y, z, w = quaternion_from_euler(0, 0, phi)
+            goal = FollowJointTrajectory.Goal()
+            goal.trajectory.joint_names = [joint_name]
+            goal.trajectory.points = [point]
 
-        duration1 = Duration(seconds=0.0)
-        duration2 = Duration(seconds=10.0)
+            self.node.get_logger().info(f"[{joint_name}] Sending goal: {inc:.3f}")
+            send_goal_future = self.trajectory_client.send_goal_async(goal)
+            rclpy.spin_until_future_complete(self.node, send_goal_future)
+            goal_handle = send_goal_future.result()
 
-        # for base joints
-        point1 = MultiDOFJointTrajectoryPoint()
-        point2 = MultiDOFJointTrajectoryPoint()
-        point1.time_from_start = duration1.to_msg()
-        point2.time_from_start = duration2.to_msg()
-        transform1 = Transform()
-        transform2 = Transform()
+            if not goal_handle.accepted:
+                self.node.get_logger().error(f"Goal for {joint_name} was rejected!")
+                return
 
-        trajectory_goal = FollowJointTrajectory.Goal()
-        # trajectory_goal.goal_time_tolerance = rclpy.time.Time()
-        
-        joint_state = self.joint_state
-        if (joint_state is not None):
+            result_future = goal_handle.get_result_async()
+            rclpy.spin_until_future_complete(self.node, result_future)
+            result = result_future.result()
 
-            transform1.translation.x = 0.0
-            transform1.rotation.w = 1.0
-            transform2.translation.x = 0.0
-            transform2.rotation.x = x
-            transform2.rotation.y = y
-            transform2.rotation.z = z
-            transform2.rotation.w = w
-            point1.transforms = [transform1]
-            point2.transforms = [transform2]
-            # joint_name should be 'position' and not one generated by command i.e. 'translate/rotate_mobile_base'
-            joint_name = 'position'
-            trajectory_goal.multi_dof_trajectory.joint_names = [joint_name]
-            trajectory_goal.multi_dof_trajectory.points = [point1, point2]
-            trajectory_goal.multi_dof_trajectory.header.stamp = self.node.get_clock().now().to_msg()
-            self.trajectory_client.send_goal_async(trajectory_goal)
-            self.node.get_logger().info("Executing first goal")
-            time.sleep(15)
+            if result.status != GoalStatus.STATUS_SUCCEEDED:
+                self.node.get_logger().warn(
+                    f"Goal for {joint_name} did not succeed: status {result.status}"
+                )
+            else:
+                self.node.get_logger().info(f"Goal for {joint_name} succeeded.")
 
-        joint_state = self.joint_state
-        if (joint_state is not None):
-            transform1.translation.x = 0.0
-            transform1.rotation.w = 1.0
-            transform2.translation.x = dist
-            transform2.rotation.x = 0.0
-            transform2.rotation.y = 0.0
-            transform2.rotation.z = 0.0
-            transform2.rotation.w = 1.0
-            point1.transforms = [transform1]
-            point2.transforms = [transform2]
-            # joint_name should be 'position' and not one generated by command i.e. 'translate/rotate_mobile_base'
-            joint_name = 'position'
-            trajectory_goal.multi_dof_trajectory.joint_names = [joint_name]
-            trajectory_goal.multi_dof_trajectory.points = [point1, point2]
-            trajectory_goal.multi_dof_trajectory.header.stamp = self.node.get_clock().now().to_msg()
-            self.trajectory_client.send_goal_async(trajectory_goal)
-            self.node.get_logger().info("Executing second goal")
-            time.sleep(15)
-
-        joint_state = self.joint_state
-        x, y, z, w = quaternion_from_euler(0, 0, z_rot_base)
-        if (joint_state is not None):
-            transform1.translation.x = 0.0
-            transform1.rotation.w = 1.0
-            transform2.translation.x = 0.0
-            transform2.rotation.x = x
-            transform2.rotation.y = y
-            transform2.rotation.z = z
-            transform2.rotation.w = w
-            point1.transforms = [transform1]
-            point2.transforms = [transform2]
-            # joint_name should be 'position' and not one generated by command i.e. 'translate/rotate_mobile_base'
-            joint_name = 'position'
-            trajectory_goal.multi_dof_trajectory.joint_names = [joint_name]
-            trajectory_goal.multi_dof_trajectory.points = [point1, point2]
-            trajectory_goal.multi_dof_trajectory.header.stamp = self.node.get_clock().now().to_msg()
-            self.trajectory_client.send_goal_async(trajectory_goal)
-            self.node.get_logger().info("Executing third goal")
+        send_base_goal_blocking("rotate_mobile_base", phi)
+        send_base_goal_blocking("translate_mobile_base", dist)
+        send_base_goal_blocking("rotate_mobile_base", final_theta)
 
 
 def main():
-    time.sleep(20) # Allows time for realsense camera to boot up before this node becomes active
     rclpy.init()
-    node = FrameListener()
-    
-    for i in range(10):
-        rclpy.spin_once(node)
+    node = Node("align_to_aruco_node")
 
-    align = AlignToAruco(node, offset=0.75)
-    align.align_to_marker()
+    tf_buffer = Buffer()
+    TransformListener(tf_buffer, node)
+
+    timeout_sec = 120.0
+    start_time = time.time()
+
+    node.get_logger().info("Waiting for required transforms...")
+    trans_base = None
+
+    # Get the ArUco tag name from the launch file parameter (default: "base_right")
+    node.declare_parameter("aruco_tag_name", "base_right")
+    aruco_tag_name_in_stretch_marker_dict = node.get_parameter("aruco_tag_name").get_parameter_value().string_value
+
+    missing = []
+
+    while rclpy.ok():
+        # Block while searching for the marker:
+        try:
+            if tf_buffer.can_transform(
+                "base_link", aruco_tag_name_in_stretch_marker_dict, Time()
+            ):
+                trans_base = tf_buffer.lookup_transform(
+                    "base_link", aruco_tag_name_in_stretch_marker_dict, Time()
+                )
+                node.get_logger().info("Found the ArUco tag!")
+                node.get_logger().warning("WARNING: The robot will now move!")
+                break
+            else:
+                missing.append(f"base_link → {aruco_tag_name_in_stretch_marker_dict}")
+        except TransformException as ex:
+            node.get_logger().warn(f"Error during transform lookup: {ex}")
+            missing.append("exception")
+            
+        node.get_logger().error(
+                "Could not detect the ArUco marker. "
+                "Please make sure the camera is manually pointed at the marker. "
+                "Please also make sure that the marker is upright - an incorrect orientation "
+                "will result in an incorrect movement. "
+                "The robot will move when the marker is found."
+            )
+
+        elapsed = time.time() - start_time
+        if elapsed > timeout_sec:
+            break
+
+        rclpy.spin_once(node)
+        time.sleep(1)
+
+    if trans_base is None:
+        node.get_logger().error(
+            f"Timeout waiting for transforms: {', '.join(missing)}. Exitting."
+        )
+        rclpy.shutdown()
+        return
 
     try:
-        rclpy.spin(node)
+        # Create aligner and run
+        align = AlignToAruco(node=node, trans_base=trans_base)
+        align.align_to_marker()
     except KeyboardInterrupt:
         pass
-    rclpy.shutdown()
-
+    finally:
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
