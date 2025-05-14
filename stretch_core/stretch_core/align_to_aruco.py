@@ -118,49 +118,67 @@ def main():
     node = Node("align_to_aruco_node")
 
     tf_buffer = Buffer()
-    tf_listener = TransformListener(tf_buffer, node)
+    TransformListener(tf_buffer, node)
 
-    timeout_sec = 10.0
+    timeout_sec = 120.0
     start_time = time.time()
 
     node.get_logger().info("Waiting for required transforms...")
     trans_base = None
 
-    while rclpy.ok():
-        missing = []
+    # Get the ArUco tag name from the launch file parameter (default: "base_right")
+    node.declare_parameter("aruco_tag_name", "base_right")
+    aruco_tag_name_in_stretch_marker_dict = node.get_parameter("aruco_tag_name").get_parameter_value().string_value
 
+    missing = []
+
+    while rclpy.ok():
+        # Block while searching for the marker:
         try:
-            if tf_buffer.can_transform("base_link", "base_right", Time()):
+            if tf_buffer.can_transform(
+                "base_link", aruco_tag_name_in_stretch_marker_dict, Time()
+            ):
                 trans_base = tf_buffer.lookup_transform(
-                    "base_link", "base_right", Time()
+                    "base_link", aruco_tag_name_in_stretch_marker_dict, Time()
                 )
+                node.get_logger().info("Found the ArUco tag!")
+                node.get_logger().warning("WARNING: The robot will now move!")
+                break
             else:
-                missing.append("base_link → base_right")
+                missing.append(f"base_link → {aruco_tag_name_in_stretch_marker_dict}")
         except TransformException as ex:
             node.get_logger().warn(f"Error during transform lookup: {ex}")
             missing.append("exception")
-
-        if not missing:
-            break
+            node.get_logger().error(
+                "Could not detect the ArUco marker. "
+                "Please make sure the camera is manually pointed at the marker. "
+                "Please also make sure that the marker is upright - an incorrect orientation "
+                "will result in an incorrect movement. "
+                "The robot will move when the marker is found."
+            )
 
         elapsed = time.time() - start_time
         if elapsed > timeout_sec:
-            node.get_logger().error(
-                f"Timeout waiting for transforms: {', '.join(missing)}"
-            )
-            rclpy.shutdown()
-            return
+            break
 
-        rclpy.spin_once(node, timeout_sec=0.1)
+        rclpy.spin_once(node)
+        time.sleep(1)
 
-    # Create aligner and run
-    align = AlignToAruco(
-        node=node, trans_base=trans_base
-    )
-    align.align_to_marker()
+    if trans_base is None:
+        node.get_logger().error(
+            f"Timeout waiting for transforms: {', '.join(missing)}. Exitting."
+        )
+        rclpy.shutdown()
+        return
 
-    rclpy.shutdown()
-
+    try:
+        # Create aligner and run
+        align = AlignToAruco(node=node, trans_base=trans_base)
+        align.align_to_marker()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
