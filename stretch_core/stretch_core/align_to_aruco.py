@@ -149,7 +149,8 @@ def main():
         except TransformException as ex:
             node.get_logger().warn(f"Error during transform lookup: {ex}")
             missing.append("exception")
-            node.get_logger().error(
+            
+        node.get_logger().error(
                 "Could not detect the ArUco marker. "
                 "Please make sure the camera is manually pointed at the marker. "
                 "Please also make sure that the marker is upright - an incorrect orientation "
