@@ -204,6 +204,11 @@ source ./install/setup.bash
 echo 'source ~/ament_ws/install/setup.bash' >> ~/.bashrc
 ```
 
+A successful `ament_ws` setup will look like this:
+```
+$ ls ~/ament_ws/src
+audio_common  realsense-ros  respeaker_ros2  ros2_numpy  rosbridge_suite  sllidar_ros2  stretch_ros2  stretch_tutorials  stretch_web_teleop  tf2_web_republisher_py
+```
 
 ### Setting up URDF (15 minutes)
 
@@ -216,11 +221,20 @@ python3 -m pip install -U hello-robot-stretch-urdf
 
 git clone https://github.com/hello-robot/stretch_urdf.git --depth 1 /tmp/stretch_urdf
 
-# If you get a message saying the tool config was not found, you may need to run `python3 -m pip install hello-robot-stretch-body`
+python3 -m pip install hello-robot-stretch-body
+
 python3 /tmp/stretch_urdf/tools/stretch_urdf_ros_update.py
 python3 /tmp/stretch_urdf/tools/stretch_urdf_ros_update.py --ros2_rebuild
 ```
 
+A successful URDF update will look like this:
+```
+$ ls ~/ament_ws/src/stretch_ros2/stretch_description/urdf/
+d405                             stretch_aruco.xacro     stretch_description_SE3_eoa_wrist_dw3_tool_nil.xacro          stretch_head_nav_cam.xacro        stretch_tool_sg3.xacro
+d435i                            stretch_base_imu.xacro  stretch_description_SE3_eoa_wrist_dw3_tool_sg3.xacro          stretch_laser_range_finder.xacro  stretch_tool_tablet_12in.xacro
+export_urdf_license_template.md  stretch_d405_sg3.xacro  stretch_description_SE3_eoa_wrist_dw3_tool_tablet_12in.xacro  stretch_main.xacro                stretch_uncalibrated.urdf
+export_urdf.sh                   stretch_d435i.xacro     stretch_description.xacro                                     stretch_respeaker.xacro           stretch_wrist_dw3.xacro
+```
 
 ### Mujoco (15 minutes)
 
