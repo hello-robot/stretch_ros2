@@ -243,6 +243,8 @@ This ROS 2 package includes nodes and launch files that use the [`stretch_mujoco
 Run the following, after having done the previous ament_ws setup steps, to start interacting with Stretch in Mujoco using ROS 2:
 
 ```shell
+pip3 install --upgrade pip #This is important after a fresh install of Ubuntu, for edittable installation of dependencies
+
 source ~/ament_ws/install/setup.bash
 # This script is interactive, it will ask you if you want to install robocasa model files:
 sh ~/ament_ws/src/stretch_ros2/stretch_simulation/stretch_mujoco_driver/setup.sh
