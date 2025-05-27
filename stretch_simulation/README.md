@@ -258,43 +258,6 @@ $ ls ~/ament_ws/src
 audio_common  realsense-ros  respeaker_ros2  ros2_numpy  rosbridge_suite  sllidar_ros2  stretch_ros2  stretch_tutorials  stretch_web_teleop  tf2_web_republisher_py
 ```
 
-### Setting up Stretch Web Teleop
-
-Make sure you've already completed everything under [Setting up `ament_ws`](#setting-up-ament_ws) above.
-
-Then run the following:
-
-```shell
-cd ~/ament_ws/src/stretch_web_teleop
-
-# Install both npm and pip dependencies:
-npm install --legacy-peer-deps
-pip install -r ./requirements.txt 
-
-# Install Playwright:
-npx install playwright
-sudo npx playwright install-deps 
-
-# Create a certificate for SSL/HTTPS:
-openssl req -new -x509 -nodes -out certificates/server.crt -keyout certificates/server.key
-
-touch .env
-echo certfile=server.crt >> .env
-echo keyfile=server.key >> .env
-```
-
-Some more steps to get IK for gripper working:
-```shell
-cd stretch_description/urdf
-cp ./stretch_uncalibrated.urdf stretch.urdf
-
-sudo apt install rpl
-./export_urdf.sh # It's okay if it fails on calibrated params
-
-mkdir -p $HELLO_FLEET_PATH/$HELLO_FLEET_ID/exported_urdf
-cp -r ./exported_urdf/* $HELLO_FLEET_PATH/$HELLO_FLEET_ID/exported_urdf
-```
-
 ### Setting up URDF (15 minutes)
 
 Run the commands below or follow the instruction in the [`stretch_description #updating-the-urdf`](../stretch_description/README.md#updating-the-urdf) README file to set up the URDF meshes.
@@ -334,6 +297,8 @@ source ~/ament_ws/install/setup.bash
 # This script is interactive, it will ask you if you want to install robocasa model files:
 sh ~/ament_ws/src/stretch_ros2/stretch_simulation/stretch_mujoco_driver/setup.sh
 
+pip install PyOpenGL==3.1.4 # Fixes AttributeError: module 'OpenGL.EGL' has no attribute 'EGLDeviceEXT'
+
 cd ~/ament_ws
 source ./install/setup.bash
 colcon build
@@ -342,3 +307,39 @@ ros2 launch stretch_simulation stretch_mujoco_driver.launch.py mode:=navigation
 
 > Note: If you see this error: `AttributeError: module 'OpenGL.EGL' has no attribute 'EGLDeviceEXT'`, please try this command: `pip install PyOpenGL==3.1.4`
 
+### Setting up Stretch Web Teleop
+
+Make sure you've already completed everything under [Setting up `ament_ws`](#setting-up-ament_ws) above.
+
+Then run the following:
+
+```shell
+cd ~/ament_ws/src/stretch_web_teleop
+
+# Install both npm and pip dependencies:
+npm install --legacy-peer-deps
+pip install -r ./requirements.txt 
+
+# Install Playwright:
+npx install playwright
+sudo npx playwright install-deps 
+
+# Create a certificate for SSL/HTTPS:
+openssl req -new -x509 -nodes -out certificates/server.crt -keyout certificates/server.key
+
+touch .env
+echo certfile=server.crt >> .env
+echo keyfile=server.key >> .env
+```
+
+Some more steps to get IK for gripper working:
+```shell
+cd stretch_description/urdf
+cp ./stretch_uncalibrated.urdf stretch.urdf
+
+sudo apt install rpl
+./export_urdf.sh # It's okay if it fails on calibrated params
+
+mkdir -p $HELLO_FLEET_PATH/$HELLO_FLEET_ID/exported_urdf
+cp -r ./exported_urdf/* $HELLO_FLEET_PATH/$HELLO_FLEET_ID/exported_urdf
+```
