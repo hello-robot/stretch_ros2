@@ -232,6 +232,10 @@ curl -sL https://raw.githubusercontent.com/hello-robot/stretch_ros2/refs/heads/h
 echo 'source ~/ament_ws/install/setup.bash' >> ~/.bashrc
 ```
 
+
+> Note: If you run into a colcon build error: "fatal error: numpy/ndarrayobject.h: No such file or directory", run `sudo ln -s ~/.local/lib/python3.10/site-packages/numpy/core/ /usr/include/numpy` to resolve it.
+
+
 A successful `ament_ws` setup will look like this:
 ```
 $ ls ~/ament_ws/src
@@ -284,6 +288,7 @@ source ./install/setup.bash
 colcon build
 ros2 launch stretch_simulation stretch_mujoco_driver.launch.py mode:=navigation
 ```
+
 
 ### Setting up Stretch Web Teleop
 
