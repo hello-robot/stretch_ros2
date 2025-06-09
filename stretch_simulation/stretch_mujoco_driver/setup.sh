@@ -2,6 +2,8 @@
 
 SCRIPT_DIR=$(dirname "$0")
 
+set -e
+
 cd "$SCRIPT_DIR"
 
 mkdir -p dependencies
@@ -25,8 +27,6 @@ python3 third_party/robocasa/robocasa/scripts/download_kitchen_assets.py
 
 # Colcon Build:
 cd ~/ament_ws
-
-rosdep install --rosdistro=humble -iy --skip-keys="librealsense2 realsense2_camera" --from-paths src
 
 colcon build
 

@@ -68,9 +68,7 @@ ros2 param set /local_costmap/local_costmap  inflation_layer.inflation_radius 0.
 
 #### Pre-mapped scene
 
-There are maps included in the [ubuntu2204_ament_ws_files.zip](ubuntu2204_ament_ws_files.zip) file that you can use with navigation out of the box.
-
-If you set up your environment using the [Getting Started](#getting-started) section below, you should already have this map in your environment.
+There are [maps](./maps/) included in this package that you can use with navigation out of the box.
 
 Launch the pre-mapped environment using the following commands:
 
@@ -79,7 +77,7 @@ Launch the pre-mapped environment using the following commands:
 ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=true mode:=navigation robocasa_layout:='G-shaped' robocasa_style:=Modern_1
 
 # Terminal 2
-ros2 launch stretch_nav2 navigation.launch.py map:=${HELLO_FLEET_PATH}/maps/gshaped_modern1_robocasa.yaml use_sim_time:=true use_rviz:=true teleop_type:=none
+ros2 launch stretch_nav2 navigation.launch.py map:=~/ament_ws/src/stretch_ros2/stretch_simulation/maps/gshaped_modern1_robocasa.yaml use_sim_time:=true use_rviz:=true teleop_type:=none
 
 # Terminal 3
 ros2 service call /stow_the_robot std_srvs/srv/Trigger
@@ -100,7 +98,7 @@ Use the following commands to start Stretch Mujoco with Web Teleop:
 parallel_terminal="gnome-terminal --tab -- /bin/bash -c " # or "xterm -e"
 
 # Terminal 1
-$parallel_terminal "MUJOCO_GL=egl ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=false mode:=position robocasa_layout:='G-shaped' robocasa_style:=Modern_1 use_rviz:=false use_cameras:=true map:=${HELLO_FLEET_PATH}/maps/gshaped_modern1_robocasa.yaml" &
+$parallel_terminal "MUJOCO_GL=egl ros2 launch stretch_simulation stretch_mujoco_driver.launch.py use_mujoco_viewer:=false mode:=position robocasa_layout:='G-shaped' robocasa_style:=Modern_1 use_rviz:=false use_cameras:=true map:=~/ament_ws/src/stretch_ros2/stretch_simulation/maps/gshaped_modern1_robocasa.yaml" &
 
 # Terminal 2
 $parallel_terminal "ros2 launch stretch_simulation stretch_simulation_web_interface.launch.py" &
@@ -186,9 +184,13 @@ You can also set the node's argument`arguments=["--ros-args", "--log-level", "de
 
 You should go through all the sections in Getting Started to run this package correctly.
 
+> NOTE: If you are running on a Stretch robot, you can skip to [Setting up Mujoco](#setting-up-mujoco-15-minutes)
+
 Estimated install time: `~1-2hrs`.
 
 ### Install ROS2 Humble (10 minutes)
+
+> NOTE: Please do not run this step if you are running on a Stretch robot.
 
 The commands below are taken from this guide: https://docs.ros.org/en/humble/index.html
 
@@ -210,7 +212,11 @@ source /opt/ros/humble/setup.bash
 
 ### Setting up `ament_ws` (1 hour)
 
+> NOTE: Please do not run this step if you are running on a Stretch robot.
+
 If you are not running this package on a robot NUC (which is _not_ [recommended](#system-requirements)), you will need to set up a ROS2 environment similar to the environment that ships with Stretch.
+
+Please run these commands to install the environment. This will delete the existing `~/ament_ws` directory, so please proceed with caution.
 
 First you should install `NodeJS>=21.x` and `npm` if you don't already have them:
 ```shell
@@ -218,35 +224,9 @@ curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
 
-Please run these commands to install the environment. This will delete the existing `~/ament_ws` directory, so please proceed with caution.
-
 ```sh
-cd stretch_simulation
 
-git clone https://github.com/hello-robot/stretch_install.git --depth 1 ~/stretch_install
-
-unzip ubuntu2204_ament_ws_files.zip
-
-sudo cp -r ./ubuntu2204_ament_ws_files/etc/* /etc/
-cp -r ./ubuntu2204_ament_ws_files/stretch_user ~/
-
-bash ./ubuntu2204_ament_ws_files/stretch_create_ament_workspace.sh
-
-source ~/.bashrc # source .bashrc to get HELLO_FLEET_PATH
-
-rm -rf ./ubuntu2204_ament_ws_files
-
-cd ~/ament_ws
-
-sudo rosdep init
-
-rosdep update
-
-rosdep install --rosdistro=humble -iy --skip-keys="librealsense2 realsense2_camera" --from-paths src
-
-colcon build
-
-source ./install/setup.bash
+curl -sL https://raw.githubusercontent.com/hello-robot/stretch_ros2/refs/heads/humble/stretch_simulation/stretch_create_ament_workspace.sh > /tmp/stretch_create_ament_workspace.sh && sudo bash /tmp/stretch_create_ament_workspace.sh
 
 # Optional: add source install/setup.bash to .bashrc:
 echo 'source ~/ament_ws/install/setup.bash' >> ~/.bashrc
@@ -284,7 +264,7 @@ export_urdf_license_template.md  stretch_d405_sg3.xacro  stretch_description_SE3
 export_urdf.sh                   stretch_d435i.xacro     stretch_description.xacro                                     stretch_respeaker.xacro           stretch_wrist_dw3.xacro
 ```
 
-### Mujoco (15 minutes)
+### Setting up Mujoco (15 minutes)
 
 This ROS 2 package includes nodes and launch files that use the [`stretch_mujoco`](https://github.com/hello-robot/stretch_mujoco) repo to interface with Mujoco.
 
@@ -305,34 +285,11 @@ colcon build
 ros2 launch stretch_simulation stretch_mujoco_driver.launch.py mode:=navigation
 ```
 
-> Note: If you see this error: `AttributeError: module 'OpenGL.EGL' has no attribute 'EGLDeviceEXT'`, please try this command: `pip install PyOpenGL==3.1.4`
-
 ### Setting up Stretch Web Teleop
 
 Make sure you've already completed everything under [Setting up `ament_ws`](#setting-up-ament_ws) above.
 
-Then run the following:
-
-```shell
-cd ~/ament_ws/src/stretch_web_teleop
-
-# Install both npm and pip dependencies:
-npm install --legacy-peer-deps
-pip install -r ./requirements.txt 
-
-# Install Playwright:
-npx install playwright
-sudo npx playwright install-deps 
-
-# Create a certificate for SSL/HTTPS:
-openssl req -new -x509 -nodes -out certificates/server.crt -keyout certificates/server.key
-
-touch .env
-echo certfile=server.crt >> .env
-echo keyfile=server.key >> .env
-```
-
-Some more steps to get IK for gripper working:
+Run the following commands to get IK for the gripper working:
 ```shell
 cd stretch_description/urdf
 cp ./stretch_uncalibrated.urdf stretch.urdf
