@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>stretch_simulation</name>
+  <version>0.1.0</version>
+  <description>Stretch Simulation with ROS2</description>
+  <maintainer email="support@hello-robot.com">Hello Robot Inc.</maintainer>
+  <license>Apache License 2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>actionlib_msgs</depend>
+  <depend>control_msgs</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>diagnostic_updater</depend>
+  <depend>geometry_msgs</depend>
+  <depend>hello_helpers</depend>
+  <depend>stretch_core</depend>
+  <depend>nav_msgs</depend>
+  <depend>python-transforms3d-pip</depend>
+  <depend>trajectory_msgs</depend>
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>sensor_msgs_py</depend>
+  <depend>std_srvs</depend>
+  <depend>tf_transformations</depend>
+  <depend>tf2_ros</depend>
+  <depend>laser_filters</depend>
+  <depend>rplidar_ros</depend>
+  <depend>xterm</depend>
+
+  <exec_depend>diagnostic_aggregator</exec_depend>
+  <!-- Temporarily Disabled (see https://github.com/ros-perception/laser_filters/issues/132)
+       exec_depend>laser_filters</exec_depend -->
+  <exec_depend>joy</exec_depend>
+  <exec_depend>teleop_twist_joy</exec_depend>
+  <exec_depend>teleop_twist_keyboard</exec_depend>
+  <exec_depend>realsense2_camera</exec_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+  <test_depend>launch_pytest</test_depend>
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

@@ -1,0 +1,6 @@
+image: mujoco_open_world_table.pgm
+resolution: 0.05  # 5 cm per pixel
+origin: [-1.2, -1.2, 0.0]  # bottom-left corner of the map
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196
