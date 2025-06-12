@@ -39,4 +39,5 @@ stretch_funmap          | [LGPLv3](https://www.gnu.org/licenses/lgpl-3.0.en.html
 stretch_nav2            | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 stretch_octomap         | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 stretch_rtabmap         | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+stretch_simulation      | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 hello_helpers           | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
