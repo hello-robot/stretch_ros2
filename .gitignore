@@ -6,6 +6,7 @@
 # Python related
 *.pyc
 *.so
+__pycache__/
 
 # Stretch related
 stretch_description.srdf
@@ -82,3 +83,11 @@ qtcreator-*
 
 # Catkin custom files
 CATKIN_IGNORE
+
+# Colcon generated folders and files that we shouldn't check in
+build/
+install/
+log/
+
+# VSCode
+.vscode/

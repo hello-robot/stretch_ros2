@@ -19,6 +19,7 @@ Resource                                                     | Description
 [stretch_nav2](stretch_nav2/README.md)                       | Navigation stack Nav2, including slam_toolbox, AMCL and Simple Commander
 [stretch_octomap](stretch_octomap/README.md)                 | Mapping using OctoMap: efficient probabilistic 3D Mapping based on Octrees
 [stretch_rtabmap](stretch_rtabmap/README.md)                 | Navigation & Mapping using Real-Time Appearance-Based Mapping (RTAB-Map)
+[stretch_simulation](stretch_simulation/README.md)           | Simulation of Stretch in ROS2
 [hello_helpers](hello_helpers/README.md)                     | Miscellaneous helper code used across the stretch_ros2 repository
 
 ## Licenses
@@ -38,4 +39,5 @@ stretch_funmap          | [LGPLv3](https://www.gnu.org/licenses/lgpl-3.0.en.html
 stretch_nav2            | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 stretch_octomap         | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 stretch_rtabmap         | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+stretch_simulation      | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 hello_helpers           | [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)

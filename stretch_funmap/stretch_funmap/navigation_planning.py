@@ -3,6 +3,8 @@
 import cv2
 import numpy as np
 import scipy.ndimage as nd
+import heapq
+import random
 
 from . import cython_min_cost_path as cm
 from .numba_check_line_path import numba_check_line_path
@@ -966,3 +968,248 @@ def chop_path_at_location(pix_path, best_stopping_location):
     return new_path
     
 
+def plan_a_path_astar(max_height_im, robot_xya_pix, end_xy_pix, floor_mask=None, dynamic_obstacles=None):
+    """
+    A* path planning implementation as an alternative to plan_a_path.
+    Uses a priority queue to find a minimum cost path from start to goal.
+    If dynamic_obstacles is provided, it is a list of (x, y) pixel coordinates representing obstacles.
+    """
+    m_per_pix = max_height_im.m_per_pix
+    robot_x_pix = int(round(robot_xya_pix[0]))
+    robot_y_pix = int(round(robot_xya_pix[1]))
+    robot_ang_rad = robot_xya_pix[2]
+    start_xy = np.array([robot_x_pix, robot_y_pix])
+    end_xy_pix = np.int64(np.round(np.array(end_xy_pix)))
+
+    easy_distance_map, traversable_mask = distance_map(max_height_im, robot_xya_pix, floor_mask=floor_mask)
+    if (easy_distance_map is None) or (traversable_mask is None):
+        return None, 'Failed to create distance map and traversable mask.'
+
+    # Define a grid for A* search
+    grid = np.ones_like(easy_distance_map, dtype=bool)
+    if dynamic_obstacles is not None:
+        for obs_x, obs_y in dynamic_obstacles:
+            grid[obs_y, obs_x] = False
+
+    # Define heuristic function (Euclidean distance)
+    def heuristic(a, b):
+        return np.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
+
+    # Define neighbors (8-connected grid)
+    def get_neighbors(node):
+        x, y = node
+        for dx in [-1, 0, 1]:
+            for dy in [-1, 0, 1]:
+                if dx == 0 and dy == 0:
+                    continue
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < grid.shape[1] and 0 <= ny < grid.shape[0] and grid[ny, nx]:
+                    yield (nx, ny)
+
+    # A* search
+    start = tuple(start_xy)
+    goal = tuple(end_xy_pix)
+    frontier = []
+    heapq.heappush(frontier, (0, start))
+    came_from = {start: None}
+    cost_so_far = {start: 0}
+
+    while frontier:
+        current_cost, current = heapq.heappop(frontier)
+        if current == goal:
+            break
+
+        for next_node in get_neighbors(current):
+            new_cost = cost_so_far[current] + 1
+            if next_node not in cost_so_far or new_cost < cost_so_far[next_node]:
+                cost_so_far[next_node] = new_cost
+                priority = new_cost + heuristic(goal, next_node)
+                heapq.heappush(frontier, (priority, next_node))
+                came_from[next_node] = current
+
+    if goal not in came_from:
+        return None, 'No path found using A*.'
+
+    # Reconstruct path
+    path = []
+    current = goal
+    while current is not None:
+        path.append(current)
+        current = came_from[current]
+    path.reverse()
+
+    # Approximate the pixel path with a line segment path
+    max_error_m = 0.05
+    line_segment_path = approximate_with_line_segment_path(path, max_error_m, m_per_pix, verbose=False)
+    message = 'A* path found!'
+    return line_segment_path, message
+
+
+def plan_a_path_rrt(max_height_im, robot_xya_pix, end_xy_pix, floor_mask=None, dynamic_obstacles=None, max_iterations=1000, step_size=10):
+    """
+    RRT (Rapidly-exploring Random Tree) path planning implementation as an alternative to plan_a_path.
+    Samples random points in the traversable area and builds a tree to find a path from start to goal.
+    If dynamic_obstacles is provided, it is a list of (x, y) pixel coordinates representing obstacles.
+    """
+    m_per_pix = max_height_im.m_per_pix
+    robot_x_pix = int(round(robot_xya_pix[0]))
+    robot_y_pix = int(round(robot_xya_pix[1]))
+    robot_ang_rad = robot_xya_pix[2]
+    start_xy = np.array([robot_x_pix, robot_y_pix])
+    end_xy_pix = np.int64(np.round(np.array(end_xy_pix)))
+
+    easy_distance_map, traversable_mask = distance_map(max_height_im, robot_xya_pix, floor_mask=floor_mask)
+    if (easy_distance_map is None) or (traversable_mask is None):
+        return None, 'Failed to create distance map and traversable mask.'
+
+    # Define a grid for RRT search
+    grid = np.ones_like(easy_distance_map, dtype=bool)
+    if dynamic_obstacles is not None:
+        for obs_x, obs_y in dynamic_obstacles:
+            grid[obs_y, obs_x] = False
+
+    # Define a function to check if a point is in the traversable area
+    def is_traversable(point):
+        x, y = point
+        return 0 <= x < grid.shape[1] and 0 <= y < grid.shape[0] and grid[y, x]
+
+    # Define a function to find the nearest node in the tree
+    def nearest_node(tree, point):
+        return min(tree, key=lambda node: np.sqrt((node[0] - point[0])**2 + (node[1] - point[1])**2))
+
+    # Define a function to steer towards a point
+    def steer(from_node, to_point, step_size):
+        direction = np.array(to_point) - np.array(from_node)
+        norm = np.linalg.norm(direction)
+        if norm < step_size:
+            return to_point
+        return tuple(np.array(from_node) + step_size * direction / norm)
+
+    # Initialize the tree with the start node
+    tree = {tuple(start_xy): None}
+    goal = tuple(end_xy_pix)
+
+    for _ in range(max_iterations):
+        # Sample a random point
+        if random.random() < 0.1:  # 10% chance to sample the goal
+            sample = goal
+        else:
+            x = random.randint(0, grid.shape[1] - 1)
+            y = random.randint(0, grid.shape[0] - 1)
+            sample = (x, y)
+
+        # Find the nearest node in the tree
+        nearest = nearest_node(tree, sample)
+
+        # Steer towards the sample
+        new_node = steer(nearest, sample, step_size)
+        new_node = (int(new_node[0]), int(new_node[1]))
+
+        # Check if the new node is traversable
+        if is_traversable(new_node):
+            tree[new_node] = nearest
+
+            # Check if the goal is reached
+            if np.sqrt((new_node[0] - goal[0])**2 + (new_node[1] - goal[1])**2) < step_size:
+                tree[goal] = new_node
+                break
+
+    if goal not in tree:
+        return None, 'No path found using RRT.'
+
+    # Reconstruct path
+    path = []
+    current = goal
+    while current is not None:
+        path.append(current)
+        current = tree[current]
+    path.reverse()
+
+    # Approximate the pixel path with a line segment path
+    max_error_m = 0.05
+    line_segment_path = approximate_with_line_segment_path(path, max_error_m, m_per_pix, verbose=False)
+    message = 'RRT path found!'
+    return line_segment_path, message
+
+
+def smooth_path(path, window_size=3):
+    """
+    Smooths a path by applying a moving average filter to the path vertices.
+    This can result in a smoother and more efficient path.
+    """
+    if len(path) < window_size:
+        return path
+
+    smoothed_path = []
+    for i in range(len(path)):
+        start = max(0, i - window_size // 2)
+        end = min(len(path), i + window_size // 2 + 1)
+        window = path[start:end]
+        avg_x = sum(p[0] for p in window) / len(window)
+        avg_y = sum(p[1] for p in window) / len(window)
+        smoothed_path.append((avg_x, avg_y))
+
+    return smoothed_path
+
+
+def find_good_scan_candidates_improved(max_height_im, robot_xya_pix, floor_mask, min_distance=50, max_distance=200, min_obstacle_distance=30, min_coverage_overlap=0.3):
+    """
+    Enhanced version of find_good_scan_candidates that considers additional factors:
+    - Distance to obstacles
+    - Coverage overlap with existing scans
+    - Exploration potential
+    """
+    height, width = max_height_im.shape
+    candidates = []
+
+    # Create a coverage map to track explored areas
+    coverage_map = np.zeros((height, width), dtype=np.uint8)
+    for y in range(height):
+        for x in range(width):
+            if floor_mask[y, x]:
+                # Check distance to obstacles
+                obstacle_dist = np.inf
+                for dy in range(-min_obstacle_distance, min_obstacle_distance + 1):
+                    for dx in range(-min_obstacle_distance, min_obstacle_distance + 1):
+                        ny, nx = y + dy, x + dx
+                        if 0 <= ny < height and 0 <= nx < width:
+                            if not floor_mask[ny, nx]:
+                                dist = np.sqrt(dx*dx + dy*dy)
+                                obstacle_dist = min(obstacle_dist, dist)
+
+                # Check distance to robot
+                robot_dist = np.sqrt((x - robot_xya_pix[0])**2 + (y - robot_xya_pix[1])**2)
+
+                # Check coverage overlap
+                overlap = 0
+                for dy in range(-10, 11):
+                    for dx in range(-10, 11):
+                        ny, nx = y + dy, x + dx
+                        if 0 <= ny < height and 0 <= nx < width:
+                            if coverage_map[ny, nx]:
+                                overlap += 1
+
+                # Calculate exploration potential
+                exploration_potential = 0
+                for dy in range(-20, 21):
+                    for dx in range(-20, 21):
+                        ny, nx = y + dy, x + dx
+                        if 0 <= ny < height and 0 <= nx < width:
+                            if floor_mask[ny, nx] and not coverage_map[ny, nx]:
+                                exploration_potential += 1
+
+                # Score the candidate
+                if (min_distance <= robot_dist <= max_distance and
+                    obstacle_dist >= min_obstacle_distance and
+                    overlap / 441 <= min_coverage_overlap):  # 441 = 21x21 window
+                    score = (exploration_potential * 0.5 +
+                            (max_distance - robot_dist) * 0.3 +
+                            obstacle_dist * 0.2)
+                    candidates.append((x, y, score))
+
+    # Sort candidates by score
+    candidates.sort(key=lambda x: x[2], reverse=True)
+    return [(x, y) for x, y, _ in candidates]
+
+        
+            

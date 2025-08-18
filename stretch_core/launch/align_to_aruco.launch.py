@@ -11,7 +11,7 @@ def generate_launch_description():
 
     stretch_driver = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([str(stretch_core_path), '/launch/stretch_driver.launch.py']),
-        launch_arguments={'mode': 'trajectory', 'broadcast_odom_tf': 'False', 'fail_out_of_range_goal': 'True'}.items(),
+        launch_arguments={'mode': 'position', 'broadcast_odom_tf': 'False', 'fail_out_of_range_goal': 'True'}.items(),
     )
 
     d435i_launch = IncludeLaunchDescription(
@@ -30,7 +30,10 @@ def generate_launch_description():
         package='stretch_core',
         executable='align_to_aruco',
         output='screen',
-        )
+        # base_right is ID 131, with a marker size of 47mm and Dictionary size of 6x6
+        # If you need to create this marker, please create it at https://chev.me/arucogen/ and print it
+        parameters=[{'aruco_tag_name': 'base_right'}],
+    )
 
     rviz_config_path = os.path.join(stretch_core_path, 'rviz', 'stretch_simple_test.rviz')
 

@@ -140,7 +140,7 @@ class WristYawCommandGroup(SimpleCommandGroup):
 
 class WristPitchCommandGroup(SimpleCommandGroup):
     def __init__(self, range_rad=None, node=None):
-        SimpleCommandGroup.__init__(self, 'joint_wrist_pitch', range_rad, node=node)
+        SimpleCommandGroup.__init__(self, 'joint_wrist_pitch', range_rad, acceptable_joint_error=0.03, node=node)
 
     def update_joint_range(self, joint_range, node=None):
         if joint_range is not None:
@@ -646,7 +646,10 @@ class MobileBaseCommandGroup(SimpleCommandGroup):
 
         if self.active:
             if self.active_translate_mobile_base or self.active_rotate_mobile_base:
-                (_, mobile_base_error_m), (_, mobile_base_error_rad) = self.update_execution(robot_status)
+                ret = self.update_execution(robot_status)
+                if ret is None:
+                    return
+                (_, mobile_base_error_m), (_, mobile_base_error_rad) = ret
                 if mobile_base_error_m is not None:
                     robot.base.translate_by(mobile_base_error_m,
                                             v_m=self.goal_translate_mobile_base['velocity'],
@@ -708,6 +711,8 @@ class MobileBaseCommandGroup(SimpleCommandGroup):
         if self.active:
             if self.active_translate_mobile_base or self.active_rotate_mobile_base:
                 if self.active_translate_mobile_base:
+                    if self.error_translate_mobile_base_m is None:
+                        return True
                     reached = (abs(self.error_translate_mobile_base_m) < self.acceptable_mobile_base_error_m)
                     if not (abs(self.error_translate_mobile_base_m) < self.excellent_mobile_base_error_m):
                         # Use velocity to help decide when the low-level command has been finished

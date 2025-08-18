@@ -1,15 +1,18 @@
 #! /usr/bin/env python3
 
-import importlib
 import time
 import copy
 import pickle
-import numpy as np
 from pathlib import Path
 from serial import SerialException
 import stretch_body.hello_utils as hu
 from hello_helpers.hello_misc import *
+from hello_helpers.simple_command_group import SimpleCommandGroup
 from .trajectory_components import get_trajectory_components
+
+from rclpy.action.server import ServerGoalHandle
+
+from control_msgs.action import FollowJointTrajectory
 
 import threading
 
@@ -18,7 +21,7 @@ from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.duration import Duration
 
 from control_msgs.action import FollowJointTrajectory
-from trajectory_msgs.msg import JointTrajectoryPoint
+from trajectory_msgs.msg import JointTrajectoryPoint, MultiDOFJointTrajectory, JointTrajectory
 
 from .command_groups import HeadPanCommandGroup, HeadTiltCommandGroup, \
                            WristYawCommandGroup, WristPitchCommandGroup, WristRollCommandGroup, \
@@ -27,9 +30,14 @@ from .command_groups import HeadPanCommandGroup, HeadTiltCommandGroup, \
 
 import hello_helpers.hello_misc as hm
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from stretch_core.stretch_driver import StretchDriver
+
 class JointTrajectoryAction:
 
-    def __init__(self, node, action_server_rate_hz):
+    def __init__(self, node: "StretchDriver", action_server_rate_hz:int):
         self.node = node
         self._goal_handle = None
         self._goal_lock = threading.Lock()
@@ -60,13 +68,16 @@ class JointTrajectoryAction:
         self.arm_cg = ArmCommandGroup(node=self.node)
         self.lift_cg = LiftCommandGroup(node=self.node)
         self.mobile_base_cg = MobileBaseCommandGroup(node=self.node)
-        self.command_groups = [self.arm_cg, self.lift_cg, self.mobile_base_cg, self.head_pan_cg,
+        
+        command_groups = [self.arm_cg, self.lift_cg, self.mobile_base_cg, self.head_pan_cg,
                                self.head_tilt_cg, self.wrist_yaw_cg, self.wrist_pitch_cg, self.wrist_roll_cg, self.gripper_cg]
-        self.command_groups = [cg for cg in self.command_groups if cg is not None]
+        self.command_groups: list[SimpleCommandGroup] = [cg for cg in command_groups if cg is not None]
 
         # Trajectory mode init
         self.joints = get_trajectory_components(self.node.robot)
-        self.node.robot._update_trajectory_dynamixel = lambda : None
+
+        self.node.robot._update_trajectory_head_dynamixel = lambda : None
+        self.node.robot._update_trajectory_end_of_arm_dynamixel = lambda : None
         self.node.robot._update_trajectory_non_dynamixel = lambda : None
 
         self.timeout = 0.2 # seconds
@@ -74,7 +85,7 @@ class JointTrajectoryAction:
 
         self.latest_goal_id = 0
 
-    def goal_cb(self, goal_request):
+    def goal_cb(self, goal_request: FollowJointTrajectory.Goal):
         """Accept or reject a client request to begin an action."""
         self.node.get_logger().info('Received goal request')
         new_goal_time = self.node.get_clock().now().to_msg()
@@ -86,7 +97,7 @@ class JointTrajectoryAction:
         self.last_goal_time = self.node.get_clock().now().to_msg()
         return GoalResponse.ACCEPT
 
-    def handle_accepted_cb(self, goal_handle):
+    def handle_accepted_cb(self, goal_handle:ServerGoalHandle):
         with self._goal_lock:
             # This server only allows one goal at a time
             if self._goal_handle is not None and self._goal_handle.is_active:
@@ -101,9 +112,9 @@ class JointTrajectoryAction:
         # Launch an asynch coroutine to execute the goal
         goal_handle.execute()
     
-    def execute_cb(self, goal_handle):
+    def execute_cb(self, goal_handle:ServerGoalHandle):
         # save goal to log directory
-        goal = goal_handle.request
+        goal: FollowJointTrajectory.Goal = goal_handle.request
         goal_fpath = self.debug_dir / f'goal_{hu.create_time_string()}.pickle'
         with goal_fpath.open('wb') as s:
             pickle.dump(goal, s)
@@ -214,6 +225,7 @@ class JointTrajectoryAction:
                     
                     # Check if a premption request has been received.
                     with self.node.robot_stop_lock:
+                        #TODO: SA: node.stop_the_robot is not defined.
                         if self.node.stop_the_robot or goal_id != self.latest_goal_id:
                             self.node.get_logger().info("{0} joint_traj action: PREEMPTION REQUESTED, but not stopping current motions to allow smooth interpolation between old and new commands.".format(self.node.node_name))
                             self.node.stop_the_robot = False
@@ -224,13 +236,12 @@ class JointTrajectoryAction:
                     robot_status = self.node.robot.get_status()
                     named_errors = [c.update_execution(robot_status, contact_detected_callback=self.contact_detected_callback)
                                     for c in self.command_groups]
-                    # It's not clear how this could ever happen. The
-                    # groups in command_groups.py seem to return
-                    # (self.name, self.error) or None, rather than True.
+
+                    # One of the elements in named_errors will
+                    # be True when guarded contact is detected
                     if any(ret == True for ret in named_errors):
                         self.node.robot_mode_rwlock.release_read()
-                        # TODO: Check when this condtion is met
-                        return self.error_callback(goal_handle, 100, "--")
+                        return self.error_callback(goal_handle, 100, self._contact_detected_err_str)
 
                     self.feedback_callback(goal_handle, desired_point=point, named_errors=named_errors)
                     goals_reached = [c.goal_reached() for c in self.command_groups]
@@ -278,7 +289,7 @@ class JointTrajectoryAction:
             goal_tolerance_dict = {tol.name: tol for tol in goal.goal_tolerance}
 
             # load and start trajectory
-            trajectories = [goal.trajectory, goal.multi_dof_trajectory]
+            trajectories: list[JointTrajectory|MultiDOFJointTrajectory] = [goal.trajectory, goal.multi_dof_trajectory]
             trajectories = [trajectory for trajectory in trajectories if len(trajectory.points) >= 2]
             if len(trajectories) == 0:
                 return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_JOINTS, 'no trajectory in goal contains enough waypoints')
@@ -294,7 +305,9 @@ class JointTrajectoryAction:
                         self.joints[joint_name].add_waypoints(trajectory.points, joint_index)
                     except KeyError as e:
                         return self.error_callback(goal_handle, FollowJointTrajectory.Result.INVALID_GOAL, str(e))
-            if not self.node.robot.follow_trajectory():
+            if not self.node.robot.follow_trajectory(
+                move_to_start_point=not self.node.fail_if_motor_initial_point_is_not_trajectory_first_point
+                ):
                 self.node.robot.stop_trajectory()
                 return self.error_callback(goal_handle, -100, 'hardware failed to start trajectory')
 
@@ -331,6 +344,7 @@ class JointTrajectoryAction:
 
 
     def contact_detected_callback(self, err_str):
+        self._contact_detected_err_str = err_str
         self.node.get_logger().warn(err_str)
     
     def invalid_joints_callback(self, err_str):
@@ -339,7 +353,7 @@ class JointTrajectoryAction:
     def invalid_goal_callback(self, err_str):
         self.node.get_logger().warn(err_str)
     
-    def error_callback(self, goal_handle, error_code, error_str):
+    def error_callback(self, goal_handle:ServerGoalHandle, error_code, error_str):
         print("-------------------------------------------")
         print("Errored goal")
         self.node.get_logger().info("{0} joint_traj action: {1}".format(self.node.node_name, error_str))
@@ -349,7 +363,7 @@ class JointTrajectoryAction:
         goal_handle.abort()
         return result
 
-    def cancel_cb(self, goal_handle):
+    def cancel_cb(self, goal_handle:ServerGoalHandle):
         """Accept or reject a client request to cancel an action.
         """
         self.node.robot_mode_rwlock.acquire_read()
@@ -376,8 +390,8 @@ class JointTrajectoryAction:
 
         return CancelResponse.ACCEPT
 
-    def feedback_callback(self, goal_handle, desired_point=None, named_errors=None, start_time=None):
-        goal = goal_handle.request
+    def feedback_callback(self, goal_handle: ServerGoalHandle, desired_point=None, named_errors=None, start_time=None):
+        goal: FollowJointTrajectory.Goal = goal_handle.request
         feedback = FollowJointTrajectory.Feedback()
         commanded_joint_names = goal.trajectory.joint_names
 
@@ -418,7 +432,7 @@ class JointTrajectoryAction:
         feedback.header.stamp = self.node.get_clock().now().to_msg()
         goal_handle.publish_feedback(feedback)
 
-    def success_callback(self, goal_handle, success_str):
+    def success_callback(self, goal_handle: ServerGoalHandle, success_str):
         print("-------------------------------------------")
         print("Finished goal")
         self.node.get_logger().info("{0} joint_traj action: {1}".format(self.node.node_name, success_str))
@@ -443,3 +457,28 @@ class JointTrajectoryAction:
         self.node.robot.base.left_wheel.pull_status()
         self.node.robot.base.right_wheel.pull_status()
         self.node.robot.base.update_trajectory()
+
+    def _toggle_stepper_sync_for_trajectory_mode(self, is_enable: bool):
+        """
+        This method enables or disables stepper sync for the motors that are used in Trajectory Mode.
+        """
+        if is_enable:
+            self.node.robot.lift.motor.enable_sync_mode()
+            self.node.robot.arm.motor.enable_sync_mode()
+            self.node.robot.base.left_wheel.enable_sync_mode()
+            self.node.robot.base.right_wheel.enable_sync_mode()
+        else:
+            self.node.robot.lift.motor.disable_sync_mode()
+            self.node.robot.arm.motor.disable_sync_mode()
+            self.node.robot.base.left_wheel.disable_sync_mode()
+            self.node.robot.base.right_wheel.disable_sync_mode()
+
+        self.node.robot.lift.push_command()
+        self.node.robot.arm.push_command()
+        self.node.robot.base.push_command()
+    
+    def enable_stepper_sync_for_trajectory_mode(self):
+        self._toggle_stepper_sync_for_trajectory_mode(is_enable=True)
+        
+    def disable_stepper_sync_for_trajectory_mode(self):
+        self._toggle_stepper_sync_for_trajectory_mode(is_enable=False)
