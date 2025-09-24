@@ -13,6 +13,12 @@
 /**:
   ros__parameters:
     aruco_marker_info:
+      #user 99:dhruvi
+      '99':
+        length_mm: 70 #360 #255 #200  #88
+        use_rgb_only: False
+        name: 'handover'
+        link: None
       '130':
         length_mm: 47
         use_rgb_only: False
