@@ -536,7 +536,7 @@ class ArucoMarkerCollection:
         self.show_debug_images = show_debug_images
         
         self.marker_info = marker_info
-        self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
+        self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
         self.aruco_detection_parameters =  aruco.DetectorParameters()
         # Apparently available in OpenCV 3.4.1, but not OpenCV 3.2.0.
         self.aruco_detection_parameters.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX

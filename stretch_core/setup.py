@@ -30,7 +30,8 @@ setup(
             'avoider = stretch_core.avoider:main',
             'align_to_aruco = stretch_core.align_to_aruco:main',
             'usb_cam = stretch_core.usb_cam:main',
-            'remote_gamepad = stretch_core.remote_gamepad:main'
+            'remote_gamepad = stretch_core.remote_gamepad:main',
+            'aruco_tag_locator = stretch_core.aruco_tag_locator:main',
         ],
     },
 )

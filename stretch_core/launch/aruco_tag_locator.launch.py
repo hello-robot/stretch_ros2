@@ -35,11 +35,11 @@ def generate_launch_description():
                stretch_core_path, 'launch'),
                '/stretch_realsense.launch.py'])
           ) """
-    d435i_launch = IncludeLaunchDescription(
-          PythonLaunchDescriptionSource([os.path.join(
-               stretch_core_path, 'launch'),
-               '/d435i_high_resolution.launch.py'])
-          )
+    #d435i_launch = IncludeLaunchDescription(
+    #      PythonLaunchDescriptionSource([os.path.join(
+    #           stretch_core_path, 'launch'),
+    #           '/d435i_high_resolution.launch.py'])
+    #      )
     
     stretch_funmap = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
@@ -73,7 +73,7 @@ def generate_launch_description():
 	
     return LaunchDescription([
     stretch_driver,
-    d435i_launch,
+    #d435i_launch,
     stretch_funmap,
     stretch_aruco,
     rviz_node,

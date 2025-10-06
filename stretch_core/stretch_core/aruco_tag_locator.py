@@ -58,7 +58,7 @@ class LocateArUcoTag(hm.HelloNode):
         self.tilt_num_steps = 3
         self.tilt_step_size = pi/16
 
-        self.rot_vel = 0.5 # radians/sec
+        self.rot_vel = 0.25 # radians/sec
 
     # to move regardless of detection
     """ def move_to_handover_pose(self):   
