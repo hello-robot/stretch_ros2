@@ -297,14 +297,6 @@ If you encounter OpenGL errors:
 docker run -it --rm --gpus all -e MUJOCO_GL=egl ...
 ```
 
-### Interactive Setup Script
-
-The Mujoco setup script is interactive. If you need to customize the robocasa installation, you can:
-
-1. Run the container interactively
-2. Manually run the setup script: `sh ~/ament_ws/src/stretch_ros2/stretch_simulation/stretch_mujoco_driver/setup.sh`
-3. Commit the changes to a new image: `docker commit <container_id> stretch-simulation:custom`
-
 ## 8. Performance Tips
 
 - Use `--shm-size=2g` or higher if you encounter shared memory issues

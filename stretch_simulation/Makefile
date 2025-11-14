@@ -26,11 +26,6 @@ help:
 	@echo "  make logs                    View container logs"
 	@echo "  make clean                   Remove container and image"
 	@echo "  make clean-all               Remove everything including data"
-	@echo ""
-	@echo "Launch Commands:"
-	@echo "  make launch-navigation       Launch with navigation mode"
-	@echo "  make launch-cameras          Launch with cameras enabled"
-	@echo "  make launch-premapped        Launch pre-mapped G-shaped scene"
 
 install-nvidia-toolkit:
 	@echo "Installing Nvidia Container Toolkit..."
