@@ -2,10 +2,10 @@
 
 set -e
 
-if [[ $EUID = 0 ]]; then
-   echo "Please run this script without sudo." 
+if [[ $EUID = 0 ]] && [[ -z "$DOCKER_BUILD" ]]; then
+   echo "Please run this script without sudo."
    exit 1
-fi 
+fi
 
 
 if [ ! -d  "$HOME/stretch_install" ]; then
@@ -84,46 +84,60 @@ fi
 source /opt/ros/humble/setup.bash
 
 if [[ -d ~/ament_ws ]]; then
-    echo "You are about to delete and replace the existing ament workspace. If you have any personal data in the workspace, please create a back up before proceeding."
-    prompt_yes_no(){
-    read -p "Do you want to continue? Press (y/n for yes/no): " x
-    if [ $x = "n" ]; then
-            echo "Exiting the script."
-            exit 1
-    elif [ $x = "y" ]; then
-            echo "Continuing to create a new ament workspace."
-    else
-        echo "Press 'y' for yes or 'n' for no."
+    if [[ -z "$DOCKER_BUILD" ]]; then
+        echo "You are about to delete and replace the existing ament workspace. If you have any personal data in the workspace, please create a back up before proceeding."
+        prompt_yes_no(){
+        read -p "Do you want to continue? Press (y/n for yes/no): " x
+        if [ $x = "n" ]; then
+                echo "Exiting the script."
+                exit 1
+        elif [ $x = "y" ]; then
+                echo "Continuing to create a new ament workspace."
+        else
+            echo "Press 'y' for yes or 'n' for no."
+            prompt_yes_no
+        fi
+        }
         prompt_yes_no
+    else
+        echo "The DOCKER_BUILD flag is enabled, creating a new ament workspace."
     fi
-    }
-    prompt_yes_no
 fi
 
 echo "Downgrade to numpy 1.26.4..."
 pip3 install numpy==1.26.4
 
 export PATH=${PATH}:~/.local/bin
-echo "Updating rosdep indices..."
-rosdep update --include-eol-distros
 echo "Deleting ~/ament_ws if it already exists..."
 sudo rm -rf ~/ament_ws
 echo "Creating the workspace directory..."
 mkdir -p ~/ament_ws/src
+
+cd ~/ament_ws/
+echo "Initializing rosdep..."
+sudo rosdep init || true  # Don't fail if already initialized
+echo "Updating rosdep indices..."
+rosdep update --include-eol-distros
+
 echo "Cloning the workspace's packages..."
 cd ~/ament_ws/src
 vcs import --input ~/stretch_install/factory/22.04/stretch_ros2_humble.repos
 echo "Fetch ROS packages' dependencies (this might take a while)..."
+source /opt/ros/humble/setup.bash
 cd ~/ament_ws/
+echo "Updating apt-get package lists..."
+sudo apt-get update -y
+
 # The rosdep flags below have been chosen very carefully. Please review the docs before changing them.
 # https://docs.ros.org/en/independent/api/rosdep/html/commands.html
+echo "Doing rosdep install"
 rosdep install --rosdistro=humble -iy --skip-keys="librealsense2 realsense2_camera" --from-paths src
-sudo apt remove -y ros-humble-librealsense2 ros-humble-realsense2-camera ros-humble-realsense2-camera-msgs
-pip3 cache purge
+echo "Doing apt-get remove"
+sudo apt-get remove -y ros-humble-librealsense2 ros-humble-realsense2-camera ros-humble-realsense2-camera-msgs
 
 echo "Install web interface dependencies..."
 cd ~/ament_ws/src/stretch_web_teleop
-pip3 install -r requirements.txt
+pip3 install -r requirements.txt --ignore-installed
 npm install --force
 npx playwright install
 echo "Generating web interface certs..."
@@ -176,13 +190,15 @@ echo ""
 
 set -e
 
-sudo add-apt-repository ppa:sweptlaser/python3-pcl
-sudo apt update
-sudo apt install python3-pcl
+# Try to install python3-pcl from PPA, but don't fail if it's not available
+set +e
+sudo add-apt-repository ppa:sweptlaser/python3-pcl -y
+sudo apt-get update -y
+sudo apt-get install python3-pcl -y
+set -e
 
 cd $HOME/ament_ws
-sudo rosdep init
-rosdep update
+
 rosdep install --rosdistro=humble -iy --skip-keys="librealsense2 realsense2_camera" --from-paths src
 colcon build
 source ./install/setup.bash
