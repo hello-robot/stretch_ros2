@@ -33,7 +33,7 @@ make build
 make run
 ```
 
-After you have the container running, you can follow the [Common Usage Examples](#6-common-usage-examples) for commands to run the simulation.
+After you have the container running, you can follow the [main README](./README.md) for commands to run the simulation.
 
 If you would like to manually go through the setup steps, please follow the instructions starting at [Build the Docker Image](#3-build-the-docker-image).
 
