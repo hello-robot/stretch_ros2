@@ -253,14 +253,14 @@ class StretchMujocoDriver(Node):
             self.sim.move_to(Actuators.wrist_roll, qpos[Idx.WRIST_ROLL])
             self.sim.move_to(Actuators.head_pan, qpos[Idx.HEAD_PAN])
             self.sim.move_to(Actuators.head_tilt, qpos[Idx.HEAD_TILT])
-            if (
-                abs(qpos[Idx.BASE_TRANSLATE]) > 0.0
-                and abs(qpos[Idx.BASE_ROTATE]) > 0.0
-                and self.robot_mode != "position"
-            ):
+
+            is_base_translate_command =  abs(qpos[Idx.BASE_TRANSLATE]) > 0.0
+            is_base_rotate_command =  abs(qpos[Idx.BASE_ROTATE]) > 0.0
+            if self.robot_mode != "position" and ( is_base_translate_command or is_base_rotate_command):
                 self.get_logger().error(
-                    "Cannot move base in both translation and rotation at the same time in position mode"
+                    "Cannot set base position when not in position mode."
                 )
+                
             elif abs(qpos[Idx.BASE_TRANSLATE]) > 0.0 and self.robot_mode == "position":
                 self.sim.move_by(Actuators.base_translate, qpos[Idx.BASE_TRANSLATE])
             elif abs(qpos[Idx.BASE_ROTATE]) > 0.0 and self.robot_mode == "position":
@@ -285,15 +285,16 @@ class StretchMujocoDriver(Node):
                         f"{actuator} failed to move to {self.sim.data_proxies.get_command().move_to[actuator.name]}"
                     )
                 
-            for actuator in [
-                Actuators.base_translate,
-                Actuators.base_rotate,
-            ]:
-                succeeded = self.sim.wait_while_is_moving(actuator)
-                if not succeeded:
-                    raise Exception(
-                        f"{actuator} failed to move to {self.sim.data_proxies.get_command().move_to[actuator.name]}"
-                    )
+            if self.robot_mode == "position":
+                for actuator in [
+                    Actuators.base_translate,
+                    Actuators.base_rotate,
+                ]:
+                    succeeded = self.sim.wait_while_is_moving(actuator)
+                    if not succeeded:
+                        raise Exception(
+                            f"{actuator} failed to move to {self.sim.data_proxies.get_command().move_to[actuator.name]}"
+                        )
 
             self.get_logger().info(f"Moved to position qpos: {qpos}")
         except Exception as e:
