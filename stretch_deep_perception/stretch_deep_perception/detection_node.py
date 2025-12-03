@@ -89,7 +89,8 @@ class DetectionNode:
             cv2.imwrite('./output_images/deep_learning_output_' + str(self.image_count).zfill(4) + '.png', output_image)
 
         if output_image is not None:
-            output_image = ros2_numpy.msgify(Image, output_image, encoding='rgb8')
+            output_image = cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB)
+            output_image = ros2_numpy.msgify(Image, output_image, encoding='rgb8')  
             if output_image is not None:
                 self.visualize_object_detections_pub.publish(output_image)
 
