@@ -42,8 +42,18 @@ def main():
 
     # Copy the stretch_uncalibrated.urdf in share directory as well
     uncalibrated_urdf_path = os.path.join(get_package_share_directory('stretch_description'), 'urdf', 'stretch_uncalibrated.urdf')
-    bashCommand = "cp {0} {1}".format(test_filepath, uncalibrated_urdf_path)
-    process = run_cmd(bashCommand)
+    # In a symlink-install workspace, install/share may point back to src,
+    # so avoid copying a file onto itself.
+    try:
+        if os.path.exists(uncalibrated_urdf_path) and os.path.samefile(test_filepath, uncalibrated_urdf_path):
+            print(f"Note: {uncalibrated_urdf_path} resolves to the same file as {test_filepath}; skipping copy.")
+        else:
+            bashCommand = "cp {0} {1}".format(test_filepath, uncalibrated_urdf_path)
+            process = run_cmd(bashCommand)
+    except FileNotFoundError:
+        # If destination doesn't exist yet, just copy
+        bashCommand = "cp {0} {1}".format(test_filepath, uncalibrated_urdf_path)
+        process = run_cmd(bashCommand)
 
 
 if __name__ == '__main__':
