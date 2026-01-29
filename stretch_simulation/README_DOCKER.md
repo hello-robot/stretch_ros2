@@ -4,7 +4,8 @@ This guide provides instructions for setting up and running the Stretch Simulati
 
 ## Prerequisites
 
-- Ubuntu 22.04 (or compatible Linux distribution)
+Note: This tutorial was written for Ubuntu 22.04 (or compatible Linux distribution). It is possible to run this Dockerfile on Windows or MacOS, however, this tutorial does not cover enabling hardware acceleration for those platforms.
+
 - Nvidia GPU with recent drivers installed
 - Docker installed on your system
 - Minimum 16GB RAM (32GB recommended)
@@ -20,7 +21,7 @@ The following commands will install the Nvidia Container Toolkit, test GPU acces
 
 
 ```bash
-# 1. Install Nvidia Container Toolkit
+# 1. Install Nvidia Container Toolkit (Ubuntu only)
 make install-nvidia-toolkit
 
 # 2. Test GPU access
@@ -71,6 +72,8 @@ newgrp docker
 ```
 
 ## 2. Install Nvidia Container Toolkit
+
+Note: This tutorial was written for Ubuntu 22.04 (or compatible Linux distribution). It is possible to run this Dockerfile on Windows or MacOS, however, this tutorial does not cover enabling hardware acceleration for those platforms.
 
 The Nvidia Container Toolkit allows Docker containers to access your GPU for hardware acceleration.
 
@@ -132,7 +135,7 @@ The same `stretch_create_ament_workspace.sh` script works in both Docker and man
 Run the container with GPU support and X11 forwarding for GUI applications:
 
 ```bash
-# Allow X11 connections from Docker
+# Allow X11 connections from Docker (Ubuntu Only)
 xhost +local:docker
 
 # Run the container
