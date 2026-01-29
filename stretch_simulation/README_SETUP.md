@@ -46,8 +46,9 @@ sudo apt install -y nodejs
 ```
 
 ```sh
-
-curl -sL https://raw.githubusercontent.com/hello-robot/stretch_ros2/refs/heads/humble/stretch_simulation/stretch_create_ament_workspace.sh > /tmp/stretch_create_ament_workspace.sh && sudo bash /tmp/stretch_create_ament_workspace.sh
+INSTALL_AMENT_WS_URL=https://raw.githubusercontent.com/hello-robot/stretch_ros2/refs/heads/humble/stretch_simulation/stretch_create_ament_workspace.sh
+curl -sL $INSTALL_AMENT_WS_URL > /tmp/stretch_create_ament_workspace.sh 
+bash /tmp/stretch_create_ament_workspace.sh
 
 # Optional: add source install/setup.bash to .bashrc:
 echo 'source ~/ament_ws/install/setup.bash' >> ~/.bashrc
