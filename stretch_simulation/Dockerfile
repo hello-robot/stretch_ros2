@@ -107,6 +107,12 @@ RUN /bin/bash -c "source ~/ament_ws/install/setup.bash && \
 # Fix PyOpenGL issue before setting up Mujoco
 RUN pip3 install PyOpenGL==3.1.4
 
+# Pin mujoco to what robocasa/stretch_mujoco require
+RUN printf "mujoco==3.2.6\n" > /tmp/pip-constraints.txt
+
+# Make pip honor the constraint during setup.sh (when it installs robosuite/robocasa deps)
+ENV PIP_CONSTRAINT=/tmp/pip-constraints.txt
+
 # Set up Mujoco
 # Note: The setup.sh script is interactive, so we'll need to provide "y" to download kitchen assets
 RUN /bin/bash -c "source ~/ament_ws/install/setup.bash && \
