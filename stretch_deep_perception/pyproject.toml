@@ -1,0 +1,21 @@
+[tool.setuptools]
+py-modules = []
+
+[project]
+name = "stretch-deep-perception"
+version = "0.1.0"
+description = "The stretch_deep_perception package"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy<2.0.0",
+    "numba>=0.58,<0.60",
+    "opencv-contrib-python>=4.7.0.72",
+    "renamed-opencv-python-inference-engine",
+    "scipy>=1.10.0",
+    "torch>=2.0.0",
+    "seaborn>=0.12.0",
+    "ros2-numpy>=0.0.1",
+    "pyyaml>=6.0.0",
+]
+
