@@ -6,6 +6,14 @@ set -e
 
 cd "$SCRIPT_DIR"
 
+
+# ------------------------------------------------------------------
+# Force mujoco version required by robocasa/stretch_mujoco
+# ------------------------------------------------------------------
+CONSTRAINT_FILE=/tmp/stretch_mujoco_constraints.txt
+echo "mujoco==3.2.6" > $CONSTRAINT_FILE
+export PIP_CONSTRAINT=$CONSTRAINT_FILE
+
 mkdir -p dependencies
 
 cd dependencies
