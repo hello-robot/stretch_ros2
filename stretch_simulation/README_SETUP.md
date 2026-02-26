@@ -117,7 +117,7 @@ Make sure you've already completed everything under [Setting up `ament_ws`](#set
 
 Run the following commands to get IK for the gripper working:
 ```shell
-cd stretch_description/urdf
+cd ~/ament_ws/src/stretch_ros2/stretch_description/urdf
 cp ./stretch_uncalibrated.urdf stretch.urdf
 
 sudo apt install rpl
