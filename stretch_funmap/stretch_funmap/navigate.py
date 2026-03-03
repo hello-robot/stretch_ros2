@@ -212,6 +212,8 @@ class MoveBase():
         self.at_goal = False
         self.unsuccessful_action = False
         self._get_result_future = None
+        self.node.declare_parameter('base_translate_velocity', 0.2)
+        self.node.declare_parameter('base_rotate_velocity', 0.2)
 
     def head_to_forward_motion_pose(self):
         # Move head to navigation pose.
@@ -314,7 +316,8 @@ class MoveBase():
             # no obstacles detected, so start moving
             trigger_request = Trigger.Request() 
 
-            pose = {'translate_mobile_base': forward_distance_m}
+            vel = float(self.node.get_parameter('base_translate_velocity').value)
+            pose = {'translate_mobile_base': (forward_distance_m, vel)}
             self.at_goal = False
             self.unsuccessful_action = False
             self._future_goal = self.node.move_to_pose(pose, blocking=False)
@@ -378,7 +381,8 @@ class MoveBase():
                ((abs(turn_angle_error_rad) > tolerance_angle_rad) and
                 (turn_attempts < max_turn_attempts))):
 
-            pose = {'rotate_mobile_base': turn_angle_error_rad}
+            vel = float(self.node.get_parameter('base_rotate_velocity').value)
+            pose = {'rotate_mobile_base': (turn_angle_error_rad, vel)}
             self.at_goal = False
             self.unsuccessful_action = False
             self._future_goal = self.node.move_to_pose(pose, blocking=False)

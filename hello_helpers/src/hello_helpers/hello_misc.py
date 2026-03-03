@@ -5,6 +5,7 @@ import os
 import sys
 import glob
 import math
+import numbers
 
 import rclpy
 from rclpy.duration import Duration
@@ -168,51 +169,134 @@ class HelloNode(Node):
 
         return [r0[0], r0[1], r_ang], timestamp
     
-    def move_to_pose(self, pose, blocking=True, custom_contact_thresholds=False, duration=2.0):
+    def move_to_pose(self, pose, blocking=True, custom_contact_thresholds=False):
+        """
+        Position-mode helper for Stretch.
+
+        pose: dict {joint_name: goal}
+
+        Default goal formats (custom_contact_thresholds=False):
+            - x or (x,)             -> position
+            - (x, v)                -> position + velocity
+            - (x, v, a)             -> + acceleration
+            - (x, v, a, effort)     -> + effort (Stretch uses this as contact threshold)
+
+        Legacy goal formats (custom_contact_thresholds=True):
+            - x or (x,)             -> position
+            - (x, effort)           -> position + effort   (legacy ROS1 behavior)
+            - (x, v, a, effort)     -> also allowed (explicit full form)
+
+        Safety rule:
+            - If ANY joint provides effort, then ALL joints must provide effort.
+            (Avoids defaulting missing efforts to 0.0, which can cause immediate contact trips.)
+        """
         if self.dryrun:
             return
-        
-        if self.mode.data not in ['trajectory', 'position']:
-            self.get_logger().warn("Currently in {} mode. Recommend switching either to position or trajectory mode".format(self.mode.data))
-            self.get_logger().warn("Commanding joint trajectory server in position mode")
-        
-        joint_names = [key for key in pose]
-        point1 = JointTrajectoryPoint()
-        point1.time_from_start = Duration(seconds=0).to_msg()
 
-        trajectory_goal = FollowJointTrajectory.Goal()
-        trajectory_goal.goal_time_tolerance = Duration(seconds=1.0).to_msg()
-        trajectory_goal.trajectory.joint_names = joint_names
+        if not pose:
+            self.get_logger().error("HelloNode.move_to_pose: pose is empty")
+            return
 
-        if self.mode.data == 'trajectory':
-            point0 = JointTrajectoryPoint()
-            point0.time_from_start = Duration(seconds=0).to_msg()
-            
-            for joint in joint_names:
-                point0.positions.append(self.joint_state.position[self.joint_state.name.index(joint)])
+        mode = getattr(self.mode, "data", "")
+        if mode != "position":
+            self.get_logger().warn(
+                f"move_to_pose is intended for position mode. Current mode={mode}. "
+                "Consider calling switch_to_position_mode()."
+            )
 
-            trajectory_goal.trajectory.points.append(point0)
-            point1.time_from_start = Duration(seconds=duration).to_msg()
+        joint_names = list(pose.keys())
 
-        if not custom_contact_thresholds: 
-            joint_positions = [pose[key] for key in joint_names]
-            point1.positions = joint_positions
-            trajectory_goal.trajectory.points.append(point1)
-        else:
-            pose_correct = all([len(pose[key])==2 for key in joint_names])
-            if not pose_correct:
-                self.get_logger().error("HelloNode.move_to_pose: Not sending trajectory due to improper pose. custom_contact_thresholds requires 2 values (pose_target, contact_threshold_effort) for each joint name, but pose = {0}".format(pose))
-                return
-            joint_positions = [pose[key][0] for key in joint_names]
-            joint_efforts = [pose[key][1] for key in joint_names]
-            point1.positions = joint_positions
-            point1.effort = joint_efforts
-            trajectory_goal.trajectory.points = [point1]
-        
+        def parse_goal(val):
+            # returns (pos, vel, acc, eff) where missing fields are None
+            if isinstance(val, str):
+                raise ValueError(f"Goal must be numeric, not str: {val}")
+
+            if isinstance(val, numbers.Real):
+                return float(val), None, None, None
+
+            if not isinstance(val, (tuple, list)):
+                raise ValueError(f"Goal must be a scalar or tuple/list, got type={type(val)} val={val}")
+
+            if len(val) == 0 or len(val) > 4:
+                raise ValueError(f"Goal must be scalar or tuple/list of length 1..4. Got: {val}")
+
+            pos = float(val[0])
+
+            if custom_contact_thresholds:
+                # legacy: (pos, effort) for 2-tuples
+                if len(val) == 1:
+                    return pos, None, None, None
+                if len(val) == 2:
+                    eff = float(val[1])
+                    return pos, None, None, eff
+                if len(val) == 3:
+                    raise ValueError(
+                        "With custom_contact_thresholds=True, 3-tuples are ambiguous. "
+                        f"Use (pos, effort) or (pos, vel, acc, effort). Got: {val}"
+                    )
+                # len == 4
+                vel = float(val[1])
+                acc = float(val[2])
+                eff = float(val[3])
+                return pos, vel, acc, eff
+
+            # default: (pos, vel, acc, effort)
+            vel = float(val[1]) if len(val) >= 2 else None
+            acc = float(val[2]) if len(val) >= 3 else None
+            eff = float(val[3]) if len(val) >= 4 else None
+            return pos, vel, acc, eff
+
+        try:
+            parsed = [parse_goal(pose[j]) for j in joint_names]
+        except Exception as e:
+            self.get_logger().error(f"HelloNode.move_to_pose: invalid pose: {e}. pose={pose}")
+            return
+
+        any_vel = any(v is not None for (_, v, _, _) in parsed)
+        any_acc = any(a is not None for (_, _, a, _) in parsed)
+        any_eff = any(e is not None for (_, _, _, e) in parsed)
+
+        # SAFETY: If any effort is provided, require it for ALL joints.
+        # This avoids silently filling missing effort with 0.0, which can
+        # cause immediate contact-threshold trips on Stretch.
+        if any_eff and any(e is None for (_, _, _, e) in parsed):
+            self.get_logger().error(
+                "HelloNode.move_to_pose: effort/contact-threshold provided for some joints but not all. "
+                "If you include effort for any joint, you must include it for every joint in this call. "
+                "pose={}".format(pose)
+            )
+            return
+
+        point = JointTrajectoryPoint()
+        point.time_from_start = Duration(seconds=0).to_msg()
+        point.positions = [p for (p, _, _, _) in parsed]
+
+        # If any joint uses a field, include the array for all joints.
+        # For vel/acc, fill missing with 0.0 (common convention).
+        if any_vel:
+            point.velocities = [(v if v is not None else 0.0) for (_, v, _, _) in parsed]
+        if any_acc:
+            point.accelerations = [(a if a is not None else 0.0) for (_, _, a, _) in parsed]
+        if any_eff:
+            # At this point, all joints have eff (enforced above).
+            point.effort = [e for (_, _, _, e) in parsed]
+
+        goal = FollowJointTrajectory.Goal()
+        goal.goal_time_tolerance = Duration(seconds=1.0).to_msg()
+        goal.trajectory.joint_names = joint_names
+        goal.trajectory.points = [point]
+
+        self.get_logger().info(
+            f"move_to_pose: joints={joint_names} "
+            f"pos={list(point.positions) if point.positions else None} "
+            f"vel={list(point.velocities) if point.velocities else None} "
+            f"acc={list(point.accelerations) if point.accelerations else None} "
+            f"eff={list(point.effort) if point.effort else None}"
+        )
         if blocking:
-            return self.trajectory_client.send_goal(trajectory_goal)
+            return self.trajectory_client.send_goal(goal)
         else:
-            return self.trajectory_client.send_goal_async(trajectory_goal)
+            return self.trajectory_client.send_goal_async(goal)
 
     def get_tf(self, from_frame, to_frame):
         """Get current transform between 2 frames. Blocking for 2 secs at worst.
