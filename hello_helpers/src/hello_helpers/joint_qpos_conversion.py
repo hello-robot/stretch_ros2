@@ -7,7 +7,7 @@ def get_Idx(tool_name):
     """
     Returns the Idx class corresponding to the tool name.
     """
-    if tool_name == 'eoa_wrist_dw3_tool_sg3':
+    if tool_name in ['eoa_wrist_dw3_tool_sg3', 'eoa_wrist_dw3_tool_sg3_pro']:
         return SE3_dw3_sg3_Idx
     elif tool_name == 'eoa_wrist_dw3_tool_nil':
         return eoa_wrist_dw3_tool_nil_Idx
