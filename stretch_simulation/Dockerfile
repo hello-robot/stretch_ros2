@@ -52,6 +52,8 @@ RUN curl -sL https://deb.nodesource.com/setup_22.x | bash - \
 RUN apt-get update && apt-get install -y \
     rpl \
     gnome-terminal \
+    terminator \
+    gedit \
     && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip
@@ -65,7 +67,7 @@ RUN rm -rf /usr/local/lib/python3.10/dist-packages/transforms3d* || true
 
 # Set up environment variables
 ENV HELLO_FLEET_PATH=/root/stretch_user
-ENV HELLO_FLEET_ID=stretch_local
+ENV HELLO_FLEET_ID=stretch-se3-local
 ENV MUJOCO_GL=egl
 
 # Create necessary directories
@@ -101,20 +103,18 @@ RUN /bin/bash -c "source ~/ament_ws/install/setup.bash && \
     pip3 install -U hello-robot-stretch-urdf && \
     git clone https://github.com/hello-robot/stretch_urdf.git --depth 1 /tmp/stretch_urdf && \
     pip3 install hello-robot-stretch-body && \
-    (python3 /tmp/stretch_urdf/tools/stretch_urdf_ros_update.py || true) && \
-    (python3 /tmp/stretch_urdf/tools/stretch_urdf_ros_update.py --ros2_rebuild || true)"
+    printf 'y\n' | python3 /tmp/stretch_urdf/tools/stretch_urdf_ros_update.py && \
+    printf 'y\n' | python3 /tmp/stretch_urdf/tools/stretch_urdf_ros_update.py --ros2_rebuild"
 
 # Fix PyOpenGL issue before setting up Mujoco
 RUN pip3 install PyOpenGL==3.1.4
 
 # Set up Mujoco
-# Note: The setup.sh script is interactive, so we'll need to provide "y" to download kitchen assets
-RUN /bin/bash -c "source ~/ament_ws/install/setup.bash && \
-    echo 'y' | bash ~/ament_ws/src/stretch_ros2/stretch_simulation/stretch_mujoco_driver/setup.sh"
-
-# Build the workspace
+# setup.sh already installs dependencies and runs colcon build itself
 WORKDIR /root/ament_ws
-RUN /bin/bash -c "source ./install/setup.bash && colcon build"
+RUN rm -rf build install log && \
+    /bin/bash -c "source /opt/ros/humble/setup.bash && \
+    echo 'y' | bash ~/ament_ws/src/stretch_ros2/stretch_simulation/stretch_mujoco_driver/setup.sh"
 
 # Set up Stretch Web Teleop URDF export
 WORKDIR /root/ament_ws/src/stretch_ros2/stretch_description/urdf
