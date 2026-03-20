@@ -101,13 +101,11 @@ pip3 install --upgrade pip #This is important after a fresh install of Ubuntu, f
 
 source ~/ament_ws/install/setup.bash
 # This script is interactive, it will ask you if you want to install robocasa model files:
-sh ~/ament_ws/src/stretch_ros2/stretch_simulation/stretch_mujoco_driver/setup.sh
+bash ~/ament_ws/src/stretch_ros2/stretch_simulation/stretch_mujoco_driver/setup.sh
 
 pip install PyOpenGL==3.1.4 # Fixes AttributeError: module 'OpenGL.EGL' has no attribute 'EGLDeviceEXT'
 
 cd ~/ament_ws
-source ./install/setup.bash
-colcon build
 ros2 launch stretch_simulation stretch_mujoco_driver.launch.py mode:=navigation
 ```
 
