@@ -233,12 +233,13 @@ docker compose up
 ros2 launch stretch_simulation stretch_mujoco_driver.launch.py \
     use_mujoco_viewer:=true \
     mode:=navigation \
+    use_rviz:=false \
     robocasa_layout:='G-shaped' \
     robocasa_style:=Modern_1
 
 # Terminal 2: Launch navigation
 ros2 launch stretch_nav2 navigation.launch.py \
-    map:=~/ament_ws/src/stretch_ros2/stretch_simulation/maps/gshaped_modern1_robocasa.yaml \
+    map:=/root/ament_ws/src/stretch_ros2/stretch_simulation/maps/gshaped_modern1_robocasa.yaml \
     use_sim_time:=true \
     use_rviz:=true \
     teleop_type:=none
