@@ -96,7 +96,7 @@ def generate_launch_description():
             name='planner_server',
             output='screen',
             parameters=[configured_params],
-            remappings=remappings),
+            remappings=nav_remappings),
 
         Node(
             package='nav2_behaviors',
@@ -112,7 +112,7 @@ def generate_launch_description():
             name='bt_navigator',
             output='screen',
             parameters=[configured_params],
-            remappings=remappings),
+            remappings=nav_remappings),
 
         Node(
             package='nav2_waypoint_follower',
@@ -120,7 +120,7 @@ def generate_launch_description():
             name='waypoint_follower',
             output='screen',
             parameters=[configured_params],
-            remappings=remappings),
+            remappings=nav_remappings),
 
         Node(
             package='nav2_lifecycle_manager',
