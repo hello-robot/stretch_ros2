@@ -18,6 +18,7 @@ configurable_parameters = [{'name': 'camera_namespace',             'default': '
                            {'name': 'depth_module.profile',         'default': '848x480x15', 'description': 'depth module profile'},
                            {'name': 'depth_module.depth_profile',   'default': '848x480x15', 'description': 'depth module profile'},
                            {'name': 'depth_module.infra_profile',   'default': '848x480x15', 'description': 'depth module profile'},
+                           {'name': 'depth_module.exposure',        'default': '8500', 'description': 'depth module exposure'},
                            {'name': 'enable_depth',                 'default': 'true', 'description': 'enable depth stream'},
                            {'name': 'rgb_camera.profile',           'default': '1280x720x15', 'description': 'color image width'},
                            {'name': 'rgb_camera.color_profile',     'default': '1280x720x15', 'description': 'color image width'},
