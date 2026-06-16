@@ -25,7 +25,7 @@ class GraspObjectNode(hm.HelloNode):
         self.rate = 10.0
         self.joint_states = None
         self.joint_states_lock = threading.Lock()
-        self.move_base = nv.MoveBase(self)
+        self.move_base = None
         self.tool = None
         self.letter_height_m = 0.2
         self.wrist_position = None
@@ -199,6 +199,7 @@ class GraspObjectNode(hm.HelloNode):
     
     def main(self):
         hm.HelloNode.main(self, 'grasp_object', 'grasp_object', wait_for_first_pointcloud=False)
+        self.move_base = nv.MoveBase(self)
         self.logger = self.get_logger()
 
         self.callback_group = ReentrantCallbackGroup()
