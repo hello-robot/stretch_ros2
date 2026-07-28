@@ -722,6 +722,10 @@ class StretchDriver(Node):
 
     def stop_the_robot_callback(self, request, response):
         with self.robot_stop_lock:
+            self.robot_mode_rwlock.acquire_read()
+            in_velocity_mode = self.robot_mode == 'velocity'
+            self.robot_mode_rwlock.release_read()
+
             # Prevent the next velocity-mode control-loop tick from
             # immediately re-issuing a stale velocity command and undoing
             # this stop.
@@ -739,6 +743,13 @@ class StretchDriver(Node):
             if 'stretch_gripper' in self.robot.end_of_arm.joints:
                 self.robot.end_of_arm.move_by('stretch_gripper', 0.0)
             # self.robot.push_command() #Moved to main
+
+            if in_velocity_mode:
+                # move_by() above is a position-mode command and may not
+                # reliably override a joint that's actively being driven
+                # by set_velocity() -- stop it the same way velocity mode
+                # drives it.
+                nvc.stop_all_motion(self.velocity_commands, self.robot)
 
         self.get_logger().info('Received stop_the_robot service call, so commanded all actuators to stop.')
         response.success = True
