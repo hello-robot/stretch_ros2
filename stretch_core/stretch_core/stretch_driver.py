@@ -37,6 +37,7 @@ from hello_helpers.hello_misc import LoopTimer
 from hello_helpers.gamepad_conversion import unpack_joy_to_gamepad_state, unpack_gamepad_state_to_joy, get_default_joy_msg
 from .joint_trajectory_server import JointTrajectoryAction
 from .stretch_diagnostics import StretchDiagnostics
+from . import normalized_velocity_control as nvc
 
 from ament_index_python.packages import get_package_share_path
 
@@ -72,7 +73,7 @@ class StretchDriver(Node):
 
         self.robot_mode_rwlock = RWLock()
         self.robot_mode = None
-        self.control_modes = ['position', 'navigation', 'trajectory', 'gamepad']
+        self.control_modes = ['position', 'navigation', 'trajectory', 'gamepad', 'velocity']
         self.prev_runstop_state = None # helps track if runstop state has changed
 
         # manages when `robot.push_command()` is called
@@ -115,7 +116,21 @@ class StretchDriver(Node):
         self.angular_velocity_radps = twist.angular.z
         self.last_twist_time = self.get_clock().now()
         self.robot_mode_rwlock.release_read()
-    
+
+    # WHOLE-BODY VELOCITY METHODS ############
+
+    def set_velocity_command_callback(self, joint_state):
+        self.robot_mode_rwlock.acquire_read()
+        if self.robot_mode != 'velocity':
+            self.get_logger().error('{0} must be in velocity mode to '
+                                    'receive a command on velocity_cmd. '
+                                    'Current mode = {1}.'.format(self.node_name, self.robot_mode))
+            self.robot_mode_rwlock.release_read()
+            return
+        self.velocity_cmd = dict(zip(joint_state.name, joint_state.velocity))
+        self.last_velocity_cmd_time = self.get_clock().now()
+        self.robot_mode_rwlock.release_read()
+
     def set_robot_streaming_position_callback(self, msg):
         self.robot_mode_rwlock.acquire_read()
         if not self.streaming_position_activated:
@@ -203,6 +218,14 @@ class StretchDriver(Node):
             else:
                 self.robot.base.set_velocity(0.0, 0.0)
                 # self.robot.push_command() #Moved to main
+
+        # Set new whole-body joint velocities
+        elif self.robot_mode == 'velocity':
+            time_since_last_velocity_cmd = self.get_clock().now() - self.last_velocity_cmd_time
+            if time_since_last_velocity_cmd < self.timeout:
+                nvc.execute_velocity_command(self.velocity_cmd, self.velocity_commands, self.robot)
+            else:
+                nvc.stop_all_motion(self.velocity_commands, self.robot)
 
         # get copy of the current robot status (uses lock held by the robot)
         robot_status = self.robot.get_status()
@@ -670,7 +693,21 @@ class StretchDriver(Node):
 
         self.change_mode('gamepad', code_to_run)
         return True, 'Now in gamepad mode.'
-    
+
+    def turn_on_velocity_mode(self):
+        # Velocity mode enables whole-body normalized ([-1.0, 1.0]) joint
+        # velocity control via the velocity_cmd topic (sensor_msgs/JointState,
+        # using the name/velocity fields as a sparse dict of joint keys to
+        # normalized velocities -- see normalized_velocity_control.py).
+        # Unlike navigation mode, which only controls the mobile base, this
+        # mode allows simultaneous velocity control of the base, lift, arm,
+        # wrist, head, and gripper. Intended for closed-loop visual servoing.
+        def code_to_run():
+            self.velocity_cmd = {}
+            self.last_velocity_cmd_time = self.get_clock().now()
+        self.change_mode('velocity', code_to_run)
+        return True, 'Now in velocity mode.'
+
     def activate_streaming_position(self, request):
         self.streaming_position_activated = True
         self.get_logger().info('Activated streaming position.')
@@ -685,6 +722,11 @@ class StretchDriver(Node):
 
     def stop_the_robot_callback(self, request, response):
         with self.robot_stop_lock:
+            # Prevent the next velocity-mode control-loop tick from
+            # immediately re-issuing a stale velocity command and undoing
+            # this stop.
+            self.velocity_cmd = {}
+
             self.robot.base.translate_by(0.0)
             self.robot.base.rotate_by(0.0)
             self.robot.arm.move_by(0.0)
@@ -737,6 +779,12 @@ class StretchDriver(Node):
 
     def gamepad_mode_service_callback(self, request, response):
         success, message = self.turn_on_gamepad_mode()
+        response.success = success
+        response.message = message
+        return response
+
+    def velocity_mode_service_callback(self, request, response):
+        success, message = self.turn_on_velocity_mode()
         response.success = success
         response.message = message
         return response
@@ -886,9 +934,13 @@ class StretchDriver(Node):
         if not self.robot.is_homed():
             self.get_logger().warn("Robot not homed. Call /home_the_robot service.")
             
-        # Create Gamepad Teleop instance    
+        # Create Gamepad Teleop instance
         self.gamepad_teleop = gamepad_teleop.GamePadTeleop(robot_instance=False,print_dongle_status=False, lock=self.robot_stop_lock)
         self.gamepad_teleop.startup(self.robot)
+
+        # Whole-body normalized velocity command objects (one per joint group), for velocity mode
+        self.velocity_commands = nvc.create_command_objects()
+        self.velocity_cmd = {}
 
         self.declare_parameter('mode', "position")
         mode = self.get_parameter('mode').value
@@ -985,6 +1037,8 @@ class StretchDriver(Node):
 
         self.create_subscription(Float64MultiArray, "joint_pose_cmd", self.set_robot_streaming_position_callback, 1, callback_group=self.main_group)
 
+        self.create_subscription(JointState, "velocity_cmd", self.set_velocity_command_callback, 1, callback_group=self.main_group)
+
         self.declare_parameter('rate', 30.0)
         self.joint_state_rate = self.get_parameter('rate').value
         self.declare_parameter('timeout', 0.5, ParameterDescriptor(
@@ -1012,6 +1066,7 @@ class StretchDriver(Node):
 
         self.last_twist_time = self.get_clock().now()
         self.last_gamepad_joy_time = self.get_clock().now()
+        self.last_velocity_cmd_time = self.get_clock().now()
 
         # Add a callback for updating parameters
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -1037,7 +1092,12 @@ class StretchDriver(Node):
                                                                     '/switch_to_gamepad_mode',
                                                                     self.gamepad_mode_service_callback,
                                                                     callback_group=self.main_group)
-    
+
+        self.switch_to_velocity_mode_service = self.create_service(Trigger,
+                                                                    '/switch_to_velocity_mode',
+                                                                    self.velocity_mode_service_callback,
+                                                                    callback_group=self.main_group)
+
         self.activate_streaming_position_service = self.create_service(Trigger,
                                                                 '/activate_streaming_position',
                                                                 self.activate_streaming_position_service_callback,
@@ -1102,6 +1162,8 @@ class StretchDriver(Node):
             self.turn_on_trajectory_mode()
         elif mode ==  "gamepad":
             self.turn_on_gamepad_mode()
+        elif mode == "velocity":
+            self.turn_on_velocity_mode()
 
         # start loop to command the mobile base velocity, publish
         # odometry, and publish joint states
