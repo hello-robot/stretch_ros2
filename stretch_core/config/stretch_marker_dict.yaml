@@ -68,6 +68,23 @@
         use_rgb_only: False
         name: 'target_object'
         link: None
+      '11':
+        # TODO: placeholder length_mm -- measure the actual printed/mounted
+        # marker once physically attached to the left fingertip and update
+        # this value (see the file-level warning above about marker size
+        # accuracy).
+        length_mm: 12
+        use_rgb_only: False
+        name: 'finger_left'
+        link: None
+      '12':
+        # TODO: placeholder length_mm -- measure the actual printed/mounted
+        # marker once physically attached to the right fingertip and update
+        # this value.
+        length_mm: 12
+        use_rgb_only: False
+        name: 'finger_right'
+        link: None
       '21':
         length_mm: 86
         use_rgb_only: False

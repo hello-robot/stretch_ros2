@@ -33,9 +33,9 @@ import hello_helpers.fit_plane as fp
 
 
 class ArucoMarker:
-    def __init__(self, aruco_id, marker_info, show_debug_images=False):
+    def __init__(self, aruco_id, marker_info, show_debug_images=False, frame_id='camera_color_optical_frame'):
         self.show_debug_images = show_debug_images
-        
+
         self.aruco_id = aruco_id
         colormap = cv2.COLORMAP_HSV
         offset = 0
@@ -44,8 +44,8 @@ class ArucoMarker:
         id_color_image = cv2.applyColorMap(image, colormap)
         bgr = id_color_image[0,0]
         self.id_color = [bgr[2], bgr[1], bgr[0]]
-        
-        self.frame_id = 'camera_color_optical_frame'
+
+        self.frame_id = frame_id
         self.info = marker_info.get(str(self.aruco_id), None)
 
         if self.info is None:
@@ -532,9 +532,10 @@ class ArucoMarker:
         
      
 class ArucoMarkerCollection:
-    def __init__(self, marker_info, show_debug_images=False):
+    def __init__(self, marker_info, show_debug_images=False, frame_id='camera_color_optical_frame'):
         self.show_debug_images = show_debug_images
-        
+        self.frame_id = frame_id
+
         self.marker_info = marker_info
         self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
         self.aruco_detection_parameters =  aruco.DetectorParameters()
@@ -582,7 +583,7 @@ class ArucoMarkerCollection:
                 aruco_id = int(aruco_id)
                 marker = self.collection.get(aruco_id, None)
                 if marker is None:
-                    new_marker = ArucoMarker(aruco_id, self.marker_info, self.show_debug_images)
+                    new_marker = ArucoMarker(aruco_id, self.marker_info, self.show_debug_images, self.frame_id)
                     self.collection[aruco_id] = new_marker
 
                 self.collection[aruco_id].update(corners, self.timestamp, self.frame_number, self.camera_info, self.depth_image)
@@ -640,18 +641,25 @@ class DetectArucoNode(Node):
                 self.marker_info[key.split('.')[0]] = {}
                 self.marker_info[key.split('.')[0]][key.split('.')[1]] = self.get_parameter_or('aruco_marker_info.{}'.format(key)).value
 
-        self.aruco_marker_collection = ArucoMarkerCollection(self.marker_info, self.show_debug_images)
+        self.declare_parameter('frame_id', 'camera_color_optical_frame')
+        self.frame_id = self.get_parameter('frame_id').value
 
-        self.rgb_topic_name = '/camera/color/image_raw' #'/camera/infra1/image_rect_raw'
+        self.aruco_marker_collection = ArucoMarkerCollection(self.marker_info, self.show_debug_images, self.frame_id)
+
+        self.declare_parameter('rgb_topic_name', '/camera/color/image_raw') #'/camera/infra1/image_rect_raw'
+        self.rgb_topic_name = self.get_parameter('rgb_topic_name').value
         self.rgb_image_subscriber = message_filters.Subscriber(self, Image, self.rgb_topic_name)
 
-        self.depth_topic_name = '/camera/aligned_depth_to_color/image_raw'
+        self.declare_parameter('depth_topic_name', '/camera/aligned_depth_to_color/image_raw')
+        self.depth_topic_name = self.get_parameter('depth_topic_name').value
         self.depth_image_subscriber = message_filters.Subscriber(self, Image, self.depth_topic_name)
 
         # TODO: This is unlikely to ever change, so it probably
         # doesn't make sense to deal with the overhead of
         # synchronizing it with other input.
-        self.camera_info_subscriber = message_filters.Subscriber(self, CameraInfo, '/camera/color/camera_info')
+        self.declare_parameter('camera_info_topic_name', '/camera/color/camera_info')
+        self.camera_info_topic_name = self.get_parameter('camera_info_topic_name').value
+        self.camera_info_subscriber = message_filters.Subscriber(self, CameraInfo, self.camera_info_topic_name)
 
         self.synchronizer = message_filters.TimeSynchronizer([self.rgb_image_subscriber, self.depth_image_subscriber, self.camera_info_subscriber], 10)
         self.synchronizer.registerCallback(self.image_callback)
@@ -739,7 +747,7 @@ class DetectArucoNode(Node):
         
     def publish_point_cloud(self):
         header = Header()
-        header.frame_id = 'camera_color_optical_frame'
+        header.frame_id = self.frame_id
         header.stamp = self.get_clock().now().to_msg()
         fields = [PointField('x', 0, PointField.FLOAT32, 1),
                   PointField('y', 4, PointField.FLOAT32, 1),
