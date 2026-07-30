@@ -8,13 +8,9 @@ def generate_launch_description():
 
     dict_file_path = os.path.join(get_package_share_directory('stretch_core'), 'config', 'stretch_marker_dict.yaml')
 
-    # TODO: verify these against the running D405 camera at hardware
-    # bring-up (camera_name defaults to 'gripper_camera' in
-    # d405_basic.launch.py -- these follow realsense-ros's standard
-    # <camera_name>/<stream> topic and <camera_name>_color_optical_frame
-    # naming convention, but haven't been confirmed against a live camera).
+    # Confirmed against a running D405 camera (ros2 topic list / camera_info).
     frame_id = 'gripper_camera_color_optical_frame'
-    rgb_topic_name = '/gripper_camera/color/image_raw'
+    rgb_topic_name = '/gripper_camera/color/image_rect_raw'
     depth_topic_name = '/gripper_camera/aligned_depth_to_color/image_raw'
     camera_info_topic_name = '/gripper_camera/color/camera_info'
 
