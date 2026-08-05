@@ -17,6 +17,7 @@ from sensor_msgs_py import point_cloud2
 from visualization_msgs.msg import Marker, MarkerArray
 
 import hello_helpers.hello_misc as hm
+import hello_helpers.fit_plane as fp
 import stretch_funmap.manipulation_planning as mp
 
 # Incremental build-out described in grasp-demo-status.md / the approved
@@ -45,10 +46,44 @@ FINGERTIP_OFFSETS = {
 # Stage 2 tracker tuning -- placeholders, not yet tuned on hardware.
 STAGE2_SEARCH_RADIUS_MARGIN_M = 0.05  # added on top of Stage 1's width_m
 STAGE2_MIN_SEARCH_RADIUS_M = 0.08
+STAGE2_MIN_HEIGHT_ABOVE_SURFACE_M = 0.01  # see filter_points_above_local_surface()
 STAGE2_FINGERTIP_EXCLUSION_RADIUS_M = 0.03
 STAGE2_MIN_POINTS = 15
+STAGE2_SMOOTHING_ALPHA = 0.3  # see smooth_estimate() -- placeholder, not yet tuned
 STAGE2_TICK_PERIOD_S = 1.0 / 15.0
 STAGE2_TEST_DURATION_S = 30.0  # Increment 2 only: auto-stop the log-only test loop
+
+
+def smooth_estimate(previous_estimate_xyz, new_measurement_xyz, alpha):
+    """Exponential moving average blend of a new per-tick position
+    measurement with the previous smoothed estimate -- damps tick-to-tick
+    jumps (e.g. from a textured/reflective object surface causing the set
+    of valid depth points to shift between frames) without needing to know
+    their exact cause. alpha in (0, 1]: higher trusts the new measurement
+    more (more responsive, less smoothing); lower is smoother but adds lag.
+    Pure function.
+    """
+    return alpha * new_measurement_xyz + (1.0 - alpha) * previous_estimate_xyz
+
+
+def push_along_viewing_ray(point_xyz, push_distance_m):
+    """Push a camera-frame point further from the camera's own origin
+    (0,0,0) along its viewing ray by push_distance_m.
+
+    The D405 only ever sees the near-facing surface of an object, so a
+    plain centroid of visible points systematically undershoots the
+    object's true center by roughly its radius, along the line of sight --
+    same correction as `yolo_servo_perception.py`'s `grasp_center_xyz =
+    center_xyz + (grasp_depth * center_ray)`. Since camera-frame points
+    are already relative to the camera's own origin, the ray direction
+    through any point is just that point's own unit direction vector, so
+    no separate camera-pose lookup is needed. Pure function.
+    """
+    norm = np.linalg.norm(point_xyz)
+    if norm < 1e-6:
+        return point_xyz
+    ray_direction = point_xyz / norm
+    return point_xyz + push_distance_m * ray_direction
 
 
 def transform_point(point_xyz, transform_stamped):
@@ -90,12 +125,46 @@ def get_fingertip_contact_point(marker, offset):
     return position + ox * x_axis + oy * y_axis + oz * z_axis
 
 
+def filter_points_above_local_surface(points_xyz, min_height_above_surface_m):
+    """Separate "the object" from "the support surface it's sitting on"
+    within a local point-cloud crop, without any floor-relative reasoning.
+
+    Fits a plane to points_xyz via SVD (hello_helpers.fit_plane.FitPlane --
+    generic/reusable, not the room-scale, ground-referenced fit FUNMAP's
+    find_closest_flat_surface() does) and keeps only the points whose
+    unsigned distance from that fitted plane exceeds
+    min_height_above_surface_m. Using the unsigned distance
+    (FitPlane.abs_dist(), not the signed height()) deliberately sidesteps
+    FitPlane's "towards_camera" orientation convention, which isn't known
+    to match this D405 point cloud's frame -- we only care how far a point
+    is from the fitted surface, not which side it's on.
+
+    With a search region dominated by a flat surface (e.g. a tabletop)
+    plus a much smaller object on it, the least-squares fit lands close to
+    the surface (the majority of the points), so the object's points show
+    up as clear outliers. Pure function.
+    """
+    if len(points_xyz) < 3:
+        return points_xyz
+    plane = fp.FitPlane()
+    plane.fit_svd(points_xyz, verbose=False)
+    dist = plane.abs_dist(points_xyz)
+    return points_xyz[dist > min_height_above_surface_m]
+
+
 def track_object_centroid(points_xyz, previous_estimate_xyz, search_radius_m,
+                           min_height_above_surface_m=0.0,
                            exclude_points=None, exclude_radius_m=0.0, min_points=1):
     """Local point-cloud centroid tracker (Stage 2's core per-tick update).
 
     points_xyz: Nx3 numpy array, camera frame.
     previous_estimate_xyz: 3-vector, current tracked position, camera frame.
+    min_height_above_surface_m: if > 0, apply
+      filter_points_above_local_surface() after the spatial radius filter --
+      needed in practice: a spatial-radius-only filter is dominated by
+      whatever flat surface the object sits on (many more surface points
+      than object points within any reasonably-sized search sphere), which
+      pulls the centroid toward the surface rather than the object.
     exclude_points: optional list of 3-vectors (e.g. fingertip contact
       points) to exclude nearby points from (avoids the gripper's own
       fingers contaminating the object estimate).
@@ -107,18 +176,21 @@ def track_object_centroid(points_xyz, previous_estimate_xyz, search_radius_m,
         return None, 0
 
     dist_to_estimate = np.linalg.norm(points_xyz - previous_estimate_xyz, axis=1)
-    mask = dist_to_estimate < search_radius_m
+    nearby = points_xyz[dist_to_estimate < search_radius_m]
 
-    if exclude_points:
+    if min_height_above_surface_m > 0.0:
+        nearby = filter_points_above_local_surface(nearby, min_height_above_surface_m)
+
+    if exclude_points and len(nearby) > 0:
+        mask = np.ones(len(nearby), dtype=bool)
         for ex in exclude_points:
-            dist_to_excluded = np.linalg.norm(points_xyz - ex, axis=1)
-            mask &= (dist_to_excluded > exclude_radius_m)
+            mask &= (np.linalg.norm(nearby - ex, axis=1) > exclude_radius_m)
+        nearby = nearby[mask]
 
-    filtered = points_xyz[mask]
-    if len(filtered) < min_points:
-        return None, len(filtered)
+    if len(nearby) < min_points:
+        return None, len(nearby)
 
-    return filtered.mean(axis=0), len(filtered)
+    return nearby.mean(axis=0), len(nearby)
 
 
 class GraspObjectVisualServoNode(hm.HelloNode):
@@ -138,6 +210,7 @@ class GraspObjectVisualServoNode(hm.HelloNode):
         self.stage2_start_time_s = None
         self.tracked_object_xyz_camera = None
         self.stage2_search_radius_m = STAGE2_MIN_SEARCH_RADIUS_M
+        self.object_width_m = None
 
     # DATA CALLBACKS (D405) ############
 
@@ -208,6 +281,7 @@ class GraspObjectVisualServoNode(hm.HelloNode):
 
         self.tracked_object_xyz_camera = transform_point(object_xyz_base_link, transform)
         self.stage2_search_radius_m = max(STAGE2_MIN_SEARCH_RADIUS_M, width_m + STAGE2_SEARCH_RADIUS_MARGIN_M)
+        self.object_width_m = width_m
         self.stage2_start_time_s = time.time()
         self.stage2_active = True
         self.logger.info(
@@ -243,6 +317,7 @@ class GraspObjectVisualServoNode(hm.HelloNode):
         was_active_before_tick = self.tracked_object_xyz_camera is not None
         new_estimate, num_points = track_object_centroid(
             points_xyz, self.tracked_object_xyz_camera, self.stage2_search_radius_m,
+            min_height_above_surface_m=STAGE2_MIN_HEIGHT_ABOVE_SURFACE_M,
             exclude_points=exclude_points, exclude_radius_m=STAGE2_FINGERTIP_EXCLUSION_RADIUS_M,
             min_points=STAGE2_MIN_POINTS)
 
@@ -261,24 +336,44 @@ class GraspObjectVisualServoNode(hm.HelloNode):
                 self.logger.warning('Stage 2 tick: target lost ({0} points in search region).'.format(num_points))
             return
 
-        self.tracked_object_xyz_camera = new_estimate
+        # Blend with the previous estimate rather than replacing it
+        # outright -- damps tick-to-tick jumps (e.g. a textured object
+        # surface causing which points have valid depth to shift between
+        # frames) before this position ever becomes a velocity command
+        # (Increment 3+). self.tracked_object_xyz_camera is always a real
+        # value here (seeded by start_stage2_tracking() before Stage 2
+        # ever activates), so there's always a previous estimate to blend
+        # with, including on the very first tick (blended with the Stage
+        # 1->2 handoff position).
+        smoothed_estimate = smooth_estimate(
+            self.tracked_object_xyz_camera, new_estimate, STAGE2_SMOOTHING_ALPHA)
+        # Internal tracking state stays on the raw (uncorrected) smoothed
+        # position -- next tick's search radius must stay centered on
+        # where the real, visible points actually are, not on empty space
+        # past the object's near surface.
+        self.tracked_object_xyz_camera = smoothed_estimate
+
+        # The reported/consumed position, on the other hand, gets pushed
+        # out along the viewing ray to correct for only ever seeing the
+        # object's near-facing surface (see push_along_viewing_ray()).
+        reported_position = push_along_viewing_ray(smoothed_estimate, self.object_width_m / 2.0)
 
         if fingertips['finger_left'] is not None and fingertips['finger_right'] is not None:
             between_fingertips = (fingertips['finger_left'] + fingertips['finger_right']) / 2.0
-            position_error = new_estimate - between_fingertips
+            position_error = reported_position - between_fingertips
             self.logger.info(
                 'Stage 2 tick: object=({0:.3f},{1:.3f},{2:.3f}) between_fingertips=({3:.3f},{4:.3f},{5:.3f}) '
                 'error=({6:.3f},{7:.3f},{8:.3f}) |error|={9:.3f} m [{10} pts]'.format(
-                    new_estimate[0], new_estimate[1], new_estimate[2],
+                    reported_position[0], reported_position[1], reported_position[2],
                     between_fingertips[0], between_fingertips[1], between_fingertips[2],
                     position_error[0], position_error[1], position_error[2],
                     float(np.linalg.norm(position_error)), num_points))
         else:
             self.logger.info(
                 'Stage 2 tick: object=({0:.3f},{1:.3f},{2:.3f}) [{3} pts] (fingertips not both visible)'.format(
-                    new_estimate[0], new_estimate[1], new_estimate[2], num_points))
+                    reported_position[0], reported_position[1], reported_position[2], num_points))
 
-        self.publish_debug_marker(new_estimate)
+        self.publish_debug_marker(reported_position)
 
     def publish_debug_marker(self, xyz_camera_frame):
         marker = Marker()
