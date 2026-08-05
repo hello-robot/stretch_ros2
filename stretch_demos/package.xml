@@ -16,6 +16,11 @@
   <depend>std_msgs</depend>
   <depend>std_srvs</depend>
   <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf_transformations</depend>
+  <depend>sensor_msgs</depend>
+  <depend>sensor_msgs_py</depend>
+  <depend>visualization_msgs</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
