@@ -14,6 +14,7 @@ import tf_transformations
 from std_srvs.srv import Trigger
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
+from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker, MarkerArray
 
 import hello_helpers.hello_misc as hm
@@ -47,9 +48,12 @@ FINGERTIP_OFFSETS = {
 STAGE2_SEARCH_RADIUS_MARGIN_M = 0.05  # added on top of Stage 1's width_m
 STAGE2_MIN_SEARCH_RADIUS_M = 0.08
 STAGE2_MIN_HEIGHT_ABOVE_SURFACE_M = 0.01  # see filter_points_above_local_surface()
+STAGE2_CONNECTIVITY_RADIUS_M = 0.01  # see connected_cluster_near_point()
+STAGE2_CLUSTER_EXTENT_MARGIN_M = 0.03  # added to object_width_m/2, see connected_cluster_near_point()'s max_extent_m
 STAGE2_FINGERTIP_EXCLUSION_RADIUS_M = 0.03
 STAGE2_MIN_POINTS = 15
 STAGE2_SMOOTHING_ALPHA = 0.3  # see smooth_estimate() -- placeholder, not yet tuned
+STAGE2_MAX_DRIFT_FROM_ANCHOR_M = 0.08  # see anchor/leash check in stage2_tracking_tick()
 STAGE2_TICK_PERIOD_S = 1.0 / 15.0
 STAGE2_TEST_DURATION_S = 30.0  # Increment 2 only: auto-stop the log-only test loop
 
@@ -152,8 +156,87 @@ def filter_points_above_local_surface(points_xyz, min_height_above_surface_m):
     return points_xyz[dist > min_height_above_surface_m]
 
 
+def connected_cluster_near_point(points_xyz, seed_point, connectivity_radius_m, max_extent_m=None):
+    """Grow a connected cluster of points starting from whichever point is
+    closest to seed_point, via simple nearest-neighbor connectivity
+    (flood-fill/BFS): a point joins the cluster if it's within
+    connectivity_radius_m of any point already in the cluster.
+
+    Why this is needed: found empirically across three test objects on
+    hardware that the search-radius + height-above-surface filters alone
+    are repeatedly pulled toward a stereo depth artifact (spurious
+    readings at occlusion boundaries) sitting a few cm away from the real
+    object -- a separate, physically disjoint cluster that happens to
+    also be elevated and within the search sphere. A pure radius/height
+    filter has no way to tell "same object" apart from "different nearby
+    thing" -- connectivity does: as long as there's a real physical gap
+    (no points bridging the two clusters), growing outward from wherever
+    we're already tracking naturally excludes anything not actually
+    connected to it, without needing to know which cluster is "bigger" or
+    otherwise classify them.
+
+    max_extent_m: if given, caps growth to points within max_extent_m of
+    seed_point itself (not just of the growing frontier). Needed in
+    practice: on real D405 data, connectivity alone is not sufficient --
+    unlike the cleanly-separated-blob case this function was originally
+    unit-tested against, real point clouds often have a thin, locally-dense
+    "bridge" of points (e.g. along a continuous surface or edge) connecting
+    what should be two separate clusters, so pure single-linkage
+    (flood-fill) clustering chains across it and merges them anyway. Since
+    Stage 1 already gives us the object's approximate size (width_m), that
+    bounds how big the *real* object's cluster should be, and rejects
+    anything the flood-fill reaches only by chaining past that size.
+
+    No new dependency: FUNMAP's own connected-component logic
+    (segment_max_height_image.py) operates on a labeled 2D grid via
+    skimage, which doesn't apply to an unstructured 3D point cloud; this
+    is a from-scratch, numpy-only equivalent for that case. Pure function.
+
+    Returns the Mx3 array of points in the connected cluster containing
+    the point nearest to seed_point (empty if points_xyz is empty).
+    """
+    if len(points_xyz) == 0:
+        return points_xyz
+
+    dists_to_seed = np.linalg.norm(points_xyz - seed_point, axis=1)
+    start_idx = int(np.argmin(dists_to_seed))
+
+    if max_extent_m is not None:
+        eligible_mask = dists_to_seed <= max_extent_m
+    else:
+        eligible_mask = np.ones(len(points_xyz), dtype=bool)
+
+    in_cluster = np.zeros(len(points_xyz), dtype=bool)
+    in_cluster[start_idx] = True
+    remaining_mask = eligible_mask.copy()
+    remaining_mask[start_idx] = False
+    frontier_indices = np.array([start_idx])
+
+    while len(frontier_indices) > 0:
+        remaining_indices = np.nonzero(remaining_mask)[0]
+        if len(remaining_indices) == 0:
+            break
+
+        frontier_points = points_xyz[frontier_indices]
+        remaining_points = points_xyz[remaining_indices]
+        dists = np.linalg.norm(
+            remaining_points[:, None, :] - frontier_points[None, :, :], axis=2)
+        newly_added_mask = np.any(dists < connectivity_radius_m, axis=1)
+        newly_added_indices = remaining_indices[newly_added_mask]
+
+        if len(newly_added_indices) == 0:
+            break
+
+        in_cluster[newly_added_indices] = True
+        remaining_mask[newly_added_indices] = False
+        frontier_indices = newly_added_indices
+
+    return points_xyz[in_cluster]
+
+
 def track_object_centroid(points_xyz, previous_estimate_xyz, search_radius_m,
-                           min_height_above_surface_m=0.0,
+                           min_height_above_surface_m=0.0, connectivity_radius_m=0.0,
+                           cluster_max_extent_m=None,
                            exclude_points=None, exclude_radius_m=0.0, min_points=1):
     """Local point-cloud centroid tracker (Stage 2's core per-tick update).
 
@@ -165,21 +248,45 @@ def track_object_centroid(points_xyz, previous_estimate_xyz, search_radius_m,
       whatever flat surface the object sits on (many more surface points
       than object points within any reasonably-sized search sphere), which
       pulls the centroid toward the surface rather than the object.
+    connectivity_radius_m: if > 0, apply connected_cluster_near_point() after
+      the height filter -- needed in practice: a nearby, spatially disjoint
+      stereo depth artifact can also pass the radius+height filters and pull
+      the centroid toward it. Keeps only the cluster physically connected to
+      wherever we're already tracking.
+    cluster_max_extent_m: forwarded to connected_cluster_near_point() as
+      max_extent_m -- bounds connectivity growth to the object's known
+      approximate size, so a thin bridge of points can't chain the cluster
+      into an unrelated region (see that function's docstring).
     exclude_points: optional list of 3-vectors (e.g. fingertip contact
       points) to exclude nearby points from (avoids the gripper's own
       fingers contaminating the object estimate).
 
-    Returns (new_estimate_xyz_or_None, num_points_used). Pure function --
-    no ROS/self state -- so it's unit-testable with synthetic arrays.
+    Returns (new_estimate_xyz_or_None, num_points_used, surviving_points,
+    points_after_radius_filter). surviving_points is the actual filtered
+    Nx3 array that fed the centroid (or that failed the min_points check)
+    -- exposed for debugging/visualization, not used in the centroid math
+    itself beyond what's already returned. points_after_radius_filter is
+    the intermediate Nx3 array right after only the spatial radius filter,
+    before the height-above-surface / connectivity / fingertip-exclusion
+    filters -- exposed so a debug diagnostic can show whether the object's
+    real points are present at that stage and only get discarded by a
+    later filter (vs. never being captured by the radius filter at all).
+    Pure function -- no ROS/self state -- so it's unit-testable with
+    synthetic arrays.
     """
     if points_xyz is None or len(points_xyz) == 0:
-        return None, 0
+        return None, 0, np.empty((0, 3)), np.empty((0, 3))
 
     dist_to_estimate = np.linalg.norm(points_xyz - previous_estimate_xyz, axis=1)
     nearby = points_xyz[dist_to_estimate < search_radius_m]
+    points_after_radius_filter = nearby
 
     if min_height_above_surface_m > 0.0:
         nearby = filter_points_above_local_surface(nearby, min_height_above_surface_m)
+
+    if connectivity_radius_m > 0.0 and len(nearby) > 0:
+        nearby = connected_cluster_near_point(
+            nearby, previous_estimate_xyz, connectivity_radius_m, max_extent_m=cluster_max_extent_m)
 
     if exclude_points and len(nearby) > 0:
         mask = np.ones(len(nearby), dtype=bool)
@@ -188,9 +295,9 @@ def track_object_centroid(points_xyz, previous_estimate_xyz, search_radius_m,
         nearby = nearby[mask]
 
     if len(nearby) < min_points:
-        return None, len(nearby)
+        return None, len(nearby), nearby, points_after_radius_filter
 
-    return nearby.mean(axis=0), len(nearby)
+    return nearby.mean(axis=0), len(nearby), nearby, points_after_radius_filter
 
 
 class GraspObjectVisualServoNode(hm.HelloNode):
@@ -211,6 +318,7 @@ class GraspObjectVisualServoNode(hm.HelloNode):
         self.tracked_object_xyz_camera = None
         self.stage2_search_radius_m = STAGE2_MIN_SEARCH_RADIUS_M
         self.object_width_m = None
+        self.anchor_xyz_base_link = None
 
     # DATA CALLBACKS (D405) ############
 
@@ -282,6 +390,12 @@ class GraspObjectVisualServoNode(hm.HelloNode):
         self.tracked_object_xyz_camera = transform_point(object_xyz_base_link, transform)
         self.stage2_search_radius_m = max(STAGE2_MIN_SEARCH_RADIUS_M, width_m + STAGE2_SEARCH_RADIUS_MARGIN_M)
         self.object_width_m = width_m
+        # Kept in base_link (a stable frame, unlike the D405 camera frame,
+        # which moves) so it can be re-projected into wherever the camera
+        # currently is, every tick -- the anchor/leash check in
+        # stage2_tracking_tick() uses this to prevent the tracker from
+        # drifting away from the object with nothing pulling it back.
+        self.anchor_xyz_base_link = np.array(object_xyz_base_link)
         self.stage2_start_time_s = time.time()
         self.stage2_active = True
         self.logger.info(
@@ -314,12 +428,53 @@ class GraspObjectVisualServoNode(hm.HelloNode):
         fingertips = self.get_fingertip_contact_points()
         exclude_points = [p for p in fingertips.values() if p is not None]
 
+        # The search is centered on the Stage 1 anchor -- re-projected into
+        # the camera's *current* frame every tick via a fresh TF lookup --
+        # rather than on wherever the tracker's own previous output landed.
+        # Found empirically: a purely self-referential search (centering on
+        # its own last result) can lock onto a nearby-but-wrong cluster on
+        # the very first successful tick (e.g. a partial/edge view caught
+        # mid-sweep while manually moving the camera into place) and then
+        # never escape it -- the connected-component + extent-cap filter
+        # (by design) won't jump to a different, disconnected cluster even
+        # once the camera settles onto a clear view of the real object, and
+        # if the bad lock happens to sit within the anchor leash's
+        # tolerance, the leash never trips to correct it either. Anchoring
+        # the search itself in the known, kinematically-grounded Stage 1
+        # location removes that failure mode: every tick gets an
+        # independent chance to (re)find the real object, rather than
+        # trusting its own potentially-biased prior result.
         was_active_before_tick = self.tracked_object_xyz_camera is not None
-        new_estimate, num_points = track_object_centroid(
-            points_xyz, self.tracked_object_xyz_camera, self.stage2_search_radius_m,
+        try:
+            anchor_transform = self.tf2_buffer.lookup_transform(
+                GRIPPER_CAMERA_FRAME_ID, 'base_link', Time())
+            anchor_xyz_camera_now = transform_point(self.anchor_xyz_base_link, anchor_transform)
+        except tf2_ros.TransformException as e:
+            self.logger.warning('Stage 2 tick: could not look up the anchor position (TF lookup failed): {0}'.format(e))
+            return
+
+        cluster_max_extent_m = (self.object_width_m / 2.0) + STAGE2_CLUSTER_EXTENT_MARGIN_M
+        new_estimate, num_points, surviving_points, points_after_radius_filter = track_object_centroid(
+            points_xyz, anchor_xyz_camera_now, self.stage2_search_radius_m,
             min_height_above_surface_m=STAGE2_MIN_HEIGHT_ABOVE_SURFACE_M,
+            connectivity_radius_m=STAGE2_CONNECTIVITY_RADIUS_M,
+            cluster_max_extent_m=cluster_max_extent_m,
             exclude_points=exclude_points, exclude_radius_m=STAGE2_FINGERTIP_EXCLUSION_RADIUS_M,
             min_points=STAGE2_MIN_POINTS)
+
+        # Diagnostic: visualize exactly which points survived filtering
+        # and fed the centroid, regardless of whether tracking succeeded
+        # this tick -- shows directly whether the tracker is looking at
+        # the real object or some other nearby cluster.
+        self.publish_debug_points(surviving_points)
+
+        # Diagnostic: visualize the intermediate point set right after
+        # only the spatial radius filter -- before height-above-surface /
+        # connectivity / fingertip exclusion run. Lets us tell whether the
+        # object's real points are present here and get discarded by a
+        # later filter stage, vs. never being captured by the radius
+        # filter at all.
+        self.publish_debug_points(points_after_radius_filter, self.debug_points_pre_height_pub, rgb=(0.0, 1.0, 0.0))
 
         if new_estimate is None:
             if was_active_before_tick and (time.time() - self.stage2_start_time_s) < (2.0 * STAGE2_TICK_PERIOD_S):
@@ -347,10 +502,25 @@ class GraspObjectVisualServoNode(hm.HelloNode):
         # 1->2 handoff position).
         smoothed_estimate = smooth_estimate(
             self.tracked_object_xyz_camera, new_estimate, STAGE2_SMOOTHING_ALPHA)
-        # Internal tracking state stays on the raw (uncorrected) smoothed
-        # position -- next tick's search radius must stay centered on
-        # where the real, visible points actually are, not on empty space
-        # past the object's near surface.
+
+        # Safety net, kept even though the search is now anchor-centered:
+        # cap how far the *smoothed* estimate is allowed to drift from the
+        # anchor before being reported, in case the smoothing history
+        # itself has lagged (e.g. after several ticks of a genuinely
+        # moving target). Should rarely trigger now, since new_estimate
+        # itself can't come from further than the search radius away from
+        # the anchor.
+        drift_from_anchor_m = float(np.linalg.norm(smoothed_estimate - anchor_xyz_camera_now))
+        if drift_from_anchor_m > STAGE2_MAX_DRIFT_FROM_ANCHOR_M:
+            self.logger.warning(
+                'Stage 2 tick: smoothed estimate drifted {0:.3f} m from the Stage 1 anchor '
+                '(max {1:.3f} m) -- resetting to the anchor.'.format(
+                    drift_from_anchor_m, STAGE2_MAX_DRIFT_FROM_ANCHOR_M))
+            smoothed_estimate = anchor_xyz_camera_now
+
+        # Internal tracking state (used only to damp jitter via
+        # smooth_estimate() next tick, no longer used to center the
+        # search -- that's always the freshly re-projected anchor above).
         self.tracked_object_xyz_camera = smoothed_estimate
 
         # The reported/consumed position, on the other hand, gets pushed
@@ -373,9 +543,16 @@ class GraspObjectVisualServoNode(hm.HelloNode):
                 'Stage 2 tick: object=({0:.3f},{1:.3f},{2:.3f}) [{3} pts] (fingertips not both visible)'.format(
                     reported_position[0], reported_position[1], reported_position[2], num_points))
 
-        self.publish_debug_marker(reported_position)
+        # Diagnostic: publish both the raw (smoothed, pre-push) centroid
+        # and the reported (post-push) position as separate markers, so
+        # RViz can show directly whether a lateral offset from the object
+        # is already present before push_along_viewing_ray() runs (a
+        # point-filtering/centroid issue) or only appears after it (a
+        # push-math issue).
+        self.publish_debug_marker(self.debug_marker_raw_pub, smoothed_estimate, (0.0, 0.6, 1.0))  # cyan: raw
+        self.publish_debug_marker(self.debug_marker_pub, reported_position, (1.0, 0.5, 0.0))  # orange: pushed
 
-    def publish_debug_marker(self, xyz_camera_frame):
+    def publish_debug_marker(self, publisher, xyz_camera_frame, rgb):
         marker = Marker()
         marker.header.frame_id = GRIPPER_CAMERA_FRAME_ID
         marker.header.stamp = self.get_clock().now().to_msg()
@@ -390,11 +567,30 @@ class GraspObjectVisualServoNode(hm.HelloNode):
         marker.scale.x = 0.02
         marker.scale.y = 0.02
         marker.scale.z = 0.02
-        marker.color.r = 1.0
-        marker.color.g = 0.5
-        marker.color.b = 0.0
+        marker.color.r = rgb[0]
+        marker.color.g = rgb[1]
+        marker.color.b = rgb[2]
         marker.color.a = 0.8
-        self.debug_marker_pub.publish(marker)
+        publisher.publish(marker)
+
+    def publish_debug_points(self, points_xyz, publisher=None, rgb=(1.0, 0.0, 1.0)):
+        publisher = publisher if publisher is not None else self.debug_points_pub
+        marker = Marker()
+        marker.header.frame_id = GRIPPER_CAMERA_FRAME_ID
+        marker.header.stamp = self.get_clock().now().to_msg()
+        marker.ns = 'grasp_object_visual_servo'
+        marker.id = 0
+        marker.type = Marker.POINTS
+        marker.action = Marker.ADD
+        marker.pose.orientation.w = 1.0
+        marker.scale.x = 0.006
+        marker.scale.y = 0.006
+        marker.color.r = rgb[0]
+        marker.color.g = rgb[1]
+        marker.color.b = rgb[2]
+        marker.color.a = 0.9
+        marker.points = [Point(x=float(p[0]), y=float(p[1]), z=float(p[2])) for p in points_xyz]
+        publisher.publish(marker)
 
     # SERVICE CALLBACK ############
 
@@ -449,6 +645,10 @@ class GraspObjectVisualServoNode(hm.HelloNode):
             qos_profile=1, callback_group=self.callback_group)
 
         self.debug_marker_pub = self.create_publisher(Marker, '/grasp_object_visual_servo/debug/tracked_object', 1)
+        self.debug_marker_raw_pub = self.create_publisher(Marker, '/grasp_object_visual_servo/debug/tracked_object_raw', 1)
+        self.debug_points_pub = self.create_publisher(Marker, '/grasp_object_visual_servo/debug/surviving_points', 1)
+        self.debug_points_pre_height_pub = self.create_publisher(
+            Marker, '/grasp_object_visual_servo/debug/points_before_height_filter', 1)
 
         self.trigger_grasp_object_visual_servo_service = self.create_service(
             Trigger,
