@@ -12,7 +12,7 @@ import tf2_ros
 import tf_transformations
 
 from std_srvs.srv import Trigger
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import JointState, PointCloud2
 from sensor_msgs_py import point_cloud2
 from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker, MarkerArray
@@ -20,6 +20,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 import hello_helpers.hello_misc as hm
 import hello_helpers.fit_plane as fp
 import stretch_funmap.manipulation_planning as mp
+import stretch_funmap.navigate as nv
 
 # Incremental build-out described in grasp-demo-status.md / the approved
 # implementation plan.
@@ -34,6 +35,17 @@ import stretch_funmap.manipulation_planning as mp
 # before any motion is wired in (Increment 3).
 
 GRIPPER_CAMERA_FRAME_ID = 'gripper_camera_color_optical_frame'
+
+# Stage 1 head-scan pose. Deliberately NOT using ManipulationView.move_head()
+# (stretch_funmap/manipulation_planning.py), which hardcodes pan=-1.8/tilt=-0.8 with no
+# override parameters and is shared by funmap.py and clean_surface.py too -- changing it
+# in place would affect those. ManipulationView.update() has no dependency on the
+# specific head pose used (confirmed via code read: it's purely reactive to whatever
+# point cloud/TF is current at call time), so it's safe to do our own head move here
+# instead of calling move_head() at all.
+HEAD_SCAN_PAN_RAD = - np.pi / 2.0
+HEAD_SCAN_TILT_RAD = -0.8  # unchanged from ManipulationView.move_head()'s own default
+HEAD_SCAN_SETTLE_TIME_S = 0.5  # matches move_head()'s own settle time
 
 # Marker-center -> true-fingertip-contact-point offsets, hand-measured and
 # visually confirmed on hardware (see grasp-demo-status.md, Phase B).
@@ -57,6 +69,27 @@ STAGE2_MAX_DRIFT_FROM_ANCHOR_M = 0.08  # see anchor/leash check in stage2_tracki
 STAGE2_TICK_PERIOD_S = 1.0 / 15.0
 STAGE2_TEST_DURATION_S = 30.0  # Increment 2 only: auto-stop the log-only test loop
 
+# Pregrasp rotate-then-drive tuning -- placeholders, not yet tuned on hardware. Fixes a
+# bug where get_pregrasp_planar_translation() (which only ever drives the base along its
+# own fixed forward axis, never rotates) blew past the wrist's real ~0.5m max extension
+# for objects offset mostly sideways (large base_link y) rather than in front of the
+# robot -- see grasp-demo-status.md, Increment 3 step 1 postmortem.
+PREGRASP_ROTATE_STOPPING_DISTANCE_M = 0.45  # planar distance left to the object after
+                                             # the new drive step, before the existing
+                                             # pregrasp reach math runs
+PREGRASP_ROTATE_MAX_DRIVE_FORWARD_M = 1.0   # defensive clamp; Stage 1's own
+                                             # max_object_planar_distance_m=1.0 already
+                                             # bounds this in practice
+
+# Simplified, non-rotating pregrasp move -- see move_to_simple_pregrasp_pose().
+# Placeholders, not yet tuned on hardware. Known accepted limitation: this approach
+# cannot reach an object offset sideways (base_link y) by more than the arm's real
+# reach, since driving forward/backward alone cannot reduce a sideways offset -- see
+# grasp-demo-status.md.
+PREGRASP_LIFT_OFFSET_FROM_OBJECT_M = 0.20  # added to the object's height; negative = below
+PREGRASP_ARM_EXTENSION_STANDOFF_M = 0.45    # stop the wrist extension this far short of the object
+PREGRASP_FIXED_WRIST_YAW_RAD = 0.0          # single fixed pregrasp wrist yaw, not computed per-object
+
 
 def smooth_estimate(previous_estimate_xyz, new_measurement_xyz, alpha):
     """Exponential moving average blend of a new per-tick position
@@ -68,6 +101,30 @@ def smooth_estimate(previous_estimate_xyz, new_measurement_xyz, alpha):
     Pure function.
     """
     return alpha * new_measurement_xyz + (1.0 - alpha) * previous_estimate_xyz
+
+
+def compute_bearing_to_object(object_xyz_base_link):
+    """Bearing (radians) from base_link's current +x axis to the object,
+    using only the planar (x, y) components of object_xyz_base_link.
+
+    Needed because get_pregrasp_planar_translation() (stretch_funmap's
+    ManipulationView, reused unmodified elsewhere in this file) only ever
+    drives the base along its own fixed +x (forward) axis and assumes the
+    object is already roughly in front of it -- an object offset mostly
+    along -y (the arm's fixed telescoping-extension direction) can't have
+    that offset reduced by driving forward at all, so the whole gap lands
+    on wrist extension and can exceed the arm's ~0.5m physical max. This
+    bearing is used to rotate the base to face the object first (see
+    rotate_to_face_object()), so the existing pregrasp math then runs
+    within the range it was actually designed for.
+
+    Positive is a counterclockwise (left) turn, matching base_link's
+    standard convention and MoveBase.turn()'s relative-angle contract --
+    no angle-wrapping needed since atan2's own (-pi, pi] range is already
+    the shortest-path relative turn. Pure function.
+    """
+    x, y = object_xyz_base_link[0], object_xyz_base_link[1]
+    return float(np.arctan2(y, x))
 
 
 def push_along_viewing_ray(point_xyz, push_distance_m):
@@ -306,6 +363,14 @@ class GraspObjectVisualServoNode(hm.HelloNode):
         hm.HelloNode.__init__(self)
         self.debug_directory = None
         self.manipulation_view = None
+        self.move_base = None
+        self.tool = None
+
+        self.joint_states_lock = threading.Lock()
+        self.joint_states = None
+        self.wrist_position = None
+        self.lift_position = None
+        self.left_finger_position = None
 
         self.fingertip_lock = threading.Lock()
         self.latest_fingertip_marker_array = None
@@ -319,6 +384,15 @@ class GraspObjectVisualServoNode(hm.HelloNode):
         self.stage2_search_radius_m = STAGE2_MIN_SEARCH_RADIUS_M
         self.object_width_m = None
         self.anchor_xyz_base_link = None
+
+    def joint_states_callback(self, joint_states):
+        with self.joint_states_lock:
+            self.joint_states = joint_states
+        wrist_position, wrist_velocity, wrist_effort = hm.get_wrist_state(joint_states)
+        self.wrist_position = wrist_position
+        lift_position, lift_velocity, lift_effort = hm.get_lift_state(joint_states)
+        self.lift_position = lift_position
+        self.left_finger_position, temp1, temp2 = hm.get_left_finger_state(joint_states)
 
     # DATA CALLBACKS (D405) ############
 
@@ -355,7 +429,8 @@ class GraspObjectVisualServoNode(hm.HelloNode):
         """
         self.manipulation_view = mp.ManipulationView(self.tf2_buffer, self.debug_directory, self.get_tool())
         manip = self.manipulation_view
-        manip.move_head(self.move_to_pose)
+        self.move_to_pose({'joint_head_pan': HEAD_SCAN_PAN_RAD, 'joint_head_tilt': HEAD_SCAN_TILT_RAD})
+        time.sleep(HEAD_SCAN_SETTLE_TIME_S)
 
         scan_time_s = 4.0
         start_time_s = time.time()
@@ -373,6 +448,222 @@ class GraspObjectVisualServoNode(hm.HelloNode):
         object_xyz_base_link = h.get_pix_in_frame(xyz_pix, 'base_link', self.tf2_buffer)
 
         return grasp_target, object_xyz_base_link
+
+    def drive(self, forward_m):
+        if self.dryrun:
+            return
+        tolerance_distance_m = 0.005
+        if forward_m > 0:
+            self.move_base.forward(forward_m, detect_obstacles=False, tolerance_distance_m=tolerance_distance_m)
+        else:
+            self.move_base.backward(forward_m, detect_obstacles=False, tolerance_distance_m=tolerance_distance_m)
+
+    def rotate_to_face_object(self, object_xyz_base_link):
+        """Rotate the base in place to face the object directly, before
+        the existing pregrasp reach math runs (see move_to_pregrasp_pose()
+        and compute_bearing_to_object() for why this is needed -- that
+        math only ever drives the base along its own fixed forward axis,
+        so a large sideways offset has to be removed by rotating, not
+        translating). Uses MoveBase.turn() (stretch_funmap.navigate),
+        which takes a relative angle in radians and blocks internally with
+        its own retry/tolerance logic -- no additional setup needed.
+        Skipped entirely under dryrun, matching move_to_pregrasp_pose()'s
+        convention. A turn that doesn't fully converge is logged but
+        treated as non-fatal: the existing wrist-extension correction in
+        move_to_pregrasp_pose() absorbs whatever small residual offset is
+        left over, the same mechanism this whole fix already relies on.
+        Known accepted risk: MoveBase.turn() has no obstacle awareness,
+        same as self.drive()'s existing detect_obstacles=False convention
+        (matching grasp_object.py's own choice), now applied to a rotation
+        too -- see grasp-demo-status.md.
+        """
+        if self.dryrun:
+            self.logger.info('dryrun: skipping the pregrasp rotate-to-face-object step.')
+            return True
+
+        theta_rad = compute_bearing_to_object(object_xyz_base_link)
+        self.logger.info(
+            'Pregrasp: rotating {0:.3f} rad ({1:.1f} deg) to face the object.'.format(
+                theta_rad, np.degrees(theta_rad)))
+        at_goal = self.move_base.turn(theta_rad)
+        if not at_goal:
+            self.logger.warning(
+                'Pregrasp: rotate-to-face-object turn did not fully converge to its target angle.')
+        return at_goal
+
+    def drive_to_pregrasp_range(self, grasp_target):
+        """Second half of the new pregrasp step: after
+        rotate_to_face_object() has (approximately) turned the base to
+        face the object, re-derive the object's position in the
+        now-current base_link frame -- reusing the exact same pixel-space
+        data Stage 1 already computed in find_grasp_target(); the
+        underlying max-height-image pixel location doesn't change, and the
+        live TF lookup inside get_pix_in_frame() naturally reflects the
+        robot's new, rotated pose. Then drive the base so only
+        PREGRASP_ROTATE_STOPPING_DISTANCE_M of planar distance to the
+        object remains, leaving a comfortable, un-clamped reach for the
+        existing (unmodified) get_pregrasp_planar_translation() call right
+        after this. Skipped entirely under dryrun.
+        """
+        if self.dryrun:
+            self.logger.info('dryrun: skipping the pregrasp drive-to-range step.')
+            return True
+
+        h = self.manipulation_view.max_height_im
+        xyz_pix = [grasp_target['location_xy_pix'][0],
+                   grasp_target['location_xy_pix'][1],
+                   grasp_target['location_z_pix']]
+        object_xyz_base_link_now = h.get_pix_in_frame(xyz_pix, 'base_link', self.tf2_buffer)
+
+        forward_m = object_xyz_base_link_now[0] - PREGRASP_ROTATE_STOPPING_DISTANCE_M
+        forward_m = max(min(forward_m, PREGRASP_ROTATE_MAX_DRIVE_FORWARD_M), -PREGRASP_ROTATE_MAX_DRIVE_FORWARD_M)
+        self.logger.info(
+            'Pregrasp: after rotating, object now at x={0:.3f}, y={1:.3f} m (base_link); '
+            'driving {2:.3f} m to leave a {3:.3f} m standoff.'.format(
+                object_xyz_base_link_now[0], object_xyz_base_link_now[1],
+                forward_m, PREGRASP_ROTATE_STOPPING_DISTANCE_M))
+        self.drive(forward_m)
+        return True
+
+    def move_to_pregrasp_pose(self, grasp_target):
+        """Coarse, position-mode move -- reusing grasp_object.py's own
+        pregrasp logic (ManipulationView.get_pregrasp_lift/get_pregrasp_yaw/
+        get_pregrasp_planar_translation, unmodified) -- to get the arm and
+        gripper (and therefore the D405) out of its stowed position and
+        roughly facing the object. Stage 2's own closed-loop tracking then
+        takes over from there for the fine approach; this step only needs
+        to get the object inside the D405's field of view, not precisely
+        positioned. Skipped entirely under dryrun, same as grasp_object.py
+        treats its own pregrasp/drive steps.
+        """
+        if self.dryrun:
+            self.logger.info('dryrun: skipping the pregrasp move.')
+            return True
+
+        max_lift_m = 1.09
+        min_extension_m = 0.01
+        max_extension_m = 0.5
+
+        if self.lift_position is None:
+            self.logger.error('move_to_pregrasp_pose: lift position unavailable.')
+            return False
+
+        pregrasp_lift_m = self.manipulation_view.get_pregrasp_lift(grasp_target, self.tf2_buffer)
+        if self.tool == "tool_stretch_dex_wrist":
+            pregrasp_lift_m += 0.02
+        self.logger.info('Raise tool to pregrasp height.')
+        lift_to_pregrasp_m = max(self.lift_position + pregrasp_lift_m, 0.1)
+        lift_to_pregrasp_m = min(lift_to_pregrasp_m, max_lift_m)
+        self.move_to_pose({'joint_lift': lift_to_pregrasp_m})
+
+        if self.tool == "tool_stretch_dex_wrist":
+            self.logger.info('Rotate pitch/roll for grasping.')
+            self.move_to_pose({'joint_wrist_pitch': -0.3, 'joint_wrist_roll': 0.0})
+
+        pregrasp_yaw = self.manipulation_view.get_pregrasp_yaw(grasp_target, self.tf2_buffer)
+        self.logger.info('Rotate the gripper for grasping: pregrasp_yaw = {0:.2f} rad'.format(pregrasp_yaw))
+        self.move_to_pose({'joint_wrist_yaw': pregrasp_yaw})
+
+        self.logger.info('Open the gripper.')
+        self.move_to_pose({'gripper_aperture': 0.07})
+
+        pregrasp_mobile_base_m, pregrasp_wrist_extension_m = self.manipulation_view.get_pregrasp_planar_translation(
+            grasp_target, self.tf2_buffer)
+        self.logger.info(
+            'Drive to pregrasp location: base={0:.3f} m, wrist_extension_delta={1:.3f} m'.format(
+                pregrasp_mobile_base_m, pregrasp_wrist_extension_m))
+        self.drive(pregrasp_mobile_base_m)
+
+        if pregrasp_wrist_extension_m > 0.0:
+            extension_m = max(self.wrist_position + pregrasp_wrist_extension_m, min_extension_m)
+            extension_m = min(extension_m, max_extension_m)
+            self.logger.info('Extend tool toward the object.')
+            self.move_to_pose({'wrist_extension': extension_m})
+        else:
+            self.logger.info('Negative wrist extension for pregrasp, so not extending or retracting.')
+
+        return True
+
+    def move_to_simple_pregrasp_pose(self, grasp_target, object_xyz_base_link):
+        """Simplified, non-rotating pregrasp move -- replaces
+        move_to_pregrasp_pose() (kept above, unused, for comparison) with
+        four straightforward position-mode steps, each using Stage 1's
+        object_xyz_base_link, re-derived after the base moves (the
+        object's position relative to the moving base_link frame changes
+        as the robot drives, so re-look it up via the same
+        get_pix_in_frame() call Stage 1 already used, rather than trusting
+        the pre-drive value):
+          1. Drive forward/backward until the object's base_link x is
+             close to zero -- the robot ends up roughly alongside the
+             object.
+          2. Move the lift to the object's height plus
+             PREGRASP_LIFT_OFFSET_FROM_OBJECT_M (currently negative, i.e.
+             below the object's height).
+          3. Extend the wrist toward the object using its (re-derived)
+             base_link y offset, stopping PREGRASP_ARM_EXTENSION_STANDOFF_M
+             short.
+          4. Rotate the wrist to a single fixed, always-the-same pregrasp
+             yaw (no per-object yaw calculation).
+
+        Does not rotate the base at all, by design (for now). Known
+        accepted limitation: an object offset sideways (base_link y) by
+        more than the arm's real reach cannot be reached this way, since
+        driving forward/backward alone cannot reduce a sideways offset --
+        see grasp-demo-status.md for the full reasoning. Skipped entirely
+        under dryrun.
+        """
+        if self.dryrun:
+            self.logger.info('dryrun: skipping the simple pregrasp move.')
+            return True
+
+        max_lift_m = 1.09
+        min_extension_m = 0.01
+        max_extension_m = 0.5
+
+        if self.lift_position is None or self.wrist_position is None:
+            self.logger.error('move_to_simple_pregrasp_pose: lift/wrist position unavailable.')
+            return False
+
+        # Step 1: drive so the object's base_link x is close to zero.
+        forward_m = object_xyz_base_link[0]
+        forward_m = max(min(forward_m, PREGRASP_ROTATE_MAX_DRIVE_FORWARD_M), -PREGRASP_ROTATE_MAX_DRIVE_FORWARD_M)
+        self.logger.info('Pregrasp (simple): driving {0:.3f} m to align x.'.format(forward_m))
+        self.drive(forward_m)
+
+        # Re-derive the object's position after the drive -- the underlying
+        # pixel-space data doesn't change, but the live TF lookup inside
+        # get_pix_in_frame() reflects wherever the robot actually ended up.
+        h = self.manipulation_view.max_height_im
+        xyz_pix = [grasp_target['location_xy_pix'][0],
+                   grasp_target['location_xy_pix'][1],
+                   grasp_target['location_z_pix']]
+        object_xyz_base_link_now = h.get_pix_in_frame(xyz_pix, 'base_link', self.tf2_buffer)
+        self.logger.info(
+            'Pregrasp (simple): after driving, object now at x={0:.3f}, y={1:.3f}, z={2:.3f} m (base_link).'.format(
+                object_xyz_base_link_now[0], object_xyz_base_link_now[1], object_xyz_base_link_now[2]))
+
+        # Step 2: move the lift to the object's height, offset by
+        # PREGRASP_LIFT_OFFSET_FROM_OBJECT_M.
+        target_lift_m = object_xyz_base_link_now[2] + PREGRASP_LIFT_OFFSET_FROM_OBJECT_M
+        target_lift_m = max(min(target_lift_m, max_lift_m), 0.1)
+        self.logger.info('Pregrasp (simple): moving lift to {0:.3f} m.'.format(target_lift_m))
+        self.move_to_pose({'joint_lift': target_lift_m})
+
+        # Step 3: extend the wrist toward the object using its y offset.
+        extension_m = abs(object_xyz_base_link_now[1]) - PREGRASP_ARM_EXTENSION_STANDOFF_M
+        extension_m = max(min(extension_m, max_extension_m), min_extension_m)
+        self.logger.info('Pregrasp (simple): extending wrist to {0:.3f} m.'.format(extension_m))
+        self.move_to_pose({'wrist_extension': extension_m})
+
+        # Step 4: fixed pregrasp wrist yaw, same every time.
+        self.logger.info('Pregrasp (simple): rotating wrist yaw to fixed {0:.3f} rad.'.format(
+            PREGRASP_FIXED_WRIST_YAW_RAD))
+        self.move_to_pose({'joint_wrist_yaw': PREGRASP_FIXED_WRIST_YAW_RAD})
+
+        self.logger.info('Open the gripper.')
+        self.move_to_pose({'gripper_aperture': 0.07})
+
+        return True
 
     def start_stage2_tracking(self, object_xyz_base_link, width_m):
         """One-time handoff: convert Stage 1's object position (base_link)
@@ -611,6 +902,13 @@ class GraspObjectVisualServoNode(hm.HelloNode):
                 object_xyz_base_link[0], object_xyz_base_link[1], object_xyz_base_link[2]))
         self.logger.info('Stage 1 object width_m = {0:.3f} m'.format(grasp_target['width_m']))
 
+        self.logger.info('Moving to a coarse pregrasp pose so the D405 can see the object.')
+        if not self.move_to_simple_pregrasp_pose(grasp_target, object_xyz_base_link):
+            return Trigger.Response(
+                success=False,
+                message='Pregrasp move failed (see log).'
+            )
+
         if not self.start_stage2_tracking(object_xyz_base_link, grasp_target['width_m']):
             return Trigger.Response(
                 success=False,
@@ -625,6 +923,7 @@ class GraspObjectVisualServoNode(hm.HelloNode):
 
     def main(self):
         hm.HelloNode.main(self, 'grasp_object_visual_servo', 'grasp_object_visual_servo', wait_for_first_pointcloud=False)
+        self.move_base = nv.MoveBase(self)
         self.logger = self.get_logger()
 
         self.callback_group = ReentrantCallbackGroup()
@@ -635,6 +934,10 @@ class GraspObjectVisualServoNode(hm.HelloNode):
 
         self.declare_parameter('dryrun', False)
         self.dryrun = self.get_parameter('dryrun').value
+
+        self.joint_states_subscriber = self.create_subscription(
+            JointState, '/stretch/joint_states', callback=self.joint_states_callback,
+            qos_profile=1, callback_group=self.callback_group)
 
         self.gripper_aruco_subscriber = self.create_subscription(
             MarkerArray, '/gripper_camera/aruco/marker_array', self.fingertip_marker_array_callback,
