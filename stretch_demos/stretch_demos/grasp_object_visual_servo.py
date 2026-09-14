@@ -56,6 +56,8 @@ STAGE2_LOG_THROTTLE_S = 1.0  # tracking still runs at full rate; only the log is
 # Pregrasp tuning. Can't reach an object offset sideways by more than the arm's
 # reach -- driving forward/backward alone can't fix that (see status doc).
 PREGRASP_MAX_DRIVE_FORWARD_M = 1.0  # defensive clamp on the alignment drive
+PREGRASP_ALIGN_TOLERANCE_M = 0.01  # stop re-driving once x is within this, layer 3 (re-derived) measurement
+PREGRASP_ALIGN_MAX_ATTEMPTS = 4  # matches MoveBase.forward()'s own default max_forward_attempts
 PREGRASP_LIFT_OFFSET_FROM_OBJECT_M = 0.20  # added to object height; negative = below
 PREGRASP_ARM_EXTENSION_STANDOFF_M = 0.45  # stop this far short of the object
 PREGRASP_FIXED_WRIST_YAW_RAD = -0.0786  # hand-calibrated "straight" for this robot
@@ -288,10 +290,7 @@ class GraspObjectVisualServoNode(hm.HelloNode):
         if self.dryrun:
             return
         tolerance_distance_m = 0.005
-        if forward_m > 0:
-            at_goal = self.move_base.forward(forward_m, detect_obstacles=False, tolerance_distance_m=tolerance_distance_m)
-        else:
-            at_goal = self.move_base.backward(forward_m, detect_obstacles=False, tolerance_distance_m=tolerance_distance_m)
+        at_goal = self.move_base.forward(forward_m, detect_obstacles=False, tolerance_distance_m=tolerance_distance_m)
         self.logger.warning('Pregrasp alignment [layers 1+2]: MoveBase reports at_goal={0} for the {1:.4f} m drive.'.format(
             at_goal, forward_m))
 
@@ -317,24 +316,31 @@ class GraspObjectVisualServoNode(hm.HelloNode):
         self.logger.warning(
             'Pregrasp alignment [layer 3]: x distance base_link->object BEFORE drive = {0:.3f} m (target: 0.000 m)'.format(
                 object_xyz_base_link[0]))
-        forward_m = object_xyz_base_link[0]
-        forward_m = max(min(forward_m, PREGRASP_MAX_DRIVE_FORWARD_M), -PREGRASP_MAX_DRIVE_FORWARD_M)
-        self.logger.info('Pregrasp (simple): driving {0:.3f} m to align x.'.format(forward_m))
-        self.drive(forward_m)
-        time.sleep(PREGRASP_DRIVE_SETTLE_TIME_S)
 
-        # Re-derive after the drive (live TF, not cached).
+        # Re-drives and re-derives (layer 3, not odometry) until aligned or out of
+        # attempts -- corrects both undershoot and overshoot, either direction.
         h = self.manipulation_view.max_height_im
         xyz_pix = [grasp_target['location_xy_pix'][0],
                    grasp_target['location_xy_pix'][1],
                    grasp_target['location_z_pix']]
-        object_xyz_base_link_now = h.get_pix_in_frame(xyz_pix, 'base_link', self.tf2_buffer)
+        object_xyz_base_link_now = object_xyz_base_link
+        for attempt in range(PREGRASP_ALIGN_MAX_ATTEMPTS):
+            forward_m = object_xyz_base_link_now[0]
+            forward_m = max(min(forward_m, PREGRASP_MAX_DRIVE_FORWARD_M), -PREGRASP_MAX_DRIVE_FORWARD_M)
+            self.logger.info('Pregrasp (simple): alignment attempt {0}/{1}, driving {2:.3f} m to align x.'.format(
+                attempt + 1, PREGRASP_ALIGN_MAX_ATTEMPTS, forward_m))
+            self.drive(forward_m)
+            time.sleep(PREGRASP_DRIVE_SETTLE_TIME_S)
+            object_xyz_base_link_now = h.get_pix_in_frame(xyz_pix, 'base_link', self.tf2_buffer)
+            self.logger.warning(
+                'Pregrasp alignment [layer 3]: x distance base_link->object after attempt {0} = {1:.3f} m '
+                '(target: 0.000 m)'.format(attempt + 1, object_xyz_base_link_now[0]))
+            if abs(object_xyz_base_link_now[0]) <= PREGRASP_ALIGN_TOLERANCE_M:
+                break
+
         self.logger.info(
             'Pregrasp (simple): after driving, object now at x={0:.3f}, y={1:.3f}, z={2:.3f} m (base_link).'.format(
                 object_xyz_base_link_now[0], object_xyz_base_link_now[1], object_xyz_base_link_now[2]))
-        self.logger.warning(
-            'Pregrasp alignment [layer 3]: x distance base_link->object AFTER drive = {0:.3f} m (target: 0.000 m)'.format(
-                object_xyz_base_link_now[0]))
         self.publish_pregrasp_alignment_marker('after', object_xyz_base_link_now)
 
         target_lift_m = object_xyz_base_link_now[2] + PREGRASP_LIFT_OFFSET_FROM_OBJECT_M
