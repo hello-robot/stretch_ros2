@@ -27,6 +27,7 @@ setup(
             'open_drawer = stretch_demos.open_drawer:main',
             'grasp_object = stretch_demos.grasp_object:main',
             'grasp_object_visual_servo = stretch_demos.grasp_object_visual_servo:main',
+            'pregrasp_testing = stretch_demos.pregrasp_testing:main',
             'handover_object = stretch_demos.handover_object:main',
             'hello_world = stretch_demos.hello_world:main'
         ],
