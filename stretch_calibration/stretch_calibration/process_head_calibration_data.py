@@ -947,14 +947,19 @@ class ProcessHeadCalibrationDataNode(Node):
             # http://cma.gforge.inria.fr/apidocs-pycma/cma.evolution_strategy.CMAEvolutionStrategyResult.html
 
             # Get best error terms
-            best_parameters = es.result[0]
+            result = es.result
+            best_parameters = result.xbest
             best_total_error, best_error_terms = self.calibrator.calculate_error(best_parameters, output_error_terms=True)
             for key in best_error_terms:
                 best_error_terms[key] = float(best_error_terms[key])
             
             # Convert from Numpy arrays to human-readable lists
+            # The entries are read by name, since iterating over the
+            # result yields (name, value) pairs as of cma 4.4.1.
             no_numpy_cma_result = []
-            for entry in es.result:
+            for entry in [result.xbest, result.fbest, result.evals_best,
+                          result.evaluations, result.iterations,
+                          result.xfavorite, result.stds]:
                 if "tolist" in dir(entry):
                     entry = entry.tolist()
                 no_numpy_cma_result.append(entry)
