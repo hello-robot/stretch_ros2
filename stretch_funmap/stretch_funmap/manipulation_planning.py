@@ -214,6 +214,7 @@ class ManipulationView():
             'tool_stretch_gripper': 'link_gripper',
             'tool_stretch_dex_wrist': 'link_wrist_yaw_bottom',#link_straight_gripper_aligned
             'eoa_wrist_dw3_tool_sg3': 'link_wrist_yaw_bottom',
+            'eoa_wrist_dw3_tool_sg3_pro': 'link_wrist_yaw_bottom',
         }
         self.tool = tool
 
