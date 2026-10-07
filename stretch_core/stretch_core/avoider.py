@@ -51,7 +51,7 @@ class Avoider(Node):
             lin_vel = 0.0
             rot_vel = 0.25
         else:
-            lin_vel = 0.5
+            lin_vel = 0.25
             rot_vel = 0.0
 
         self.set_speed(lin_vel, rot_vel)
